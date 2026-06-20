@@ -1,0 +1,7 @@
+.hey-designer-shell{display:grid;grid-template-columns:240px minmax(360px,1fr)280px;min-height:calc(100vh - 64px);background:#111318;color:#eef2ff}
+.hey-designer-sidebar,.hey-designer-inspector{padding:20px;background:#171a22;border-color:#2b3040}.hey-designer-sidebar{border-right:1px solid #2b3040}.hey-designer-inspector{border-left:1px solid #2b3040}
+.hey-designer-sidebar button{display:block;width:100%;margin:12px 0;padding:12px;border:1px solid #343b4f;border-radius:12px;background:#202532;color:#fff;text-align:left}
+.hey-designer-stage{display:grid;place-items:center;overflow:auto;padding:40px;background:radial-gradient(circle at 50% 20%,#242b3d,#0d0f14 60%)}
+.hey-designer-canvas{position:relative;transform-origin:center top;box-shadow:0 30px 80px rgba(0,0,0,.45);overflow:hidden}
+.hey-designer-element{position:absolute;box-sizing:border-box}.hey-designer-element.text{font-weight:800;line-height:1.15}.hey-designer-element.shape{border:1px solid rgba(255,255,255,.35);box-shadow:0 18px 45px rgba(124,45,18,.18)}.hey-designer-element.image{object-fit:cover}
+.hey-h5-renderer{position:relative;margin:auto;overflow:hidden;border-radius:28px;box-shadow:0 24px 60px rgba(15,23,42,.18)}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "@vben/tsconfig/web.json",
+  "compilerOptions": {
+    "paths": {
+      "@hey/core": ["../core/src/index.ts"],
+      "@hey/designer": ["../designer/src/index.ts"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}

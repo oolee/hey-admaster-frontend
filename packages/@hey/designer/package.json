@@ -1,0 +1,25 @@
+{
+  "name": "@hey/designer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "vue-tsc --noEmit --skipLibCheck"
+  },
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./styles": {
+      "default": "./src/styles/index.css"
+    }
+  },
+  "dependencies": {
+    "@hey/core": "workspace:*",
+    "vue": "catalog:"
+  }
+}

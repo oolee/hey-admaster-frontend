@@ -1,0 +1,29 @@
+{
+  "name": "@abp/request",
+  "version": "10.0.2",
+  "homepage": "https://github.com/oolee/hey-vue-admin",
+  "bugs": "https://github.com/oolee/hey-vue-admin/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oolee/hey-vue-admin.git",
+    "directory": "packages/@abp/request"
+  },
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@abp/core": "workspace:*",
+    "@vben/hooks": "workspace:*",
+    "@vben/request": "workspace:*",
+    "axios": "catalog:",
+    "vue": "catalog:"
+  }
+}

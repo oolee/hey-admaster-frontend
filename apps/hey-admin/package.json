@@ -1,0 +1,60 @@
+{
+  "name": "@hey/admin",
+  "version": "1.0.0",
+  "homepage": "https://vben.pro",
+  "bugs": "https://github.com/oolee/hey-vue-admin/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oolee/hey-vue-admin.git",
+    "directory": "apps/hey-admin"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "vben",
+    "email": "oolee@gmail.com",
+    "url": "https://github.com/oolee"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "pnpm vite build --mode production",
+    "build:analyze": "pnpm vite build --mode analyze",
+    "dev": "pnpm vite --mode development",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit --skipLibCheck"
+  },
+  "imports": {
+    "#/*": "./src/*"
+  },
+  "dependencies": {
+    "@abp/account": "workspace:*",
+    "@abp/ai-management": "workspace:*",
+    "@abp/components": "workspace:*",
+    "@abp/core": "workspace:*",
+    "@abp/identity": "workspace:*",
+    "@abp/localization": "workspace:*",
+    "@abp/platform": "workspace:*",
+    "@abp/request": "workspace:*",
+    "@abp/settings": "workspace:*",
+    "@abp/wechat": "workspace:*",
+    "@vben/access": "workspace:*",
+    "@vben/common-ui": "workspace:*",
+    "@vben/constants": "workspace:*",
+    "@vben/hooks": "workspace:*",
+    "@vben/icons": "workspace:*",
+    "@vben/layouts": "workspace:*",
+    "@vben/locales": "workspace:*",
+    "@vben/plugins": "workspace:*",
+    "@vben/preferences": "workspace:*",
+    "@vben/request": "workspace:*",
+    "@vben/stores": "workspace:*",
+    "@vben/styles": "workspace:*",
+    "@vben/types": "workspace:*",
+    "@vben/utils": "workspace:*",
+    "@vueuse/core": "catalog:",
+    "ant-design-vue": "catalog:",
+    "dayjs": "catalog:",
+    "pinia": "catalog:",
+    "vue": "catalog:",
+    "vue-router": "catalog:"
+  }
+}

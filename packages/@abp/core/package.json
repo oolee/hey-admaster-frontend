@@ -1,0 +1,60 @@
+{
+  "name": "@abp/core",
+  "version": "10.0.2",
+  "homepage": "https://github.com/oolee/hey-vue-admin",
+  "bugs": "https://github.com/oolee/hey-vue-admin/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oolee/hey-vue-admin.git",
+    "directory": "packages/@abp/core"
+  },
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm vite build",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "development": "./src/index.ts",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "default": "./dist/index.mjs"
+      }
+    }
+  },
+  "dependencies": {
+    "@vben/hooks": "workspace:*",
+    "@vben/types": "workspace:*",
+    "@vben/utils": "workspace:*",
+    "@vueuse/core": "catalog:",
+    "dayjs": "catalog:",
+    "lodash.groupby": "catalog:",
+    "lodash.isdate": "catalog:",
+    "lodash.isnumber": "catalog:",
+    "lodash.merge": "catalog:",
+    "lodash.sortby": "catalog:",
+    "pinia": "catalog:",
+    "pinia-plugin-persistedstate": "catalog:",
+    "universal-cookie": "catalog:",
+    "vue": "catalog:"
+  },
+  "devDependencies": {
+    "@types/lodash.groupby": "catalog:",
+    "@types/lodash.isdate": "catalog:",
+    "@types/lodash.isnumber": "catalog:",
+    "@types/lodash.merge": "catalog:",
+    "@types/lodash.sortby": "catalog:"
+  }
+}

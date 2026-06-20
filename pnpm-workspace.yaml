@@ -2,6 +2,8 @@ packages:
   - internal/*
   - internal/lint-configs/*
   - packages/*
+  - packages/@abp/*
+  - packages/@hey/*
   - packages/@core/base/*
   - packages/@core/ui-kit/*
   - packages/@core/forward/*
@@ -37,6 +39,7 @@ overrides:
   vue: 'catalog:'
 
 catalog:
+  '@ant-design/icons-vue': ^7.0.1
   '@ast-grep/napi': ^0.43.0
   '@changesets/changelog-github': ^0.7.0
   '@changesets/cli': ^2.31.0
@@ -56,6 +59,7 @@ catalog:
   '@jspm/generator': ^2.16.1
   '@lucide/vue': ^1.18.0
   '@manypkg/get-packages': ^3.1.0
+  '@microsoft/signalr': ^10.0.0
   '@nolebase/vitepress-plugin-git-changelog': ^2.18.2
   '@playwright/test': ^1.61.0
   '@pnpm/workspace.read-manifest': ^1000.3.1
@@ -77,11 +81,19 @@ catalog:
   '@tiptap/starter-kit': ^3.26.1
   '@tiptap/vue-3': ^3.26.1
   '@tsdown/css': ^0.22.2
+  '@types/codemirror': ^5.60.17
   '@types/archiver': ^8.0.0
   '@types/html-minifier-terser': ^7.0.2
   '@types/json-bigint': ^1.0.4
   '@types/jsonwebtoken': ^9.0.10
   '@types/lodash.clonedeep': ^4.5.9
+  '@types/lodash.debounce': ^4.0.9
+  '@types/lodash.groupby': ^4.6.9
+  '@types/lodash.isdate': ^4.0.1
+  '@types/lodash.isnumber': ^3.0.3
+  '@types/lodash.merge': ^4.6.2
+  '@types/lodash.sortby': ^4.7.0
+  '@types/markdown-it': ^14.1.2
   '@types/node': ^25.9.3
   '@types/nprogress': ^0.2.3
   '@types/qrcode': ^1.5.6
@@ -92,12 +104,18 @@ catalog:
   '@vite-pwa/vitepress': ^1.1.0
   '@vitejs/plugin-vue': ^6.0.7
   '@vitejs/plugin-vue-jsx': ^5.1.5
+  '@vue-office/docx': ^1.6.3
+  '@vue-office/excel': ^1.7.14
+  '@vue-office/pdf': ^2.0.10
+  '@vue-office/pptx': ^1.0.1
   '@vue/shared': ^3.5.38
   '@vue/test-utils': ^2.4.11
   '@vueuse/core': ^14.3.0
   '@vueuse/integrations': ^14.3.0
   '@vueuse/motion': ^3.0.3
+  '@wecom/jssdk': ^2.4.0
   ant-design-vue: ^4.2.6
+  ant-design-x-vue: ^1.6.0
   antdv-next: ^1.3.5
   archiver: ^8.0.0
   axios: ^1.18.0
@@ -108,8 +126,10 @@ catalog:
   circular-dependency-scanner: ^3.0.1
   class-variance-authority: ^0.7.1
   clsx: ^2.1.1
+  codemirror: ^5.60.17
   commitlint-plugin-function-rules: ^5.0.1
   consola: ^3.4.2
+  cropperjs: ^1.5.12
   cross-env: ^10.1.0
   cspell: ^10.0.1
   cz-git: ^1.13.1
@@ -143,10 +163,18 @@ catalog:
   knip: ^6.17.0
   lefthook: ^2.1.9
   lodash.clonedeep: ^4.5.0
+  lodash.debounce: ^4.0.8
+  lodash.groupby: ^4.6.0
+  lodash.isdate: ^4.0.1
+  lodash.isnumber: ^3.0.3
+  lodash.merge: ^4.6.2
+  lodash.sortby: ^4.7.0
+  markdown-it: ^14.2.0
   medium-zoom: ^1.1.0
   naive-ui: ^2.44.1
   nitropack: ^2.13.4
   nprogress: ^0.2.0
+  oidc-client-ts: ^3.5.0
   ora: ^9.4.0
   oxfmt: ^0.55.0
   oxlint: ^1.70.0
@@ -182,10 +210,12 @@ catalog:
   tdesign-vue-next: ^1.20.1
   theme-colors: ^0.1.0
   tippy.js: ^6.3.7
+  tinymce: ^5.10.7
   tsdown: ^0.22.2
   turbo: ^2.9.18
   tw-animate-css: ^1.4.0
   typescript: ^6.0.3
+  universal-cookie: ^8.1.2
   unplugin-dts: ^1.0.2
   unplugin-element-plus: ^0.11.2
   unplugin-vue: ^7.2.0
@@ -195,15 +225,19 @@ catalog:
   vite-plugin-lazy-import: ^1.0.7
   vite-plugin-pwa: ^1.3.0
   vite-plugin-vue-devtools: ^8.1.3
+  vditor: ^3.11.2
   vitepress: ^2.0.0-alpha.17
   vitepress-plugin-group-icons: ^1.7.5
   vitest: ^4.1.9
   vue: ^3.5.38
+  vue-demi: ^0.14.10
   vue-eslint-parser: ^10.4.1
   vue-i18n: ^11.4.5
   vue-json-pretty: ^2.6.0
   vue-router: ^5.1.0
+  vue-simple-uploader: ^0.7.6
   vue-tippy: ^6.7.1
+  vue3-colorpicker: ^2.3.0
   vue-tsc: ^3.3.5
   vxe-pc-ui: ^4.14.39
   vxe-table: ^4.19.14
@@ -214,6 +248,10 @@ catalog:
 
 allowBuilds:
   '@parcel/watcher': true
+  '@vue-office/docx': set this to true or false
+  '@vue-office/excel': set this to true or false
+  '@vue-office/pdf': set this to true or false
+  '@vue-office/pptx': set this to true or false
   core-js: true
   esbuild: true
   lefthook: true
