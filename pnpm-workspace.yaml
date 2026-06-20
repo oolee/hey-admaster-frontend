@@ -129,7 +129,7 @@ catalog:
   codemirror: ^5.60.17
   commitlint-plugin-function-rules: ^5.0.1
   consola: ^3.4.2
-  cropperjs: ^1.5.12
+  cropperjs: ^2.1.1
   cross-env: ^10.1.0
   cspell: ^10.0.1
   cz-git: ^1.13.1
