@@ -505,8 +505,8 @@ catalogs:
       specifier: ^0.1.0
       version: 0.1.0
     tinymce:
-      specifier: ^5.10.7
-      version: 5.10.9
+      specifier: ^8.6.0
+      version: 8.6.0
     tippy.js:
       specifier: ^6.3.7
       version: 6.3.7
@@ -1926,7 +1926,7 @@ importers:
         version: 3.0.3
       tinymce:
         specifier: 'catalog:'
-        version: 5.10.9
+        version: 8.6.0
       vditor:
         specifier: 'catalog:'
         version: 3.11.2
@@ -12446,8 +12446,8 @@ packages:
     resolution: {integrity: sha512-wXR/dYpcqKmfWpEdZjiKJOwCNFndD0DMnrW/cYjVGttEkBfVgcLFHoNrlj47mjOVic9yyNu65alsgF4NQyTa2g==}
     engines: {node: '>=12.0.0'}
 
-  tinymce@5.10.9:
-    resolution: {integrity: sha512-5bkrors87X9LhYX2xq8GgPHrIgJYHl87YNs+kBcjQ5I3CiUgzo/vFcGvT3MZQ9QHsEeYMhYO6a5CLGGffR8hMg==}
+  tinymce@8.6.0:
+    resolution: {integrity: sha512-qODYoNL4cPIzNFpkEEQDm3DWI78I/nQXIPwUMHRN+q/LyT9Wzt7xis2Nfhk88kV6sibp6MJXPSaUDVNe02ZB/w==}
 
   tinypool@2.1.0:
     resolution: {integrity: sha512-Pugqs6M0m7Lv1I7FtxN4aoyToKg1C4tu+/381vH35y8oENM/Ai7f7C4StcoK4/+BSw9ebcS8jRiVrORFKCALLw==}
@@ -22478,7 +22478,7 @@ snapshots:
       fdir: 6.5.0(picomatch@4.0.4)
       picomatch: 4.0.4
 
-  tinymce@5.10.9: {}
+  tinymce@8.6.0: {}
 
   tinypool@2.1.0: {}
 
