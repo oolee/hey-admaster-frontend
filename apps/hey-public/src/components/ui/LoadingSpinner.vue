@@ -1,12 +1,12 @@
 <script setup lang="ts">
 defineProps<{
-  size?: 'sm' | 'md' | 'lg'
-}>()
+  size?: 'lg' | 'md' | 'sm';
+}>();
 </script>
 
 <template>
   <div class="loading-spinner" :class="`size-${size || 'md'}`">
-    <div class="spinner-ring" />
+    <div class="spinner-ring"></div>
   </div>
 </template>
 
@@ -18,9 +18,9 @@ defineProps<{
 }
 
 .spinner-ring {
+  border: 2px solid var(--color-neon-dim);
+  border-top-color: var(--color-neon);
   border-radius: 50%;
-  border: 2px solid rgba(200, 255, 0, 0.15);
-  border-top-color: #C8FF00;
   animation: spin 0.8s linear infinite;
 }
 
@@ -40,6 +40,8 @@ defineProps<{
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

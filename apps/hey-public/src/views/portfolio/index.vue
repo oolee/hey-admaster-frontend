@@ -1,25 +1,26 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
-import { usePortfolioStore } from '#/store/portfolioStore'
-import SectionTitle from '#/components/ui/SectionTitle.vue'
-import BentoGrid from '#/components/ui/BentoGrid.vue'
-import PortfolioCard from '#/features/portfolio/PortfolioCard.vue'
-import PortfolioGrid from '#/features/portfolio/PortfolioGrid.vue'
-import { SERVICE_CATEGORIES } from '#/utils/constants'
+import { onMounted, ref } from 'vue';
 
-const portfolioStore = usePortfolioStore()
-const activeCategory = ref<string | null>(null)
+import BentoGrid from '#/components/ui/BentoGrid.vue';
+import SectionTitle from '#/components/ui/SectionTitle.vue';
+import PortfolioCard from '#/features/portfolio/PortfolioCard.vue';
+import { usePortfolioStore } from '#/store/portfolioStore';
+import { SERVICE_CATEGORIES } from '#/utils/constants';
 
-function setCategory(categoryId: string | null) {
-  activeCategory.value = categoryId
-  portfolioStore.setFilter(categoryId)
+const portfolioStore = usePortfolioStore();
+const activeCategory = ref<null | string>(null);
+
+function setCategory(categoryId: null | string) {
+  activeCategory.value = categoryId;
+  portfolioStore.setFilter(categoryId);
 }
 
-const isActive = (categoryId: string | null) => activeCategory.value === categoryId
+const isActive = (categoryId: null | string) =>
+  activeCategory.value === categoryId;
 
 onMounted(() => {
-  portfolioStore.load()
-})
+  portfolioStore.load();
+});
 </script>
 
 <template>
@@ -70,16 +71,28 @@ onMounted(() => {
         </div>
 
         <!-- Empty State -->
-        <div v-else-if="portfolioStore.filteredItems.length === 0" class="empty-state">
+        <div
+          v-else-if="portfolioStore.filteredItems.length === 0"
+          class="empty-state"
+        >
           <div class="empty-icon">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <svg
+              width="64"
+              height="64"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+            >
               <rect x="3" y="3" width="18" height="18" rx="2" />
               <circle cx="8.5" cy="8.5" r="1.5" />
               <path d="M21 15l-5-5L5 21" />
             </svg>
           </div>
           <p class="empty-text">该分类下暂无作品</p>
-          <button class="btn-neon" @click="setCategory(null)">查看全部作品</button>
+          <button class="btn-neon" @click="setCategory(null)">
+            查看全部作品
+          </button>
         </div>
 
         <!-- Portfolio Grid -->
@@ -112,35 +125,35 @@ onMounted(() => {
 }
 
 .filter-btn {
+  display: flex;
+  gap: 8px;
+  align-items: center;
   padding: 8px 20px;
-  border-radius: 100px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  color: #8888a0;
-  font-size: 0.875rem;
-  cursor: pointer;
+  border-radius: 100px;
   transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: inherit;
 }
 
 .filter-btn:hover {
-  color: #cccce0;
-  border-color: rgba(200, 255, 0, 0.3);
+  color: var(--color-text-primary);
+  border-color: var(--color-neon-dim);
 }
 
 .filter-btn.active {
-  background: rgba(200, 255, 0, 0.1);
-  border-color: #C8FF00;
-  color: #C8FF00;
+  color: var(--color-neon);
+  background: var(--color-neon-glow);
+  border-color: var(--color-neon);
 }
 
 .filter-count {
   font-size: 0.75rem;
-  opacity: 0.6;
   font-weight: 600;
+  opacity: 0.6;
 }
 
 .filter-btn.active .filter-count {
@@ -175,9 +188,11 @@ onMounted(() => {
 }
 
 @keyframes skeleton-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.3;
   }
+
   50% {
     opacity: 0.6;
   }
@@ -185,18 +200,18 @@ onMounted(() => {
 
 /* Empty State */
 .empty-state {
-  text-align: center;
   padding: 64px 24px;
+  text-align: center;
 }
 
 .empty-icon {
-  color: #555570;
   margin-bottom: 16px;
+  color: var(--color-text-muted);
 }
 
 .empty-text {
-  color: #8888a0;
-  font-size: 1rem;
   margin-bottom: 24px;
+  font-size: 1rem;
+  color: var(--color-text-secondary);
 }
 </style>

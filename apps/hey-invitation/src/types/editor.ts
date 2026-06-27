@@ -2,7 +2,7 @@
 
 export interface EditorElement {
   id: string;
-  type: 'text' | 'decoration' | 'image' | 'border' | 'icon' | 'group' | 'shape';
+  type: 'border' | 'decoration' | 'group' | 'icon' | 'image' | 'shape' | 'text';
   subType?: string;
   name?: string;
   groupId?: string;
@@ -27,7 +27,7 @@ export interface EditorElement {
   fontSize?: number;
   fontWeight?: string;
   textColor?: string;
-  textAlign?: 'left' | 'center' | 'right' | 'justify';
+  textAlign?: 'center' | 'justify' | 'left' | 'right';
   // 装饰元素属性
   decorationColor?: string;
   decorationSize?: number;
@@ -64,15 +64,22 @@ export interface EditorElement {
   shapeType?: string;
   // 元素动画
   animation?: {
-    type: 'none' | 'fadeIn' | 'slideUp' | 'slideLeft' | 'scaleIn' | 'rotateIn' | 'bounceIn';
-    duration: number;
     delay: number;
-    easing: 'ease' | 'ease-in' | 'ease-out' | 'ease-in-out' | 'linear';
+    duration: number;
+    easing: 'ease' | 'ease-in' | 'ease-in-out' | 'ease-out' | 'linear';
+    type:
+      | 'bounceIn'
+      | 'fadeIn'
+      | 'none'
+      | 'rotateIn'
+      | 'scaleIn'
+      | 'slideLeft'
+      | 'slideUp';
   };
   // 元素触发器
   trigger?: {
-    type: 'none' | 'load' | 'click' | 'hover';
     action: 'playAnimation' | 'show' | 'toggle';
+    type: 'click' | 'hover' | 'load' | 'none';
   };
   // 状态
   locked: boolean;
@@ -87,8 +94,8 @@ export interface Page {
   backgroundColor: string;
   elements: EditorElement[];
   locked?: boolean;
-  thumbnail?: string | null;
-  transition?: 'none' | 'fade' | 'slide' | 'zoom' | 'flip';
+  thumbnail?: null | string;
+  transition?: 'fade' | 'flip' | 'none' | 'slide' | 'zoom';
 }
 
 export interface ElementToolbarPosition {
@@ -100,23 +107,23 @@ export interface ContextMenuState {
   visible: boolean;
   x: number;
   y: number;
-  elementId: string | null;
+  elementId: null | string;
 }
 
 export interface ToastState {
   visible: boolean;
   message: string;
-  type: 'success' | 'error' | 'info' | 'warning';
+  type: 'error' | 'info' | 'success' | 'warning';
 }
 
 // 辅助函数：生成唯一 ID
 export function generateId(): string {
-  return 'id_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+  return `id_${Date.now()}_${Math.floor(Math.random() * 100_000)}`;
 }
 
 // 辅助函数：创建默认元素（供 store 和组件共享）
 export function createDefaultElement(
-  type: 'text' | 'decoration' | 'image' | 'border' | 'icon',
+  type: 'border' | 'decoration' | 'icon' | 'image' | 'text',
   subType = '',
   x = 50,
   y = 50,
@@ -135,7 +142,10 @@ export function createDefaultElement(
   };
 
   if (type === 'text') {
-    const sizeMap: Record<string, { w: number; h: number; fs: number; text: string; bold: boolean }> = {
+    const sizeMap: Record<
+      string,
+      { bold: boolean; fs: number; h: number; text: string; w: number }
+    > = {
       title: { w: 200, h: 50, fs: 28, text: '婚礼标题', bold: true },
       subtitle: { w: 200, h: 40, fs: 20, text: '副标题文字', bold: false },
       couple: { w: 200, h: 40, fs: 18, text: '新郎 & 新娘', bold: true },

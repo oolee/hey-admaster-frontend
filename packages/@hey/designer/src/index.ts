@@ -1,13 +1,14 @@
 import type { DesignDocument, DesignElement } from '@hey/core';
 
-import { createHeyId } from '@hey/core';
 import { computed, defineComponent, h, reactive } from 'vue';
+
+import { createHeyId } from '@hey/core';
 
 export interface DesignerState {
   document: DesignDocument;
+  historyLength: number;
   selectedElementId?: string;
   zoom: number;
-  historyLength: number;
 }
 
 export function createDefaultDocument(title = 'H5 邀请函'): DesignDocument {
@@ -54,7 +55,9 @@ const designerState = reactive<DesignerState>({
 
 export function useDesignerStore() {
   const selectedElement = computed<DesignElement | undefined>(() =>
-    designerState.document.elements.find((item) => item.id === designerState.selectedElementId),
+    designerState.document.elements.find(
+      (item) => item.id === designerState.selectedElementId,
+    ),
   );
 
   function selectElement(id?: string) {
@@ -82,13 +85,32 @@ function renderElement(item: DesignElement) {
     transform: `rotate(${item.rotation ?? 0}deg)`,
   };
   if (item.kind === 'text') {
-    return h('div', { class: 'hey-designer-element text', style: { ...style, color: item.color, fontSize: `${item.fontSize}px` } }, item.text);
+    return h(
+      'div',
+      {
+        class: 'hey-designer-element text',
+        style: { ...style, color: item.color, fontSize: `${item.fontSize}px` },
+      },
+      item.text,
+    );
   }
   if (item.kind === 'shape') {
-    return h('div', { class: 'hey-designer-element shape', style: { ...style, background: item.fill, borderRadius: `${item.radius ?? 0}px` } });
+    return h('div', {
+      class: 'hey-designer-element shape',
+      style: {
+        ...style,
+        background: item.fill,
+        borderRadius: `${item.radius ?? 0}px`,
+      },
+    });
   }
   if (item.kind === 'image' || item.kind === 'generated-asset') {
-    return h('img', { class: 'hey-designer-element image', style, src: item.src, alt: item.name });
+    return h('img', {
+      class: 'hey-designer-element image',
+      style,
+      src: item.src,
+      alt: item.name,
+    });
   }
   return h('div', { class: 'hey-designer-element', style }, item.name);
 }
@@ -103,39 +125,61 @@ export const DesignerWorkspace = defineComponent({
       background: store.document.background,
       transform: `scale(${store.zoom})`,
     }));
-    return () => h('section', { class: 'hey-designer-shell' }, [
-      h('aside', { class: 'hey-designer-sidebar' }, [
-        h('strong', '素材 / 模板 / 页面'),
-        h('button', '模板库'),
-        h('button', '文本'),
-        h('button', '图片'),
-      ]),
-      h('main', { class: 'hey-designer-stage' }, [
-        h('div', { class: 'hey-designer-canvas', style: canvasStyle.value }, store.document.elements.map(renderElement)),
-      ]),
-      h('aside', { class: 'hey-designer-inspector' }, [
-        h('strong', '属性检查器'),
-        h('p', store.selectedElement.value?.name ?? '未选择元素'),
-        h('strong', '图层'),
-        h('ol', store.document.elements.map((item) => h('li', { onClick: () => store.selectElement(item.id) }, item.name))),
-      ]),
-    ]);
+    return () =>
+      h('section', { class: 'hey-designer-shell' }, [
+        h('aside', { class: 'hey-designer-sidebar' }, [
+          h('strong', '素材 / 模板 / 页面'),
+          h('button', '模板库'),
+          h('button', '文本'),
+          h('button', '图片'),
+        ]),
+        h('main', { class: 'hey-designer-stage' }, [
+          h(
+            'div',
+            { class: 'hey-designer-canvas', style: canvasStyle.value },
+            store.document.elements.map(renderElement),
+          ),
+        ]),
+        h('aside', { class: 'hey-designer-inspector' }, [
+          h('strong', '属性检查器'),
+          h('p', store.selectedElement.value?.name ?? '未选择元素'),
+          h('strong', '图层'),
+          h(
+            'ol',
+            store.document.elements.map((item) =>
+              h(
+                'li',
+                { onClick: () => store.selectElement(item.id) },
+                item.name,
+              ),
+            ),
+          ),
+        ]),
+      ]);
   },
 });
 
 export const H5Renderer = defineComponent({
   name: 'H5Renderer',
   props: {
-    document: { type: Object as () => DesignDocument, default: createDefaultDocument },
+    document: {
+      type: Object as () => DesignDocument,
+      default: createDefaultDocument,
+    },
   },
   setup(props) {
-    return () => h('article', {
-      class: 'hey-h5-renderer',
-      style: {
-        width: `${props.document.width}px`,
-        minHeight: `${props.document.height}px`,
-        background: props.document.background,
-      },
-    }, props.document.elements.map(renderElement));
+    return () =>
+      h(
+        'article',
+        {
+          class: 'hey-h5-renderer',
+          style: {
+            width: `${props.document.width}px`,
+            minHeight: `${props.document.height}px`,
+            background: props.document.background,
+          },
+        },
+        props.document.elements.map(renderElement),
+      );
   },
 });

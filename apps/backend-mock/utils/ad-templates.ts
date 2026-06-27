@@ -187,7 +187,7 @@ export function buildPrompt(
   for (const [key, value] of Object.entries(userInput)) {
     prompt = prompt.replace(`{${key}}`, value || '');
   }
-  prompt = prompt.replace(/\{[^}]+\}/g, '');
+  prompt = prompt.replaceAll(/\{[^}]+\}/g, '');
   return prompt.trim();
 }
 
@@ -200,7 +200,7 @@ export function getTemplatesByCategory(): Record<string, AdTemplate[]> {
     if (!categories[tpl.category]) {
       categories[tpl.category] = [];
     }
-    categories[tpl.category]!.push(tpl);
+    categories[tpl.category]?.push(tpl);
   }
   return categories;
 }

@@ -1,29 +1,29 @@
-import { ref, onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue';
 
 export function useMousePosition() {
-  const x = ref(0)
-  const y = ref(0)
-  const isHovering = ref(false)
+  const x = ref(0);
+  const y = ref(0);
+  const isHovering = ref(false);
 
   function onMouseMove(e: MouseEvent) {
-    x.value = e.clientX
-    y.value = e.clientY
-    isHovering.value = true
+    x.value = e.clientX;
+    y.value = e.clientY;
+    isHovering.value = true;
   }
 
   function onMouseLeave() {
-    isHovering.value = false
+    isHovering.value = false;
   }
 
   onMounted(() => {
-    window.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('mouseleave', onMouseLeave)
-  })
+    window.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseleave', onMouseLeave);
+  });
 
   onUnmounted(() => {
-    window.removeEventListener('mousemove', onMouseMove)
-    document.removeEventListener('mouseleave', onMouseLeave)
-  })
+    window.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseleave', onMouseLeave);
+  });
 
-  return { x, y, isHovering }
+  return { x, y, isHovering };
 }

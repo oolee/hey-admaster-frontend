@@ -1,7 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router';
 
-import publicRoutes from './modules/public';
 import { fallbackNotFoundRoute } from './core';
+import publicRoutes from './modules/public';
 
 const routes: RouteRecordRaw[] = [...publicRoutes, fallbackNotFoundRoute];
 

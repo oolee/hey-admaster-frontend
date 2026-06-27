@@ -1,18 +1,19 @@
 <script setup lang="ts">
-import type { GeneratedImage } from '#/types/ai'
-import LoadingSpinner from '#/components/ui/LoadingSpinner.vue'
+import type { GeneratedImage } from '#/types/ai';
+
+import LoadingSpinner from '#/components/ui/LoadingSpinner.vue';
 
 defineProps<{
-  images: GeneratedImage[]
-  isLoading: boolean
-  error: string | null
-  isMock: boolean
-}>()
+  error: null | string;
+  images: GeneratedImage[];
+  isLoading: boolean;
+  isMock: boolean;
+}>();
 
 function getImageSrc(image: GeneratedImage): string {
-  if (image.url) return image.url
-  if (image.b64_json) return `data:image/png;base64,${image.b64_json}`
-  return ''
+  if (image.url) return image.url;
+  if (image.b64_json) return `data:image/png;base64,${image.b64_json}`;
+  return '';
 }
 </script>
 
@@ -36,16 +37,14 @@ function getImageSrc(image: GeneratedImage): string {
     <div v-else-if="images.length === 0" class="gallery-empty">
       <div class="empty-icon">🎨</div>
       <p class="empty-title">选择模板或输入描述，开始创作</p>
-      <p class="empty-hint">支持门头设计、VI设计、DM传单、文化墙、3D效果图等场景</p>
+      <p class="empty-hint">
+        支持门头设计、VI设计、DM传单、文化墙、3D效果图等场景
+      </p>
     </div>
 
     <!-- 图片网格 -->
     <div v-else class="gallery-grid">
-      <div
-        v-for="(image, idx) in images"
-        :key="idx"
-        class="gallery-item"
-      >
+      <div v-for="(image, idx) in images" :key="idx" class="gallery-item">
         <img
           :src="getImageSrc(image)"
           :alt="image.revised_prompt ?? `生成图片 ${idx + 1}`"
@@ -73,28 +72,28 @@ function getImageSrc(image: GeneratedImage): string {
 .gallery-loading {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 12px;
+  align-items: center;
   padding: 60px 0;
 }
 
 .loading-text {
-  color: #8888a0;
   font-size: 0.9rem;
+  color: var(--color-text-secondary);
 }
 
 .loading-hint {
-  color: #555570;
   font-size: 0.75rem;
+  color: var(--color-text-muted);
 }
 
 .gallery-error {
   display: flex;
   flex-direction: column;
+  gap: 8px;
   align-items: center;
   justify-content: center;
   padding: 60px 0;
-  gap: 8px;
 }
 
 .error-icon {
@@ -103,25 +102,25 @@ function getImageSrc(image: GeneratedImage): string {
 }
 
 .error-title {
+  margin: 0;
   font-size: 1rem;
   font-weight: 600;
-  color: #ff5555;
-  margin: 0;
+  color: #f55;
 }
 
 .error-hint {
-  font-size: 0.85rem;
-  color: #8888a0;
   margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
 }
 
 .gallery-empty {
   display: flex;
   flex-direction: column;
+  gap: 12px;
   align-items: center;
   justify-content: center;
   padding: 80px 0;
-  gap: 12px;
 }
 
 .empty-icon {
@@ -131,18 +130,18 @@ function getImageSrc(image: GeneratedImage): string {
 }
 
 .empty-title {
+  margin: 0;
   font-size: 1.1rem;
   font-weight: 600;
-  color: #8888a0;
-  margin: 0;
+  color: var(--color-text-secondary);
 }
 
 .empty-hint {
-  font-size: 0.85rem;
-  color: #555570;
-  margin: 0;
-  text-align: center;
   max-width: 300px;
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  text-align: center;
 }
 
 .gallery-grid {
@@ -166,10 +165,10 @@ function getImageSrc(image: GeneratedImage): string {
 .gallery-item {
   position: relative;
   aspect-ratio: 1;
-  border-radius: 12px;
   overflow: hidden;
-  background: rgba(18, 18, 30, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--glass-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
 }
 
 .gallery-image {
@@ -186,11 +185,11 @@ function getImageSrc(image: GeneratedImage): string {
 .gallery-overlay {
   position: absolute;
   top: 0;
-  left: 0;
   right: 0;
-  padding: 10px;
+  left: 0;
   display: flex;
   justify-content: flex-end;
+  padding: 10px;
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -205,23 +204,23 @@ function getImageSrc(image: GeneratedImage): string {
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 50%;
-  background: rgba(10, 10, 15, 0.8);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(200, 255, 0, 0.2);
-  color: #C8FF00;
+  font-family: var(--font-mono);
   font-size: 0.75rem;
   font-weight: 700;
-  font-family: var(--font-mono);
+  color: var(--color-neon);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-neon-dim);
+  border-radius: 50%;
+  backdrop-filter: blur(8px);
 }
 
 .mock-badge {
-  margin-top: 16px;
   padding: 10px 16px;
-  background: rgba(255, 180, 0, 0.08);
-  border: 1px solid rgba(255, 180, 0, 0.2);
-  border-radius: 8px;
+  margin-top: 16px;
   text-align: center;
+  background: rgb(255 180 0 / 8%);
+  border: 1px solid rgb(255 180 0 / 20%);
+  border-radius: 8px;
 }
 
 .mock-badge span {

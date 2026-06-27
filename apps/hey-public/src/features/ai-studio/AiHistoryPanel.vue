@@ -1,26 +1,27 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useAiStore } from '#/store/aiStore'
-import GlassCard from '#/components/ui/GlassCard.vue'
+import { computed } from 'vue';
 
-const aiStore = useAiStore()
+import GlassCard from '#/components/ui/GlassCard.vue';
+import { useAiStore } from '#/store/aiStore';
 
-const history = computed(() => aiStore.history)
+const aiStore = useAiStore();
+
+const history = computed(() => aiStore.history);
 
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr)
+  const d = new Date(dateStr);
   return d.toLocaleDateString('zh-CN', {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  })
+  });
 }
 
 function getThumbSrc(image: any): string {
-  if (image.url) return image.url
-  if (image.b64_json) return `data:image/png;base64,${image.b64_json}`
-  return ''
+  if (image.url) return image.url;
+  if (image.b64_json) return `data:image/png;base64,${image.b64_json}`;
+  return '';
 }
 </script>
 
@@ -82,38 +83,38 @@ function getThumbSrc(image: any): string {
 }
 
 .history-title {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #f0f0f5;
   margin: 0;
   font-family: var(--font-sans);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
 }
 
 .history-count {
-  font-size: 0.8rem;
-  color: #8888a0;
   display: flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
 }
 
 .remaining-badge {
   padding: 2px 10px;
   font-size: 0.7rem;
-  color: #C8FF00;
-  background: rgba(200, 255, 0, 0.08);
-  border: 1px solid rgba(200, 255, 0, 0.15);
+  color: var(--color-neon);
+  background: var(--color-neon-glow);
+  border: 1px solid var(--color-neon-dim);
   border-radius: 9999px;
 }
 
 .history-empty {
-  text-align: center;
   padding: 40px 0;
+  text-align: center;
 }
 
 .empty-text {
-  color: #555570;
   font-size: 0.9rem;
+  color: var(--color-text-muted);
 }
 
 .history-list {
@@ -134,28 +135,28 @@ function getThumbSrc(image: any): string {
 }
 
 .history-time {
-  font-size: 0.75rem;
-  color: #555570;
   font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
 }
 
 .history-count-badge {
-  font-size: 0.7rem;
-  color: #8888a0;
   padding: 2px 8px;
-  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-card);
   border-radius: 4px;
 }
 
 .history-prompt {
-  font-size: 0.9rem;
-  color: #f0f0f5;
-  line-height: 1.5;
-  margin: 0 0 12px;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  margin: 0 0 12px;
   overflow: hidden;
+  -webkit-line-clamp: 2;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  -webkit-box-orient: vertical;
 }
 
 .history-thumbnails {
@@ -165,12 +166,12 @@ function getThumbSrc(image: any): string {
 }
 
 .history-thumb {
+  flex-shrink: 0;
   width: 56px;
   height: 56px;
-  border-radius: 6px;
   object-fit: cover;
-  flex-shrink: 0;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
   transition: transform 0.2s ease;
 }
 

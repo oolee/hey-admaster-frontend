@@ -1,43 +1,55 @@
 :root {
+  /* Light mode defaults */
+  --color-bg-primary: #f8f9fa;
+  --color-bg-secondary: #fff;
+  --color-bg-card: rgb(0 0 0 / 3%);
+  --color-bg-card-hover: rgb(0 0 0 / 6%);
+  --color-neon: #7a9e00;
+  --color-neon-dim: rgb(122 158 0 / 30%);
+  --color-neon-glow: rgb(122 158 0 / 15%);
+  --color-text-primary: #1a1a2e;
+  --color-text-secondary: #555570;
+  --color-text-muted: #8888a0;
+  --color-border: rgb(0 0 0 / 8%);
+  --color-border-hover: rgb(122 158 0 / 30%);
+  --glass-bg: rgb(255 255 255 / 70%);
+  --glass-blur: blur(20px);
+  --glass-border: rgb(0 0 0 / 6%);
+  --space-section: 120px;
+  --space-container: 1400px;
+  --font-sans: 'DM Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+/* Dark mode overrides */
+.dark {
   --color-bg-primary: #0a0a0f;
   --color-bg-secondary: #12121a;
-  --color-bg-card: rgba(255, 255, 255, 0.03);
-  --color-bg-card-hover: rgba(255, 255, 255, 0.06);
-
-  --color-neon: #C8FF00;
-  --color-neon-dim: rgba(200, 255, 0, 0.3);
-  --color-neon-glow: rgba(200, 255, 0, 0.15);
-
+  --color-bg-card: rgb(255 255 255 / 3%);
+  --color-bg-card-hover: rgb(255 255 255 / 6%);
+  --color-neon: #c8ff00;
+  --color-neon-dim: rgb(200 255 0 / 30%);
+  --color-neon-glow: rgb(200 255 0 / 15%);
   --color-text-primary: #f0f0f5;
   --color-text-secondary: #8888a0;
   --color-text-muted: #555570;
-
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-border-hover: rgba(200, 255, 0, 0.3);
-
-  --glass-bg: rgba(18, 18, 30, 0.6);
-  --glass-blur: blur(20px);
-  --glass-border: rgba(255, 255, 255, 0.06);
-
-  --space-section: 120px;
-  --space-container: 1400px;
-
-  --font-sans: 'DM Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --color-border: rgb(255 255 255 / 8%);
+  --color-border-hover: rgb(200 255 0 / 30%);
+  --glass-bg: rgb(18 18 30 / 60%);
+  --glass-border: rgb(255 255 255 / 6%);
 }
 
 /* Glassmorphism utility */
 .glass-card {
   background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-border);
   border-radius: 16px;
+  backdrop-filter: var(--glass-blur);
   transition: all 0.3s ease;
 }
 
 .glass-card:hover {
-  background: rgba(25, 25, 40, 0.7);
+  background: var(--color-bg-card-hover);
   border-color: var(--color-border-hover);
   box-shadow: 0 0 30px var(--color-neon-glow);
   transform: translateY(-2px);
@@ -46,65 +58,72 @@
 /* Neon text */
 .text-neon {
   color: var(--color-neon);
-  text-shadow: 0 0 20px var(--color-neon-glow), 0 0 40px var(--color-neon-glow);
+  text-shadow:
+    0 0 20px var(--color-neon-glow),
+    0 0 40px var(--color-neon-glow);
 }
 
 /* Neon button base */
 .btn-neon {
   position: relative;
   display: inline-flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
   padding: 12px 28px;
-  border-radius: 9999px;
-  border: 1px solid var(--color-neon-dim);
-  color: var(--color-neon);
-  font-weight: 500;
   font-family: var(--font-sans);
+  font-weight: 500;
+  color: var(--color-neon);
   cursor: pointer;
-  transition: all 0.3s ease;
   background: transparent;
+  border: 1px solid var(--color-neon-dim);
+  border-radius: 9999px;
+  transition: all 0.3s ease;
 }
 
 .btn-neon:hover {
-  background: rgba(200, 255, 0, 0.1);
-  box-shadow: 0 0 30px rgba(200, 255, 0, 0.2);
+  background: var(--color-neon-glow);
+  box-shadow: 0 0 30px var(--color-neon-glow);
 }
 
 .btn-neon-filled {
   position: relative;
   display: inline-flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
   padding: 12px 28px;
-  border-radius: 9999px;
-  border: none;
-  background: var(--color-neon);
-  color: var(--color-bg-primary);
-  font-weight: 600;
   font-family: var(--font-sans);
+  font-weight: 600;
+  color: var(--color-bg-primary);
   cursor: pointer;
+  background: var(--color-neon);
+  border: none;
+  border-radius: 9999px;
   transition: all 0.3s ease;
 }
 
 .btn-neon-filled:hover {
-  box-shadow: 0 0 40px rgba(200, 255, 0, 0.4);
+  box-shadow: 0 0 40px var(--color-neon-glow);
   transform: scale(1.05);
 }
 
 /* Section title */
 .section-title {
+  margin-bottom: 1rem;
+  font-family: var(--font-sans);
   font-size: clamp(2rem, 4vw, 3.5rem);
   font-weight: 700;
-  font-family: var(--font-sans);
   line-height: 1.1;
-  margin-bottom: 1rem;
 }
 
 /* Gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, #C8FF00, #80FF00);
-  -webkit-background-clip: text;
+  background: linear-gradient(135deg, #c8ff00, #80ff00);
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.dark .gradient-text {
+  background: linear-gradient(135deg, #c8ff00, #80ff00);
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }

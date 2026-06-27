@@ -1,46 +1,46 @@
 export interface GenerateRequest {
-  prompt: string
-  size?: string
-  quality?: 'low' | 'medium' | 'high'
-  n?: number
-  model?: 'auto' | 'tongyi' | 'openai' | 'mock'
-  templateId?: string
-  templateInput?: Record<string, string>
+  prompt: string;
+  size?: string;
+  quality?: 'high' | 'low' | 'medium';
+  n?: number;
+  model?: 'auto' | 'mock' | 'openai' | 'tongyi';
+  templateId?: string;
+  templateInput?: Record<string, string>;
 }
 
 export interface GeneratedImage {
-  b64_json?: string
-  url?: string
-  revised_prompt?: string
-  index?: number
+  b64_json?: string;
+  url?: string;
+  revised_prompt?: string;
+  index?: number;
 }
 
 export interface GenerationHistoryItem {
-  id: string
-  prompt: string
-  images: GeneratedImage[]
-  createdAt: string
+  id: string;
+  prompt: string;
+  images: GeneratedImage[];
+  createdAt: string;
 }
 
 export interface AdTemplate {
-  id: string
-  name: string
-  category: string
-  icon: string
-  description: string
-  promptTemplate: string
-  promptHint: string
-  recommendedModel: string
-  defaultSize: string
-  printSize: string
+  id: string;
+  name: string;
+  category: string;
+  icon: string;
+  description: string;
+  promptTemplate: string;
+  promptHint: string;
+  recommendedModel: string;
+  defaultSize: string;
+  printSize: string;
 }
 
 export interface GenerateResponse {
-  success: boolean
-  data: GeneratedImage[]
-  isMock?: boolean
-  model?: string
-  templateId?: string
-  taskId?: string
-  status?: string
+  success: boolean;
+  data: GeneratedImage[];
+  isMock?: boolean;
+  model?: string;
+  templateId?: string;
+  taskId?: string;
+  status?: string;
 }

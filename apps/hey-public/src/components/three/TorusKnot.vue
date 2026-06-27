@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { TresCanvas } from '@tresjs/core'
-import { Color } from 'three'
+import { TresCanvas } from '@tresjs/core';
+import { Color } from 'three';
 
-const neonColor = new Color('#C8FF00')
+const neonColor = new Color('#C8FF00');
 
 const gl = {
   clearColor: 'transparent',
   alpha: true,
-}
+};
 </script>
 
 <template>
@@ -34,7 +34,7 @@ const gl = {
 .torus-knot-canvas {
   position: absolute;
   inset: 0;
-  pointer-events: none;
   z-index: 0;
+  pointer-events: none;
 }
 </style>

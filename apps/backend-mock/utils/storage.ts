@@ -11,7 +11,7 @@ interface ProjectRecord {
 const projects = new Map<string, ProjectRecord>();
 
 export function listProjects(): ProjectRecord[] {
-  return Array.from(projects.values()).sort((a, b) =>
+  return [...projects.values()].toSorted((a, b) =>
     a.updatedAt < b.updatedAt ? 1 : -1,
   );
 }
@@ -21,13 +21,14 @@ export function getProject(id: string): ProjectRecord | undefined {
 }
 
 export function saveProject(data: {
+  currentPageId?: string;
   id?: string;
   name: string;
   pages: unknown[];
-  currentPageId?: string;
-}): { id: string; created: boolean } {
+}): { created: boolean; id: string } {
   const now = new Date().toISOString();
-  const id = data.id || `proj_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const id =
+    data.id || `proj_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const existing = projects.get(id);
   const record: ProjectRecord = {
     id,

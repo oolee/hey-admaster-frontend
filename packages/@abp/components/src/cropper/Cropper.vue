@@ -142,10 +142,9 @@ function croppered() {
         imgInfo,
       });
     };
-    // eslint-disable-next-line unicorn/prefer-add-event-listener
-    fileReader.onerror = () => {
+    fileReader.addEventListener('error', () => {
       emits('cropendError');
-    };
+    });
   }, 'image/png');
 }
 

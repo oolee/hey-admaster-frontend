@@ -1,27 +1,28 @@
 <script setup lang="ts">
-import type { Order } from '#/types/order'
-import GlassCard from '#/components/ui/GlassCard.vue'
+import type { Order } from '#/types/order';
+
+import GlassCard from '#/components/ui/GlassCard.vue';
 
 defineProps<{
-  order: Order
-}>()
+  order: Order;
+}>();
 
-const STATUS_MAP: Record<string, { label: string; class: string }> = {
+const STATUS_MAP: Record<string, { class: string; label: string }> = {
   pending: { label: '待处理', class: 'status-pending' },
   processing: { label: '处理中', class: 'status-processing' },
   completed: { label: '已完成', class: 'status-completed' },
   cancelled: { label: '已取消', class: 'status-cancelled' },
-}
+};
 
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr)
+  const d = new Date(dateStr);
   return d.toLocaleDateString('zh-CN', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  })
+  });
 }
 </script>
 
@@ -69,7 +70,7 @@ function formatDate(dateStr: string): string {
           <span class="summary-value">{{ order.contactPhone }}</span>
         </div>
 
-        <div class="summary-divider" />
+        <div class="summary-divider"></div>
 
         <div class="summary-section">
           <span class="summary-label">项目需求</span>
@@ -94,44 +95,44 @@ function formatDate(dateStr: string): string {
 }
 
 .summary-title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #f0f0f5;
   margin: 0;
   font-family: var(--font-sans);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
 }
 
 .summary-status {
   padding: 4px 14px;
   font-size: 0.75rem;
   font-weight: 600;
-  border-radius: 9999px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  border-radius: 9999px;
 }
 
 .status-pending {
   color: #f0a030;
-  background: rgba(240, 160, 48, 0.1);
-  border: 1px solid rgba(240, 160, 48, 0.2);
+  background: rgb(240 160 48 / 10%);
+  border: 1px solid rgb(240 160 48 / 20%);
 }
 
 .status-processing {
   color: #4da6ff;
-  background: rgba(77, 166, 255, 0.1);
-  border: 1px solid rgba(77, 166, 255, 0.2);
+  background: rgb(77 166 255 / 10%);
+  border: 1px solid rgb(77 166 255 / 20%);
 }
 
 .status-completed {
-  color: #C8FF00;
-  background: rgba(200, 255, 0, 0.1);
-  border: 1px solid rgba(200, 255, 0, 0.2);
+  color: var(--color-neon);
+  background: var(--color-neon-glow);
+  border: 1px solid var(--color-neon-dim);
 }
 
 .status-cancelled {
   color: #ff6b6b;
-  background: rgba(255, 107, 107, 0.1);
-  border: 1px solid rgba(255, 107, 107, 0.2);
+  background: rgb(255 107 107 / 10%);
+  border: 1px solid rgb(255 107 107 / 20%);
 }
 
 .summary-body {
@@ -142,32 +143,32 @@ function formatDate(dateStr: string): string {
 
 .summary-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
 }
 
 .summary-label {
   font-size: 0.85rem;
-  color: #8888a0;
   font-weight: 500;
+  color: var(--color-text-secondary);
 }
 
 .summary-value {
   font-size: 0.9rem;
-  color: #f0f0f5;
   font-weight: 500;
+  color: var(--color-text-primary);
 }
 
 .font-mono {
   font-family: var(--font-mono);
   font-size: 0.8rem;
-  color: #C8FF00;
+  color: var(--color-neon);
 }
 
 .summary-divider {
   height: 1px;
-  background: rgba(255, 255, 255, 0.06);
   margin: 4px 0;
+  background: var(--color-border);
 }
 
 .summary-section {
@@ -177,14 +178,14 @@ function formatDate(dateStr: string): string {
 }
 
 .summary-requirements {
-  font-size: 0.9rem;
-  color: #f0f0f5;
-  line-height: 1.7;
-  margin: 0;
   padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--color-text-primary);
   white-space: pre-wrap;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
 }
 </style>

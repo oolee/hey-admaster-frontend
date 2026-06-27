@@ -7,10 +7,15 @@ export const HeyBrandButton = defineComponent({
     href: { type: String, default: '' },
   },
   setup(props) {
-    return () => h(props.href ? 'a' : 'button', {
-      class: 'hey-brand-button',
-      href: props.href || undefined,
-    }, props.label);
+    return () =>
+      h(
+        props.href ? 'a' : 'button',
+        {
+          class: 'hey-brand-button',
+          href: props.href || undefined,
+        },
+        props.label,
+      );
   },
 });
 
@@ -21,9 +26,10 @@ export const HeyEmptyState = defineComponent({
     description: { type: String, default: '请稍后再试或创建新的内容。' },
   },
   setup(props) {
-    return () => h('section', { class: 'hey-empty-state' }, [
-      h('strong', props.title),
-      h('p', props.description),
-    ]);
+    return () =>
+      h('section', { class: 'hey-empty-state' }, [
+        h('strong', props.title),
+        h('p', props.description),
+      ]);
   },
 });

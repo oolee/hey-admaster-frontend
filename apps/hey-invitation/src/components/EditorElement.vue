@@ -1,166 +1,9 @@
-<template>
-  <div
-    ref="rootRef"
-    class="design-element"
-    :element-id="element.id"
-    :class="{
-      selected: isSelected && !isPreview,
-      locked: element.locked,
-      hidden: !element.visible,
-      'is-text': element.type === 'text',
-      'is-decoration': element.type === 'decoration',
-      'is-image': element.type === 'image',
-      'is-border': element.type === 'border',
-      'is-icon': element.type === 'icon',
-      'is-group': element.type === 'group',
-    }"
-    :style="elementStyle"
-    @mousedown="onMouseDown"
-    @contextmenu.prevent="onContextMenu"
-    @click.stop="onClick($event); onTriggerClick()"
-    @mouseenter="onTriggerHover(true)"
-    @mouseleave="onTriggerHover(false)"
-  >
-    <!-- 元素内容 -->
-    <div class="design-element-body" :style="contentStyle" @dblclick="onDblClick">
-      <!-- 文本元素 -->
-      <template v-if="element.type === 'text'">
-        <div
-          class="text-content"
-          :contenteditable="isTextEditing ? 'true' : 'false'"
-          :class="{ 'editing': isTextEditing }"
-          @dblclick.stop="startTextEdit"
-          @blur="endTextEdit"
-          @keydown="onTextKeydown"
-          :style="{
-            fontFamily: element.fontFamily || 'Microsoft YaHei',
-            fontSize: (element.fontSize || 16) + 'px',
-            fontWeight: element.fontWeight || 'normal',
-            textAlign: (element.textAlign as any) || 'center',
-            justifyContent:
-              (element.textAlign as any) === 'left'
-                ? 'flex-start'
-                : (element.textAlign as any) === 'right'
-                  ? 'flex-end'
-                  : (element.textAlign as any) === 'justify'
-                    ? 'space-between'
-                    : 'center',
-            color: element.textColor || '#333333',
-          }"
-        >
-          {{ element.text || '请输入文字' }}
-        </div>
-      </template>
-
-      <!-- 装饰元素 -->
-      <template v-if="element.type === 'decoration'">
-        <div
-          class="decoration-content"
-          :style="{
-            fontSize: (element.decorationSize || 32) + 'px',
-            color: element.decorationColor || '#ff6b6b',
-          }"
-        >
-          <i :class="getDecorationIconClass()"></i>
-        </div>
-      </template>
-
-      <!-- 图片元素 -->
-      <template v-if="element.type === 'image'">
-        <div class="image-content" :style="imageContentStyle">
-          <img v-if="element.imageUrl" :src="element.imageUrl" :style="imageStyle" draggable="false" />
-          <div v-else class="image-placeholder">
-            <i class="bi bi-image"></i>
-            <p>请添加图片</p>
-          </div>
-        </div>
-      </template>
-
-      <!-- 边框元素 -->
-      <template v-if="element.type === 'border'">
-        <div
-          class="border-content"
-          :style="{
-            borderColor: (element as any).borderColor || '#4b5563',
-            borderWidth: ((element as any).borderWidth || 2) + 'px',
-            borderStyle: (element as any).borderStyle || 'solid',
-            borderRadius: ((element as any).borderRadius || 0) + 'px',
-          }"
-        >
-          <i :class="getBorderIconClass()"></i>
-        </div>
-      </template>
-
-      <!-- 图标元素 -->
-      <template v-if="element.type === 'icon'">
-        <div
-          class="icon-content"
-          :style="{
-            fontSize: ((element as any).iconSize || 32) + 'px',
-            color: (element as any).iconColor || '#333333',
-          }"
-        >
-          <i :class="getIconIconClass()"></i>
-        </div>
-      </template>
-
-      <!-- 组合元素背景/边框 -->
-      <div v-if="element.type === 'group'" class="group-overlay" :style="groupOverlayStyle"></div>
-      <!-- 组合元素：递归渲染 children -->
-      <template v-if="element.type === 'group' && element.children && element.children.length">
-        <div
-          v-for="child in element.children"
-          :key="child.id"
-          class="group-child-wrapper"
-        >
-          <EditorElement :element="child" :preview="preview" />
-        </div>
-      </template>
-    </div>
-
-    <!-- 选中并锁定时：显示小锁图标 -->
-    <template v-if="isSelected && element.locked">
-      <div class="lock-indicator">
-        <i class="bi bi-lock-fill"></i>
-      </div>
-    </template>
-
-    <!-- 选中时的锚点（缩放 + 旋转） -->
-    <template v-if="isSelected && !element.locked">
-      <!-- 4 条边线 + 矩形手柄 -->
-      <div class="line line-n" @mousedown.stop="startResize('n', $event)">
-        <div class="rect"></div>
-      </div>
-      <div class="line line-s" @mousedown.stop="startResize('s', $event)">
-        <div class="rect"></div>
-      </div>
-      <div class="line line-e" @mousedown.stop="startResize('e', $event)">
-        <div class="rect"></div>
-      </div>
-      <div class="line line-w" @mousedown.stop="startResize('w', $event)">
-        <div class="rect"></div>
-      </div>
-
-      <!-- 4 个圆形角点 -->
-      <div class="circle circle-nw" @mousedown.stop="startResize('nw', $event)"></div>
-      <div class="circle circle-ne" @mousedown.stop="startResize('ne', $event)"></div>
-      <div class="circle circle-sw" @mousedown.stop="startResize('sw', $event)"></div>
-      <div class="circle circle-se" @mousedown.stop="startResize('se', $event)"></div>
-
-      <!-- 旋转连接线 + 居中参考线 + 旋转锚点（仅旋转过程中靠近特殊角度时显示参考线） -->
-      <div class="rotate-line"></div>
-      <div class="bar-m-line" :style="{ display: isRotating && isSpecialAngle ? 'block' : 'none' }"></div>
-      <div class="rotate-circle" @mousedown.stop="startRotate($event)">
-        <span class="rotate-icon"></span>
-      </div>
-    </template>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { useEditorStore } from '../store/editor';
 import type { EditorElement } from '../types/editor';
+
+import { computed, onMounted, onUnmounted, ref } from 'vue';
+
+import { useEditorStore } from '../store/editor';
 
 const props = defineProps<{ element: EditorElement; preview?: boolean }>();
 
@@ -185,7 +28,9 @@ const startTextEdit = () => {
   if (props.element.type !== 'text') return;
   isTextEditing.value = true;
   setTimeout(() => {
-    const el = document.querySelector(`.design-element[element-id="${props.element.id}"] .text-content`) as HTMLElement;
+    const el = document.querySelector(
+      `.design-element[element-id="${props.element.id}"] .text-content`,
+    ) as HTMLElement;
     if (el && el.focus) el.focus();
   }, 0);
 };
@@ -194,7 +39,9 @@ const startTextEdit = () => {
 const endTextEdit = () => {
   if (!isTextEditing.value) return;
   isTextEditing.value = false;
-  const el = document.querySelector(`.design-element[element-id="${props.element.id}"] .text-content`) as HTMLElement;
+  const el = document.querySelector(
+    `.design-element[element-id="${props.element.id}"] .text-content`,
+  ) as HTMLElement;
   if (el) {
     const newText = el.innerText || el.textContent || '';
     if (newText !== props.element.text) {
@@ -214,13 +61,13 @@ const onTextKeydown = (e: KeyboardEvent) => {
   }
 };
 
-const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
+const hexToRgb = (hex: string): null | { b: number; g: number; r: number } => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
     ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
+        r: Number.parseInt(result[1], 16),
+        g: Number.parseInt(result[2], 16),
+        b: Number.parseInt(result[3], 16),
       }
     : null;
 };
@@ -242,26 +89,34 @@ const elementStyle = computed(() => {
   const sy = props.element.flip?.vertical ? -1 : 1;
   // 动画样式：仅在预览模式下自动应用
   let animationCss = '';
-  if (isPreview.value && props.element.animation && props.element.animation.type !== 'none') {
+  if (
+    isPreview.value &&
+    props.element.animation &&
+    props.element.animation.type !== 'none'
+  ) {
     const a = props.element.animation;
     animationCss = `${a.type} ${a.duration}s ${a.easing} ${a.delay}s both`;
   }
   return {
     position: 'absolute' as const,
-    left: props.element.x + 'px',
-    top: props.element.y + 'px',
-    width: props.element.width + 'px',
-    height: props.element.height + 'px',
+    left: `${props.element.x}px`,
+    top: `${props.element.y}px`,
+    width: `${props.element.width}px`,
+    height: `${props.element.height}px`,
     transform: `rotate(${props.element.rotation}deg)`,
-    zIndex: isTemporaryTop ? 2147483647 : props.element.zIndex,
+    zIndex: isTemporaryTop ? 2_147_483_647 : props.element.zIndex,
     backgroundColor,
     opacity: props.element.visible ? 1 : 0,
     visibility: (props.element.visible ? 'visible' : 'hidden') as any,
     animation: animationCss || undefined,
     borderColor: props.element.borderColor || undefined,
-    borderWidth: props.element.borderWidth ? props.element.borderWidth + 'px' : undefined,
+    borderWidth: props.element.borderWidth
+      ? `${props.element.borderWidth}px`
+      : undefined,
     borderStyle: props.element.borderStyle || undefined,
-    borderRadius: props.element.borderRadius ? props.element.borderRadius + 'px' : undefined,
+    borderRadius: props.element.borderRadius
+      ? `${props.element.borderRadius}px`
+      : undefined,
   };
 });
 
@@ -275,7 +130,9 @@ const groupOverlayStyle = computed(() => {
   }
   const bs = el.groupBorderStyle || 'none';
   if (bs !== 'none') {
-    style.border = (el.groupBorderWidth || 1) + 'px ' + bs + ' ' + (el.groupBorderColor || '#0d6efd');
+    style.border = `${el.groupBorderWidth || 1}px ${bs} ${
+      el.groupBorderColor || '#0d6efd'
+    }`;
   }
   return style;
 });
@@ -304,7 +161,11 @@ const imageContentStyle = computed(() => {
     return { padding: '10px', border: '3px solid #d4a574' } as any;
   }
   if (subType === 'gallery') {
-    return { padding: '6px', border: '2px solid #8b7355', background: '#fafafa' } as any;
+    return {
+      padding: '6px',
+      border: '2px solid #8b7355',
+      background: '#fafafa',
+    } as any;
   }
 
   const crop = el.imageCrop || 'none';
@@ -312,18 +173,27 @@ const imageContentStyle = computed(() => {
   let clipPath = '';
   if (crop === 'circle' || crop === 'ellipse') borderRadius = '50%';
   else if (crop === 'rounded') borderRadius = '12px';
-  else if (crop === 'flower') borderRadius = '40% 60% 30% 70% / 60% 40% 70% 30%';
-  else if (crop === 'heart') clipPath = 'path("M 50,30 A 20,20 0 0,1 90,30 A 20,20 0 0,1 50,85 A 20,20 0 0,1 10,30 A 20,20 0 0,1 50,30 Z")';
-  else if (crop === 'diamond') clipPath = 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)';
-  else if (crop === 'star') clipPath = 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)';
-  else if (crop === 'pentagon') clipPath = 'polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)';
-  else if (crop === 'triangle') clipPath = 'polygon(50% 0%, 0% 100%, 100% 100%)';
-  else if (crop === 'hexagon') clipPath = 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)';
+  else if (crop === 'flower')
+    borderRadius = '40% 60% 30% 70% / 60% 40% 70% 30%';
+  else if (crop === 'heart')
+    clipPath =
+      'path("M 50,30 A 20,20 0 0,1 90,30 A 20,20 0 0,1 50,85 A 20,20 0 0,1 10,30 A 20,20 0 0,1 50,30 Z")';
+  else if (crop === 'diamond')
+    clipPath = 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)';
+  else if (crop === 'star')
+    clipPath =
+      'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)';
+  else if (crop === 'pentagon')
+    clipPath = 'polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)';
+  else if (crop === 'triangle')
+    clipPath = 'polygon(50% 0%, 0% 100%, 100% 100%)';
+  else if (crop === 'hexagon')
+    clipPath = 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)';
 
   return {
     overflow: 'hidden',
     position: 'relative' as const,
-    borderRadius: borderRadius,
+    borderRadius,
     clipPath: clipPath || undefined,
   };
 });
@@ -343,19 +213,19 @@ const imageStyle = computed(() => {
   // mask: non-destructive crop region (image positioned inside wrapper)
   if (el.cropW && el.cropW > 0 && el.cropW < 0.99) {
     const cropW = el.cropW;
-    const cropH = (el.cropH && el.cropH > 0) ? el.cropH : cropW;
+    const cropH = el.cropH && el.cropH > 0 ? el.cropH : cropW;
     const cropX = el.cropX || 0;
     const cropY = el.cropY || 0;
     const fullW = 100 / cropW;
     const fullH = 100 / cropH;
-    const left = -(cropX) / cropW * 100;
-    const top = -(cropY) / cropH * 100;
+    const left = (-cropX / cropW) * 100;
+    const top = (-cropY / cropH) * 100;
     return {
       position: 'absolute' as const,
-      left: left + '%',
-      top: top + '%',
-      width: fullW + '%',
-      height: fullH + '%',
+      left: `${left}%`,
+      top: `${top}%`,
+      width: `${fullW}%`,
+      height: `${fullH}%`,
       display: 'block' as const,
       transform: `scale(${sx}, ${sy})`,
       filter: filterCss,
@@ -455,7 +325,8 @@ const onContextMenu = (e: MouseEvent) => {
   if (isPreview.value) return;
   // 如果当前已经是多选状态且此元素在多选中：保持选中集合不变，仅显示右键菜单
   const isInMultiSelection =
-    store.selectedElementIds.length > 1 && store.isElementSelected(props.element.id);
+    store.selectedElementIds.length > 1 &&
+    store.isElementSelected(props.element.id);
   if (!isInMultiSelection) {
     store.selectElement(props.element.id);
   }
@@ -471,7 +342,7 @@ let elementStartX = 0;
 let elementStartY = 0;
 let lastMouseX = 0;
 let lastMouseY = 0;
-let redirectedGroupId: string | null = null; // 记录点击组内子元素时重定向到的父组 ID
+let redirectedGroupId: null | string = null; // 记录点击组内子元素时重定向到的父组 ID
 
 const onMouseDown = (e: MouseEvent) => {
   if (isPreview.value) return;
@@ -496,16 +367,16 @@ const onMouseDown = (e: MouseEvent) => {
     if (topGroup && topGroup.type === 'group') {
       store.selectElement(topGroup.id);
       redirectedGroupId = topGroup.id;
-      // 使用父组的位置作为拖拽起点
       elementStartX = topGroup.x;
       elementStartY = topGroup.y;
-    } else if (!store.isElementSelected(props.element.id)) {
-      store.selectElement(props.element.id);
-      isMultiDrag.value = false;
-      elementStartX = props.element.x;
-      elementStartY = props.element.y;
     } else {
-      isMultiDrag.value = store.selectedElementIds.length > 1;
+      const isSelected = store.isElementSelected(props.element.id);
+      if (isSelected) {
+        isMultiDrag.value = store.selectedElementIds.length > 1;
+      } else {
+        store.selectElement(props.element.id);
+        isMultiDrag.value = false;
+      }
       elementStartX = props.element.x;
       elementStartY = props.element.y;
     }
@@ -539,8 +410,8 @@ const onElementDrag = (e: MouseEvent) => {
     // 单元素拖动：不再限制边界，允许拖出画布
     const dx = e.clientX - dragStartX;
     const dy = e.clientY - dragStartY;
-    const newX = elementStartX + dx;
-    const newY = elementStartY + dy;
+    const newX = store.snapToGrid(elementStartX + dx);
+    const newY = store.snapToGrid(elementStartY + dy);
     store.updateElement(targetId, { x: newX, y: newY });
   }
 };
@@ -639,7 +510,12 @@ const onResizeMove = (e: MouseEvent) => {
 
   // 2649: 角点 = 2 条边同时调整 = 等比例
   // map direction → edges（与 JS resizePoints 一一对应）
-  const edges: { left?: boolean; right?: boolean; top?: boolean; bottom?: boolean } = {};
+  const edges: {
+    bottom?: boolean;
+    left?: boolean;
+    right?: boolean;
+    top?: boolean;
+  } = {};
   if (resizeDirection.includes('w')) edges.left = true;
   if (resizeDirection.includes('e')) edges.right = true;
   if (resizeDirection.includes('n')) edges.top = true;
@@ -652,11 +528,15 @@ const onResizeMove = (e: MouseEvent) => {
     let scaleX = 1;
     let scaleY = 1;
     if (edges.left || edges.right) {
-      scaleX = (resizeStartWidth + (edges.right ? deltaX : -deltaX)) / resizeStartWidth;
+      scaleX =
+        (resizeStartWidth + (edges.right ? deltaX : -deltaX)) /
+        resizeStartWidth;
     }
     // 2663-2664: 计算 scaleY
     if (edges.top || edges.bottom) {
-      scaleY = (resizeStartHeight + (edges.bottom ? deltaY : -deltaY)) / resizeStartHeight;
+      scaleY =
+        (resizeStartHeight + (edges.bottom ? deltaY : -deltaY)) /
+        resizeStartHeight;
     }
     // 2668: 使用最大缩放比例（注意：JS 无 Math.max(0.1, …)，直接用 max(scaleX, scaleY)）
     const scale = Math.max(scaleX, scaleY);
@@ -735,7 +615,9 @@ const startRotate = (e: MouseEvent) => {
   const rect = parent.getBoundingClientRect();
   rotateCenterX = rect.left + rect.width / 2;
   rotateCenterY = rect.top + rect.height / 2;
-  rotateStartAngle = Math.atan2(e.clientY - rotateCenterY, e.clientX - rotateCenterX) * (180 / Math.PI);
+  rotateStartAngle =
+    Math.atan2(e.clientY - rotateCenterY, e.clientX - rotateCenterX) *
+    (180 / Math.PI);
   rotateStartRotation = props.element.rotation;
   document.addEventListener('mousemove', onRotateMove);
   document.addEventListener('mouseup', onRotateEnd);
@@ -744,7 +626,9 @@ const startRotate = (e: MouseEvent) => {
 const onRotateMove = (e: MouseEvent) => {
   if (!isRotating.value) return;
   rotateHasMoved = true;
-  const currentAngle = Math.atan2(e.clientY - rotateCenterY, e.clientX - rotateCenterX) * (180 / Math.PI);
+  const currentAngle =
+    Math.atan2(e.clientY - rotateCenterY, e.clientX - rotateCenterX) *
+    (180 / Math.PI);
   let newRotation = rotateStartRotation + (currentAngle - rotateStartAngle);
   newRotation = Math.round(((newRotation % 360) + 360) % 360);
 
@@ -753,7 +637,7 @@ const onRotateMove = (e: MouseEvent) => {
     const diff = Math.min(
       Math.abs(newRotation - sa),
       Math.abs(newRotation - sa + 360),
-      Math.abs(newRotation - sa - 360)
+      Math.abs(newRotation - sa - 360),
     );
     if (diff <= SNAP_THRESHOLD) {
       newRotation = sa;
@@ -779,11 +663,15 @@ const handlePreviewAnimation = (e: Event) => {
   const customEvt = e as CustomEvent;
   if (customEvt.detail?.elementId === props.element.id) {
     const el = rootRef.value;
-    if (el && props.element.animation && props.element.animation.type !== 'none') {
+    if (
+      el &&
+      props.element.animation &&
+      props.element.animation.type !== 'none'
+    ) {
       const a = props.element.animation;
       const anim = `${a.type} ${a.duration}s ${a.easing} ${a.delay}s both`;
       el.style.animation = 'none';
-      el.offsetHeight; // 强制回流
+      const _ = el.offsetHeight; // 强制回流
       el.style.animation = anim;
     }
   }
@@ -803,27 +691,223 @@ const rootRef = ref<HTMLElement | null>(null);
 const onTriggerClick = () => {
   if (!isPreview.value) return;
   const el = props.element;
-  if (el.trigger?.type === 'click') {
-    if (el.trigger.action === 'playAnimation') {
-      const dom = rootRef.value;
-      if (dom && el.animation && el.animation.type !== 'none') {
-        const a = el.animation;
-        const anim = `${a.type} ${a.duration}s ${a.easing} ${a.delay}s both`;
-        dom.style.animation = 'none';
-        dom.offsetHeight;
-        dom.style.animation = anim;
-      }
-    }
+  if (
+    el.trigger?.type === 'click' &&
+    el.trigger.action === 'playAnimation' &&
+    rootRef.value &&
+    el.animation &&
+    el.animation.type !== 'none'
+  ) {
+    const dom = rootRef.value;
+    const a = el.animation;
+    const anim = `${a.type} ${a.duration}s ${a.easing} ${a.delay}s both`;
+    dom.style.animation = 'none';
+    const _ = dom.offsetHeight; // 强制回流
+    dom.style.animation = anim;
   }
 };
 
 const onTriggerHover = (entering: boolean) => {
   if (!isPreview.value) return;
   const el = props.element;
-  if (el.trigger?.type === 'hover') {
-    if (el.trigger.action === 'show') {
-      store.updateElement(el.id, { visible: entering });
-    }
+  if (el.trigger?.type === 'hover' && el.trigger.action === 'show') {
+    store.updateElement(el.id, { visible: entering });
   }
 };
 </script>
+
+<template>
+  <div
+    ref="rootRef"
+    class="design-element"
+    :element-id="element.id"
+    :class="{
+      selected: isSelected && !isPreview,
+      locked: element.locked,
+      hidden: !element.visible,
+      'is-text': element.type === 'text',
+      'is-decoration': element.type === 'decoration',
+      'is-image': element.type === 'image',
+      'is-border': element.type === 'border',
+      'is-icon': element.type === 'icon',
+      'is-group': element.type === 'group',
+    }"
+    :style="elementStyle"
+    @mousedown="onMouseDown"
+    @contextmenu.prevent="onContextMenu"
+    @click.stop="
+      onClick($event);
+      onTriggerClick();
+    "
+    @mouseenter="onTriggerHover(true)"
+    @mouseleave="onTriggerHover(false)"
+  >
+    <!-- 元素内容 -->
+    <div
+      class="design-element-body"
+      :style="contentStyle"
+      @dblclick="onDblClick"
+    >
+      <!-- 文本元素 -->
+      <template v-if="element.type === 'text'">
+        <div
+          class="text-content"
+          :contenteditable="isTextEditing ? 'true' : 'false'"
+          :class="{ editing: isTextEditing }"
+          @dblclick.stop="startTextEdit"
+          @blur="endTextEdit"
+          @keydown="onTextKeydown"
+          :style="{
+            fontFamily: element.fontFamily || 'Microsoft YaHei',
+            fontSize: `${element.fontSize || 16}px`,
+            fontWeight: element.fontWeight || 'normal',
+            textAlign: (element.textAlign as any) || 'center',
+            justifyContent:
+              (element.textAlign as any) === 'left'
+                ? 'flex-start'
+                : (element.textAlign as any) === 'right'
+                  ? 'flex-end'
+                  : (element.textAlign as any) === 'justify'
+                    ? 'space-between'
+                    : 'center',
+            color: element.textColor || '#333333',
+          }"
+        >
+          {{ element.text || '请输入文字' }}
+        </div>
+      </template>
+
+      <!-- 装饰元素 -->
+      <template v-if="element.type === 'decoration'">
+        <div
+          class="decoration-content"
+          :style="{
+            fontSize: `${element.decorationSize || 32}px`,
+            color: element.decorationColor || '#ff6b6b',
+          }"
+        >
+          <i :class="getDecorationIconClass()"></i>
+        </div>
+      </template>
+
+      <!-- 图片元素 -->
+      <template v-if="element.type === 'image'">
+        <div class="image-content" :style="imageContentStyle">
+          <img
+            v-if="element.imageUrl"
+            :src="element.imageUrl"
+            :style="imageStyle"
+            draggable="false"
+          />
+          <div v-else class="image-placeholder">
+            <i class="bi bi-image"></i>
+            <p>请添加图片</p>
+          </div>
+        </div>
+      </template>
+
+      <!-- 边框元素 -->
+      <template v-if="element.type === 'border'">
+        <div
+          class="border-content"
+          :style="{
+            borderColor: (element as any).borderColor || '#4b5563',
+            borderWidth: `${(element as any).borderWidth || 2}px`,
+            borderStyle: (element as any).borderStyle || 'solid',
+            borderRadius: `${(element as any).borderRadius || 0}px`,
+          }"
+        >
+          <i :class="getBorderIconClass()"></i>
+        </div>
+      </template>
+
+      <!-- 图标元素 -->
+      <template v-if="element.type === 'icon'">
+        <div
+          class="icon-content"
+          :style="{
+            fontSize: `${(element as any).iconSize || 32}px`,
+            color: (element as any).iconColor || '#333333',
+          }"
+        >
+          <i :class="getIconIconClass()"></i>
+        </div>
+      </template>
+
+      <!-- 组合元素背景/边框 -->
+      <div
+        v-if="element.type === 'group'"
+        class="group-overlay"
+        :style="groupOverlayStyle"
+      ></div>
+      <!-- 组合元素：递归渲染 children -->
+      <template
+        v-if="
+          element.type === 'group' &&
+          element.children &&
+          element.children.length
+        "
+      >
+        <div
+          v-for="child in element.children"
+          :key="child.id"
+          class="group-child-wrapper"
+        >
+          <EditorElement :element="child" :preview="preview" />
+        </div>
+      </template>
+    </div>
+
+    <!-- 选中并锁定时：显示小锁图标 -->
+    <template v-if="isSelected && element.locked">
+      <div class="lock-indicator">
+        <i class="bi bi-lock-fill"></i>
+      </div>
+    </template>
+
+    <!-- 选中时的锚点（缩放 + 旋转） -->
+    <template v-if="isSelected && !element.locked">
+      <!-- 4 条边线 + 矩形手柄 -->
+      <div class="line line-n" @mousedown.stop="startResize('n', $event)">
+        <div class="rect"></div>
+      </div>
+      <div class="line line-s" @mousedown.stop="startResize('s', $event)">
+        <div class="rect"></div>
+      </div>
+      <div class="line line-e" @mousedown.stop="startResize('e', $event)">
+        <div class="rect"></div>
+      </div>
+      <div class="line line-w" @mousedown.stop="startResize('w', $event)">
+        <div class="rect"></div>
+      </div>
+
+      <!-- 4 个圆形角点 -->
+      <div
+        class="circle circle-nw"
+        @mousedown.stop="startResize('nw', $event)"
+      ></div>
+      <div
+        class="circle circle-ne"
+        @mousedown.stop="startResize('ne', $event)"
+      ></div>
+      <div
+        class="circle circle-sw"
+        @mousedown.stop="startResize('sw', $event)"
+      ></div>
+      <div
+        class="circle circle-se"
+        @mousedown.stop="startResize('se', $event)"
+      ></div>
+
+      <!-- 旋转连接线 + 居中参考线 + 旋转锚点（仅旋转过程中靠近特殊角度时显示参考线） -->
+      <div class="rotate-line"></div>
+      <div
+        class="bar-m-line"
+        :style="{ display: isRotating && isSpecialAngle ? 'block' : 'none' }"
+      ></div>
+      <div class="rotate-circle" @mousedown.stop="startRotate($event)">
+        <span class="rotate-icon"></span>
+      </div>
+    </template>
+  </div>
+</template>

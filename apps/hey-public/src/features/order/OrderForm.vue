@@ -1,35 +1,40 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import NeonButton from '#/components/ui/NeonButton.vue'
+import { ref } from 'vue';
+
+import NeonButton from '#/components/ui/NeonButton.vue';
 
 const emit = defineEmits<{
-  submit: [payload: {
-    requirements: string
-    contactName: string
-    contactEmail: string
-    contactPhone: string
-  }]
-}>()
+  submit: [
+    payload: {
+      contactEmail: string;
+      contactName: string;
+      contactPhone: string;
+      requirements: string;
+    },
+  ];
+}>();
 
-const requirements = ref('')
-const contactName = ref('')
-const contactEmail = ref('')
-const contactPhone = ref('')
+const requirements = ref('');
+const contactName = ref('');
+const contactEmail = ref('');
+const contactPhone = ref('');
 
 const isFormValid = () => {
-  return requirements.value.trim()
-    && contactName.value.trim()
-    && contactEmail.value.trim()
-}
+  return (
+    requirements.value.trim() &&
+    contactName.value.trim() &&
+    contactEmail.value.trim()
+  );
+};
 
 function handleSubmit() {
-  if (!isFormValid()) return
+  if (!isFormValid()) return;
   emit('submit', {
     requirements: requirements.value.trim(),
     contactName: contactName.value.trim(),
     contactEmail: contactEmail.value.trim(),
     contactPhone: contactPhone.value.trim(),
-  })
+  });
 }
 </script>
 
@@ -45,7 +50,7 @@ function handleSubmit() {
         class="form-textarea"
         placeholder="请详细描述您的项目需求，包括品牌信息、目标受众、风格偏好等..."
         rows="5"
-      />
+      ></textarea>
     </div>
 
     <div class="form-row">
@@ -77,9 +82,7 @@ function handleSubmit() {
     </div>
 
     <div class="form-field">
-      <label class="field-label" for="order-phone">
-        联系电话
-      </label>
+      <label class="field-label" for="order-phone"> 联系电话 </label>
       <input
         id="order-phone"
         v-model="contactPhone"
@@ -110,23 +113,23 @@ function handleSubmit() {
 
 .form-field {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 8px;
-  flex: 1;
 }
 
 .field-label {
+  font-family: var(--font-sans);
   font-size: 0.85rem;
   font-weight: 600;
-  color: #8888a0;
-  font-family: var(--font-sans);
+  color: var(--color-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .required {
-  color: #C8FF00;
   margin-left: 2px;
+  color: var(--color-neon);
 }
 
 .form-row {
@@ -138,31 +141,31 @@ function handleSubmit() {
 .form-input {
   width: 100%;
   padding: 14px 16px;
-  background: rgba(18, 18, 30, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  color: #f0f0f5;
-  font-size: 0.95rem;
   font-family: var(--font-sans);
+  font-size: 0.95rem;
   line-height: 1.6;
+  color: var(--color-text-primary);
   outline: none;
+  background: var(--glass-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
   transition: border-color 0.3s ease;
 }
 
 .form-textarea {
-  resize: vertical;
   min-height: 120px;
+  resize: vertical;
 }
 
 .form-textarea::placeholder,
 .form-input::placeholder {
-  color: #555570;
+  color: var(--color-text-muted);
 }
 
 .form-textarea:focus,
 .form-input:focus {
-  border-color: rgba(200, 255, 0, 0.3);
-  box-shadow: 0 0 20px rgba(200, 255, 0, 0.06);
+  border-color: var(--color-neon-dim);
+  box-shadow: 0 0 20px var(--color-neon-glow);
 }
 
 .submit-btn {
@@ -170,10 +173,10 @@ function handleSubmit() {
 }
 
 .submit-btn:disabled {
-  opacity: 0.4;
   cursor: not-allowed;
-  transform: none !important;
   box-shadow: none !important;
+  opacity: 0.4;
+  transform: none !important;
 }
 
 @media (max-width: 640px) {

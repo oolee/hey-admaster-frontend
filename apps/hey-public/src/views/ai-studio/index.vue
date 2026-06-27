@@ -1,43 +1,46 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import SectionTitle from '#/components/ui/SectionTitle.vue'
-import AiPromptForm from '#/features/ai-studio/AiPromptForm.vue'
-import AiImageGallery from '#/features/ai-studio/AiImageGallery.vue'
-import AiHistoryPanel from '#/features/ai-studio/AiHistoryPanel.vue'
-import { useAiGeneration } from '#/composables/useAiGeneration'
-import { useAiStore } from '#/store/aiStore'
-import { fetchTemplates } from '#/utils/api'
-import type { AdTemplate } from '#/types/ai'
+import type { AdTemplate } from '#/types/ai';
 
-const aiStore = useAiStore()
-const { generate, isLoading, error, results, currentTaskId, isMock } = useAiGeneration()
+import { onMounted, ref } from 'vue';
 
-const templates = ref<AdTemplate[]>([])
-const categories = ref<Record<string, AdTemplate[]>>({})
+import SectionTitle from '#/components/ui/SectionTitle.vue';
+import { useAiGeneration } from '#/composables/useAiGeneration';
+import AiHistoryPanel from '#/features/ai-studio/AiHistoryPanel.vue';
+import AiImageGallery from '#/features/ai-studio/AiImageGallery.vue';
+import AiPromptForm from '#/features/ai-studio/AiPromptForm.vue';
+import { useAiStore } from '#/store/aiStore';
+import { fetchTemplates } from '#/utils/api';
+
+const aiStore = useAiStore();
+const { generate, isLoading, error, results, currentTaskId, isMock } =
+  useAiGeneration();
+
+const templates = ref<AdTemplate[]>([]);
+const categories = ref<Record<string, AdTemplate[]>>({});
 
 onMounted(async () => {
   try {
-    const res = await fetchTemplates()
-    templates.value = res.data
-    categories.value = res.categories
-  } catch (e) {
-    console.warn('模板加载失败:', e)
+    const res = await fetchTemplates();
+    templates.value = res.data;
+    categories.value = res.categories;
+  } catch (error) {
+    console.warn('模板加载失败:', error);
   }
-})
+});
 
 async function handleGenerate(payload: {
-  prompt: string
-  size: string
-  quality: string
-  template?: AdTemplate
-  templateInput?: Record<string, string>
+  prompt: string;
+  quality: string;
+  size: string;
+  template?: AdTemplate;
+  templateInput?: Record<string, string>;
 }) {
   await generate(payload.prompt, {
     size: payload.size,
-    quality: payload.quality as 'low' | 'medium' | 'high',
+    quality: payload.quality as 'high' | 'low' | 'medium',
     template: payload.template,
     templateInput: payload.templateInput,
-  })
+  });
 }
 </script>
 
@@ -51,7 +54,10 @@ async function handleGenerate(payload: {
           subtitle="选择行业模板或自由描述，AI 为你生成专业级设计图"
         >
           <template #actions>
-            <div class="credits-badge" :class="{ empty: aiStore.remainingFree <= 0 }">
+            <div
+              class="credits-badge"
+              :class="{ empty: aiStore.remainingFree <= 0 }"
+            >
               <span v-if="aiStore.remainingFree > 0" class="credits-text">
                 剩余免费 {{ aiStore.remainingFree }} 次
               </span>
@@ -106,18 +112,18 @@ async function handleGenerate(payload: {
 
 .credits-badge {
   padding: 6px 14px;
-  background: rgba(200, 255, 0, 0.08);
-  border: 1px solid rgba(200, 255, 0, 0.2);
-  border-radius: 9999px;
   font-size: 0.8rem;
-  color: #C8FF00;
   font-weight: 500;
+  color: var(--color-neon);
+  background: var(--color-neon-glow);
+  border: 1px solid var(--color-neon-dim);
+  border-radius: 9999px;
 }
 
 .credits-badge.empty {
-  background: rgba(255, 85, 85, 0.08);
-  border-color: rgba(255, 85, 85, 0.2);
-  color: #ff5555;
+  color: #f55;
+  background: rgb(255 85 85 / 8%);
+  border-color: rgb(255 85 85 / 20%);
 }
 
 .studio-area {

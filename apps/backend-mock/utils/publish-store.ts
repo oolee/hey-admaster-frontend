@@ -4,7 +4,7 @@ interface PublishRecord {
   pages: unknown[];
   canvasWidth?: number;
   canvasHeight?: number;
-  pageTransition?: 'none' | 'fade' | 'slide' | 'zoom' | 'flip';
+  pageTransition?: 'fade' | 'flip' | 'none' | 'slide' | 'zoom';
   createdAt: string;
 }
 
@@ -12,7 +12,8 @@ const publishStore = new Map<string, PublishRecord>();
 
 /** 生成 8 位短 ID：62^8 ≈ 218 万亿组合 */
 function generateShortId(): string {
-  const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const chars =
+    '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
   let result = '';
   for (let i = 0; i < 8; i++) {
     result += chars[Math.floor(Math.random() * 62)];
@@ -28,12 +29,12 @@ function generateShortId(): string {
 }
 
 export function savePublish(data: {
+  canvasHeight?: number;
+  canvasWidth?: number;
   id?: string;
   name: string;
   pages: unknown[];
-  canvasWidth?: number;
-  canvasHeight?: number;
-  pageTransition?: 'none' | 'fade' | 'slide' | 'zoom' | 'flip';
+  pageTransition?: 'fade' | 'flip' | 'none' | 'slide' | 'zoom';
 }): PublishRecord {
   const now = new Date().toISOString();
   const id = data.id || generateShortId();

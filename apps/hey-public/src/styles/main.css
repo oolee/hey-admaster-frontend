@@ -3,16 +3,21 @@
 *,
 *::before,
 *::after {
-  margin: 0;
-  padding: 0;
   box-sizing: border-box;
+  padding: 0;
+  margin: 0;
 }
 
 html {
   scroll-behavior: smooth;
-  background: #0a0a0f;
-  color: #f0f0f5;
   font-family: 'DM Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  color: var(--color-text-primary);
+  scrollbar-color: var(--color-neon-dim) var(--color-bg-primary);
+  scrollbar-width: thin;
+  background: var(--color-bg-primary);
+  transition:
+    background 0.4s ease,
+    color 0.4s ease;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -20,7 +25,11 @@ html {
 body {
   min-height: 100vh;
   overflow-x: hidden;
-  background: #0a0a0f;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  transition:
+    background 0.4s ease,
+    color 0.4s ease;
 }
 
 #app {
@@ -29,8 +38,8 @@ body {
 }
 
 ::selection {
-  background: rgba(200, 255, 0, 0.3);
-  color: #fff;
+  color: var(--color-text-primary);
+  background: var(--color-neon-dim);
 }
 
 ::-webkit-scrollbar {
@@ -38,16 +47,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0a0a0f;
+  background: var(--color-bg-primary);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(200, 255, 0, 0.2);
+  background: var(--color-neon-dim);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(200, 255, 0, 0.4);
+  background: var(--color-neon);
 }
 
 a {
@@ -57,19 +66,21 @@ a {
 
 /* Noise overlay */
 .noise-overlay {
-  pointer-events: none;
   position: fixed;
   inset: 0;
   z-index: 9999;
-  opacity: 0.03;
+  pointer-events: none;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 256px 256px;
+  opacity: 0.03;
 }
 
 /* Page transition */
 .page-enter-active,
 .page-leave-active {
-  transition: opacity 0.4s ease, transform 0.4s ease;
+  transition:
+    opacity 0.4s ease,
+    transform 0.4s ease;
 }
 
 .page-enter-from {
@@ -83,6 +94,24 @@ a {
 }
 
 /* ============================================================
+   Container: responsive with generous side padding
+   ============================================================ */
+.container-custom {
+  width: 100%;
+  max-width: var(--space-container);
+  padding-right: clamp(24px, 5vw, 80px);
+  padding-left: clamp(24px, 5vw, 80px);
+  margin: 0 auto;
+}
+
+/* ============================================================
+   Section spacing
+   ============================================================ */
+.section {
+  padding: var(--space-section) 0;
+}
+
+/* ============================================================
    滚动揭示：遮罩层 + 交错延迟动画
    ============================================================ */
 
@@ -90,7 +119,9 @@ a {
 .reveal-stagger > * {
   opacity: 0;
   transform: translateY(25px);
-  transition: opacity 0.45s ease-out, transform 0.45s ease-out;
+  transition:
+    opacity 0.45s ease-out,
+    transform 0.45s ease-out;
 }
 
 /* 触发：遮罩消失后逐个显示 */

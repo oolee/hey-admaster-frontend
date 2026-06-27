@@ -1,47 +1,87 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue';
 
 interface CardItem {
-  id: number
-  imageUrl: string
-  title: string
-  description: string
+  id: number;
+  imageUrl: string;
+  title: string;
+  description: string;
 }
 
 const items: CardItem[] = [
-  { id: 1, imageUrl: 'https://picsum.photos/seed/ai1/800/450', title: '赛博都市', description: 'AI 生成 · 概念艺术' },
-  { id: 2, imageUrl: 'https://picsum.photos/seed/ai2/800/450', title: '极简海报', description: 'AI 生成 · 品牌设计' },
-  { id: 3, imageUrl: 'https://picsum.photos/seed/ai3/800/450', title: '未来界面', description: 'AI 生成 · UI/UX' },
-  { id: 4, imageUrl: 'https://picsum.photos/seed/ai4/800/450', title: '梦幻场景', description: 'AI 生成 · 插画艺术' },
-  { id: 5, imageUrl: 'https://picsum.photos/seed/ai5/800/450', title: '产品渲染', description: 'AI 生成 · 3D 视觉' },
-  { id: 6, imageUrl: 'https://picsum.photos/seed/ai6/800/450', title: '霓虹街景', description: 'AI 生成 · 摄影风格' },
-  { id: 7, imageUrl: 'https://picsum.photos/seed/ai7/800/450', title: '抽象几何', description: 'AI 生成 · 图形设计' },
-  { id: 8, imageUrl: 'https://picsum.photos/seed/ai8/800/450', title: '潮流插画', description: 'AI 生成 · 商业插画' },
-]
+  {
+    id: 1,
+    imageUrl: '/images/carousel/ai1.svg',
+    title: '赛博都市',
+    description: 'AI 生成 · 概念艺术',
+  },
+  {
+    id: 2,
+    imageUrl: '/images/carousel/ai2.svg',
+    title: '极简海报',
+    description: 'AI 生成 · 品牌设计',
+  },
+  {
+    id: 3,
+    imageUrl: '/images/carousel/ai3.svg',
+    title: '未来界面',
+    description: 'AI 生成 · UI/UX',
+  },
+  {
+    id: 4,
+    imageUrl: '/images/carousel/ai4.svg',
+    title: '梦幻场景',
+    description: 'AI 生成 · 插画艺术',
+  },
+  {
+    id: 5,
+    imageUrl: '/images/carousel/ai5.svg',
+    title: '产品渲染',
+    description: 'AI 生成 · 3D 视觉',
+  },
+  {
+    id: 6,
+    imageUrl: '/images/carousel/ai6.svg',
+    title: '霓虹街景',
+    description: 'AI 生成 · 摄影风格',
+  },
+  {
+    id: 7,
+    imageUrl: '/images/carousel/ai7.svg',
+    title: '抽象几何',
+    description: 'AI 生成 · 图形设计',
+  },
+  {
+    id: 8,
+    imageUrl: '/images/carousel/ai8.svg',
+    title: '潮流插画',
+    description: 'AI 生成 · 商业插画',
+  },
+];
 
 // 三倍列表：保证任意方向拖拽都有足够内容
-const tripled = [...items, ...items, ...items]
-const selectedItem = ref<CardItem | null>(null)
+const tripled = [...items, ...items, ...items];
+const selectedItem = ref<CardItem | null>(null);
 
-const trackRef = ref<HTMLDivElement | null>(null)
-const isDragging = ref(false)
-const cursorGrabbing = ref(false)
+const trackRef = ref<HTMLDivElement | null>(null);
+const isDragging = ref(false);
+const cursorGrabbing = ref(false);
 
-let currentOffset = 0
-let dragStartX = 0
-let dragStartOffset = 0
-let animationId = 0
-let lastTime = 0
+let currentOffset = 0;
+let dragStartX = 0;
+let dragStartOffset = 0;
+let animationId = 0;
+let lastTime = 0;
 
-const cardWidth = 280
-const gap = 24
-const step = cardWidth + gap // 304px
-const totalWidth = items.length * step
-const autoSpeed = 0.6 // 每帧自动滚动速度（px）
+const cardWidth = 280;
+const gap = 24;
+const step = cardWidth + gap; // 304px
+const totalWidth = items.length * step;
+const autoSpeed = 0.6; // 每帧自动滚动速度（px）
 
 function applyTransform() {
   if (trackRef.value) {
-    trackRef.value.style.transform = `translateX(${currentOffset}px)`
+    trackRef.value.style.transform = `translateX(${currentOffset}px)`;
   }
 }
 
@@ -49,109 +89,106 @@ function applyTransform() {
 function wrapOffset() {
   // 从第二组中间开始（-totalWidth），保证左右都有内容
   if (currentOffset <= -totalWidth * 2) {
-    currentOffset += totalWidth
+    currentOffset += totalWidth;
   }
   if (currentOffset >= 0) {
-    currentOffset -= totalWidth
+    currentOffset -= totalWidth;
   }
 }
 
 function animate(timestamp: number) {
-  if (!lastTime) lastTime = timestamp
+  if (!lastTime) lastTime = timestamp;
   if (!isDragging.value) {
     // 自动向左滚动
-    currentOffset -= autoSpeed
-    wrapOffset()
-    applyTransform()
+    currentOffset -= autoSpeed;
+    wrapOffset();
+    applyTransform();
   }
-  lastTime = timestamp
-  animationId = requestAnimationFrame(animate)
+  lastTime = timestamp;
+  animationId = requestAnimationFrame(animate);
 }
 
 // === 拖拽交互 ===
 function onMouseDown(e: MouseEvent) {
   // 不阻止点击弹窗
-  isDragging.value = true
-  cursorGrabbing.value = true
-  dragStartX = e.clientX
-  dragStartOffset = currentOffset
+  isDragging.value = true;
+  cursorGrabbing.value = true;
+  dragStartX = e.clientX;
+  dragStartOffset = currentOffset;
 }
 
 function onMouseMove(e: MouseEvent) {
-  if (!isDragging.value) return
-  const delta = e.clientX - dragStartX
-  currentOffset = dragStartOffset + delta
-  wrapOffset()
-  applyTransform()
+  if (!isDragging.value) return;
+  const delta = e.clientX - dragStartX;
+  currentOffset = dragStartOffset + delta;
+  wrapOffset();
+  applyTransform();
 }
 
 function onMouseUp() {
-  isDragging.value = false
-  cursorGrabbing.value = false
+  isDragging.value = false;
+  cursorGrabbing.value = false;
 }
 
 // 全局 mouseup 兜底（鼠标拖到组件外松开）
 function onGlobalMouseUp() {
   if (isDragging.value) {
-    isDragging.value = false
-    cursorGrabbing.value = false
+    isDragging.value = false;
+    cursorGrabbing.value = false;
   }
 }
 
 // 点击 vs 拖拽判断
-let clickMoved = false
+let clickMoved = false;
 function onCardMouseDown(e: MouseEvent) {
-  clickMoved = false
-  onMouseDown(e)
+  clickMoved = false;
+  onMouseDown(e);
 }
 
 function onCardMouseMove(e: MouseEvent) {
   if (isDragging.value) {
-    const delta = Math.abs(e.clientX - dragStartX)
-    if (delta > 3) clickMoved = true
+    const delta = Math.abs(e.clientX - dragStartX);
+    if (delta > 3) clickMoved = true;
   }
-  onMouseMove(e)
+  onMouseMove(e);
 }
 
 function onCardClick(item: CardItem) {
   if (!clickMoved) {
-    openLightbox(item)
+    openLightbox(item);
   }
 }
 
 function openLightbox(item: CardItem) {
-  selectedItem.value = item
+  selectedItem.value = item;
 }
 
 function closeLightbox() {
-  selectedItem.value = null
+  selectedItem.value = null;
 }
 
 function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') closeLightbox()
+  if (e.key === 'Escape') closeLightbox();
 }
 
 onMounted(() => {
-  window.addEventListener('keydown', onKeydown)
-  window.addEventListener('mouseup', onGlobalMouseUp)
+  window.addEventListener('keydown', onKeydown);
+  window.addEventListener('mouseup', onGlobalMouseUp);
   // 初始偏移：从第二组开始，保证左右都有内容
-  currentOffset = -totalWidth
-  applyTransform()
-  animationId = requestAnimationFrame(animate)
-})
+  currentOffset = -totalWidth;
+  applyTransform();
+  animationId = requestAnimationFrame(animate);
+});
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', onKeydown)
-  window.removeEventListener('mouseup', onGlobalMouseUp)
-  cancelAnimationFrame(animationId)
-})
+  window.removeEventListener('keydown', onKeydown);
+  window.removeEventListener('mouseup', onGlobalMouseUp);
+  cancelAnimationFrame(animationId);
+});
 </script>
 
 <template>
-  <div
-    class="carousel-wrapper"
-    :class="{ grabbing: cursorGrabbing }"
-  >
+  <div class="carousel-wrapper" :class="{ grabbing: cursorGrabbing }">
     <div
       ref="trackRef"
       class="carousel-track"
@@ -176,22 +213,41 @@ onUnmounted(() => {
     </div>
 
     <!-- 左右渐变遮罩 -->
-    <div class="carousel-fade-left" />
-    <div class="carousel-fade-right" />
+    <div class="carousel-fade-left"></div>
+    <div class="carousel-fade-right"></div>
   </div>
 
   <!-- 弹窗 -->
   <Teleport to="body">
     <Transition name="lightbox">
-      <div v-if="selectedItem" class="lightbox-overlay" @click.self="closeLightbox">
+      <div
+        v-if="selectedItem"
+        class="lightbox-overlay"
+        @click.self="closeLightbox"
+      >
         <div class="lightbox-content">
-          <button class="lightbox-close" @click="closeLightbox" aria-label="关闭">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button
+            class="lightbox-close"
+            @click="closeLightbox"
+            aria-label="关闭"
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
-          <img :src="selectedItem.imageUrl" :alt="selectedItem.title" class="lightbox-image" />
+          <img
+            :src="selectedItem.imageUrl"
+            :alt="selectedItem.title"
+            class="lightbox-image"
+          />
           <div class="lightbox-caption">
             <h3>{{ selectedItem.title }}</h3>
             <p>{{ selectedItem.description }}</p>
@@ -204,10 +260,10 @@ onUnmounted(() => {
 
 <style scoped>
 .carousel-wrapper {
-  width: 100%;
-  overflow: hidden;
-  padding: 12px 0;
   position: relative;
+  width: 100%;
+  padding: 12px 0;
+  overflow: hidden;
   user-select: none;
 }
 
@@ -219,8 +275,8 @@ onUnmounted(() => {
   display: flex;
   gap: 24px;
   width: max-content;
-  will-change: transform;
   cursor: grab;
+  will-change: transform;
 }
 
 .carousel-card {
@@ -231,29 +287,31 @@ onUnmounted(() => {
 
 .card-3d {
   position: relative;
-  border-radius: 14px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: transform 0.4s ease, box-shadow 0.4s ease;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  box-shadow: 0 4px 20px rgb(0 0 0 / 40%);
   transform: rotateY(0deg) rotateX(0deg);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  transition:
+    transform 0.4s ease,
+    box-shadow 0.4s ease;
 }
 
 .card-3d img {
   display: block;
   width: 100%;
   aspect-ratio: 16 / 9;
+  pointer-events: none; /* 让拖拽事件穿透到 track */
   object-fit: cover;
   transition: transform 0.5s ease;
-  pointer-events: none; /* 让拖拽事件穿透到 track */
 }
 
 .card-3d:hover {
-  transform: rotateY(-5deg) rotateX(3deg) translateY(-8px);
+  border-color: var(--color-neon-dim);
   box-shadow:
-    0 20px 50px rgba(0, 0, 0, 0.5),
-    0 0 30px rgba(200, 255, 0, 0.15);
-  border-color: rgba(200, 255, 0, 0.25);
+    0 20px 50px rgb(0 0 0 / 50%),
+    0 0 30px var(--color-neon-dim);
+  transform: rotateY(-5deg) rotateX(3deg) translateY(-8px);
 }
 
 .card-3d:hover img {
@@ -262,26 +320,27 @@ onUnmounted(() => {
 
 .card-info {
   position: absolute;
+  right: 0;
   bottom: 0;
   left: 0;
-  right: 0;
-  padding: 14px;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
   display: flex;
   flex-direction: column;
   gap: 4px;
+  padding: 14px;
   pointer-events: none;
+  background: linear-gradient(transparent, rgb(0 0 0 / 80%));
 }
 
 .card-title {
-  color: #fff;
   font-size: 0.9rem;
   font-weight: 600;
+  color: var(--color-text-primary);
 }
 
 .card-desc {
-  color: rgba(200, 255, 0, 0.7);
   font-size: 0.72rem;
+  color: var(--color-neon);
+  opacity: 0.7;
 }
 
 /* 左右渐变遮罩 */
@@ -290,19 +349,19 @@ onUnmounted(() => {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 60px;
   z-index: 2;
+  width: 60px;
   pointer-events: none;
 }
 
 .carousel-fade-left {
   left: 0;
-  background: linear-gradient(90deg, #0a0a0f, transparent);
+  background: linear-gradient(90deg, var(--color-bg-primary), transparent);
 }
 
 .carousel-fade-right {
   right: 0;
-  background: linear-gradient(270deg, #0a0a0f, transparent);
+  background: linear-gradient(270deg, var(--color-bg-primary), transparent);
 }
 
 /* ===== 弹窗 ===== */
@@ -310,52 +369,52 @@ onUnmounted(() => {
   position: fixed;
   inset: 0;
   z-index: 10000;
-  background: rgba(0, 0, 0, 0.9);
-  backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 40px;
+  background: rgb(0 0 0 / 90%);
+  backdrop-filter: blur(10px);
 }
 
 .lightbox-content {
   position: relative;
-  max-width: 90vw;
-  max-height: 90vh;
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 16px;
+  align-items: center;
+  max-width: 90vw;
+  max-height: 90vh;
 }
 
 .lightbox-close {
   position: absolute;
   top: -40px;
   right: -40px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  width: 40px;
+  height: 40px;
+  color: var(--color-text-primary);
   cursor: pointer;
+  background: rgb(255 255 255 / 10%);
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 50%;
   transition: all 0.2s ease;
 }
 
 .lightbox-close:hover {
-  background: rgba(200, 255, 0, 0.2);
-  border-color: #C8FF00;
-  color: #C8FF00;
+  color: var(--color-neon);
+  background: var(--color-neon-dim);
+  border-color: var(--color-neon);
 }
 
 .lightbox-image {
   max-width: 100%;
   max-height: 75vh;
   border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 20px 60px rgb(0 0 0 / 50%);
 }
 
 .lightbox-caption {
@@ -363,15 +422,15 @@ onUnmounted(() => {
 }
 
 .lightbox-caption h3 {
-  color: #C8FF00;
+  margin-bottom: 4px;
   font-size: 1.2rem;
   font-weight: 600;
-  margin-bottom: 4px;
+  color: var(--color-neon);
 }
 
 .lightbox-caption p {
-  color: #8888a0;
   font-size: 0.9rem;
+  color: var(--color-text-secondary);
 }
 
 .lightbox-enter-active {
@@ -379,7 +438,9 @@ onUnmounted(() => {
 }
 
 .lightbox-enter-active .lightbox-content {
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    opacity 0.3s ease;
 }
 
 .lightbox-leave-active {
@@ -387,7 +448,9 @@ onUnmounted(() => {
 }
 
 .lightbox-leave-active .lightbox-content {
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .lightbox-enter-from {
@@ -395,8 +458,8 @@ onUnmounted(() => {
 }
 
 .lightbox-enter-from .lightbox-content {
-  transform: scale(0.9);
   opacity: 0;
+  transform: scale(0.9);
 }
 
 .lightbox-leave-to {
@@ -404,7 +467,7 @@ onUnmounted(() => {
 }
 
 .lightbox-leave-to .lightbox-content {
-  transform: scale(0.95);
   opacity: 0;
+  transform: scale(0.95);
 }
 </style>

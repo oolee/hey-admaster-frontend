@@ -21,7 +21,10 @@ async function generateAccess(options: GenerateMenuAndRoutesOptions) {
   const { transformRoutes } = useMenuTransform();
   const pageMap: ComponentRecordType = import.meta.glob('../views/**/*.vue');
   // const { uiFramework } = useAppConfig(import.meta.env, import.meta.env.PROD);
-  const { uiFramework } = useAppConfigExtended(import.meta.env, import.meta.env.PROD);
+  const { uiFramework } = useAppConfigExtended(
+    import.meta.env,
+    import.meta.env.PROD,
+  );
 
   const layoutMap: ComponentRecordType = {
     BasicLayout,

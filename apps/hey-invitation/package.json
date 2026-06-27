@@ -17,10 +17,10 @@
     "@hey/designer": "workspace:*",
     "@hey/invitation": "workspace:*",
     "@hey/print": "workspace:*",
+    "html2canvas": "catalog:",
+    "jspdf": "catalog:",
+    "pinia": "catalog:",
     "vue": "catalog:",
-    "vue-router": "catalog:",
-    "html2canvas": "^1.4.1",
-    "jspdf": "^4.2.1",
-    "pinia": "catalog:"
+    "vue-router": "catalog:"
   }
 }

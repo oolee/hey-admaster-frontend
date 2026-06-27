@@ -3,14 +3,12 @@
 // 支持: 通义万相(主力) / OpenAI GPT-Image-2 / Mock 降级
 // ============================================================
 
+import type { AdTemplate } from '~/utils/ad-templates';
+
 import { createError, defineEventHandler, readBody } from 'h3';
+import { AD_TEMPLATES, buildPrompt } from '~/utils/ad-templates';
 import { generateImage as generateOpenAI } from '~/utils/openai';
-import { submitTongyiTask, queryTongyiTask } from '~/utils/tongyi';
-import {
-  AD_TEMPLATES,
-  buildPrompt,
-  type AdTemplate,
-} from '~/utils/ad-templates';
+import { queryTongyiTask, submitTongyiTask } from '~/utils/tongyi';
 
 function generateMockImage(): { b64_json: string } {
   const size = 256;
@@ -23,6 +21,7 @@ function generateMockImage(): { b64_json: string } {
   canvas[offset++] = 0x0d;
   canvas[offset++] = 0x0a;
   canvas[offset++] = 0x1a;
+  // eslint-disable-next-line no-useless-assignment
   canvas[offset++] = 0x0a;
   return {
     b64_json: canvas.toString('base64'),

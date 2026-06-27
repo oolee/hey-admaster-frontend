@@ -1,119 +1,47 @@
-<template>
-  <template v-for="element in elements" :key="element.id">
-    <div
-      class="layer-item"
-      :class="{
-        active: store.isElementSelected(element.id),
-        locked: element.locked,
-        hidden: !element.visible,
-        'layer-dragging': dragLayerFrom === element.id,
-        'layer-drag-over': dragLayerOver === element.id,
-        'layer-item-child': depth > 0,
-      }"
-      :style="{ paddingLeft: (12 + depth * 20) + 'px' }"
-      draggable="true"
-      @dragstart="onDragStart(element.id, $event)"
-      @dragover.prevent="onDragOver(element.id)"
-      @dragleave="onDragLeave(element.id)"
-      @drop="onDrop(element.id)"
-      @dragend="onDragEnd"
-      @click="onItemClick(element.id, $event)"
-    >
-      <i class="bi bi-grip-vertical layer-drag-handle" data-drag-handle title="拖动排序"></i>
-      <i
-        v-if="element.type === 'group' && hasChildren(element)"
-        class="layer-expand"
-        :class="getExpanded(element.id) ? 'bi bi-dash-square' : 'bi bi-plus-square'"
-        @click.stop="toggleExpand(element.id)"
-        title="展开/折叠组"
-      ></i>
-      <i v-else class="layer-drag-handle-placeholder"></i>
-      <i :class="getLayerIcon(element.type)"></i>
-      <span class="layer-name">{{ getElementDisplay(element) }}</span>
-      <div class="layer-actions">
-        <button class="layer-btn" @click.stop="emit('moveUp', element.id)" title="上移一层">
-          <i class="bi bi-arrow-up"></i>
-        </button>
-        <button class="layer-btn" @click.stop="emit('moveDown', element.id)" title="下移一层">
-          <i class="bi bi-arrow-down"></i>
-        </button>
-        <button class="layer-btn" @click.stop="emit('rename', element)" title="重命名">
-          <i class="bi bi-pencil"></i>
-        </button>
-        <button
-          v-if="element.type === 'group'"
-          class="layer-btn"
-          @click.stop="emit('ungroup')"
-          title="取消组合"
-        >
-          <i class="bi bi-box-arrow-in-right"></i>
-        </button>
-        <button class="layer-btn" @click.stop="emit('toggleVis', element.id)">
-          <i :class="element.visible ? 'bi bi-eye' : 'bi bi-eye-slash'"></i>
-        </button>
-        <button class="layer-btn" @click.stop="emit('toggleLock', element.id)">
-          <i :class="element.locked ? 'bi bi-lock-fill' : 'bi bi-unlock'"></i>
-        </button>
-      </div>
-    </div>
-    <!-- recursive children for groups -->
-    <LayerTreeItem
-      v-if="element.type === 'group' && hasChildren(element) && getExpanded(element.id)"
-      :elements="[...element.children!].reverse()"
-      :depth="depth + 1"
-      :expanded-groups="expandedGroups"
-      :drag-layer-from="dragLayerFrom"
-      :drag-layer-over="dragLayerOver"
-      @move-up="(id: string) => emit('moveUp', id)"
-      @move-down="(id: string) => emit('moveDown', id)"
-      @rename="(el: EditorElement) => emit('rename', el)"
-      @ungroup="emit('ungroup')"
-      @toggle-vis="(id: string) => emit('toggleVis', id)"
-      @toggle-lock="(id: string) => emit('toggleLock', id)"
-      @select="(id: string, ev: MouseEvent) => emit('select', id, ev)"
-      @drag-start="(id: string, ev: DragEvent) => emit('dragStart', id, ev)"
-      @drag-over="(id: string) => emit('dragOver', id)"
-      @drag-leave="(id: string) => emit('dragLeave', id)"
-      @drop-item="(id: string) => emit('dropItem', id)"
-      @drag-end="emit('dragEnd')"
-      @toggle-expand="(id: string) => emit('toggleExpand', id)"
-    />
-  </template>
-</template>
-
 <script setup lang="ts">
 import type { EditorElement } from '../types/editor';
+
 import { useEditorStore } from '../store/editor';
 
 defineOptions({ name: 'LayerTreeItem' });
 
 const props = defineProps<{
-  elements: EditorElement[];
   depth: number;
+  dragLayerFrom?: null | string;
+  dragLayerOver?: null | string;
+  elements: EditorElement[];
   expandedGroups: Record<string, boolean>;
-  dragLayerFrom?: string | null;
-  dragLayerOver?: string | null;
 }>();
 
 const emit = defineEmits<{
-  (e: 'moveUp', id: string): void;
-  (e: 'moveDown', id: string): void;
+  // 带 id 参数的事件
+  (
+    e:
+      | 'dragLeave'
+      | 'dragOver'
+      | 'dragStart'
+      | 'dropItem'
+      | 'moveDown'
+      | 'moveUp'
+      | 'toggleExpand'
+      | 'toggleLock'
+      | 'toggleVis',
+    id: string,
+  ): void;
+  // 无参数事件：dragEnd、ungroup
+  (e: 'dragEnd' | 'ungroup'): void;
+  // rename 单独传元素对象
   (e: 'rename', el: EditorElement): void;
-  (e: 'ungroup'): void;
-  (e: 'toggleVis', id: string): void;
-  (e: 'toggleLock', id: string): void;
+  // select 带鼠标事件
   (e: 'select', id: string, ev: MouseEvent): void;
+  // dragStart 带拖拽原生事件
   (e: 'dragStart', id: string, ev: DragEvent): void;
-  (e: 'dragOver', id: string): void;
-  (e: 'dragLeave', id: string): void;
-  (e: 'dropItem', id: string): void;
-  (e: 'dragEnd'): void;
-  (e: 'toggleExpand', id: string): void;
 }>();
 
 const store = useEditorStore();
 
-const hasChildren = (el: EditorElement) => !!(el.children && el.children.length);
+const hasChildren = (el: EditorElement) =>
+  !!(el.children && el.children.length > 0);
 const getExpanded = (id: string) => props.expandedGroups[id] !== false;
 
 const getLayerIcon = (type: string) => {
@@ -152,33 +80,202 @@ const onDragEnd = () => emit('dragEnd');
 const onItemClick = (id: string, e: MouseEvent) => emit('select', id, e);
 </script>
 
+<template>
+  <template v-for="element in elements" :key="element.id">
+    <div
+      class="layer-item"
+      :class="{
+        active: store.isElementSelected(element.id),
+        locked: element.locked,
+        hidden: !element.visible,
+        'layer-dragging': dragLayerFrom === element.id,
+        'layer-drag-over': dragLayerOver === element.id,
+        'layer-item-child': depth > 0,
+      }"
+      :style="{ paddingLeft: `${12 + depth * 20}px` }"
+      draggable="true"
+      @dragstart="onDragStart(element.id, $event)"
+      @dragover.prevent="onDragOver(element.id)"
+      @dragleave="onDragLeave(element.id)"
+      @drop="onDrop(element.id)"
+      @dragend="onDragEnd"
+      @click="onItemClick(element.id, $event)"
+    >
+      <i
+        class="bi bi-grip-vertical layer-drag-handle"
+        data-drag-handle
+        title="拖动排序"
+      ></i>
+      <i
+        v-if="element.type === 'group' && hasChildren(element)"
+        class="layer-expand"
+        :class="
+          getExpanded(element.id) ? 'bi bi-dash-square' : 'bi bi-plus-square'
+        "
+        @click.stop="toggleExpand(element.id)"
+        title="展开/折叠组"
+      ></i>
+      <i v-else class="layer-drag-handle-placeholder"></i>
+      <i :class="getLayerIcon(element.type)"></i>
+      <span class="layer-name">{{ getElementDisplay(element) }}</span>
+      <div class="layer-actions">
+        <button
+          class="layer-btn"
+          @click.stop="emit('moveUp', element.id)"
+          title="上移一层"
+        >
+          <i class="bi bi-arrow-up"></i>
+        </button>
+        <button
+          class="layer-btn"
+          @click.stop="emit('moveDown', element.id)"
+          title="下移一层"
+        >
+          <i class="bi bi-arrow-down"></i>
+        </button>
+        <button
+          class="layer-btn"
+          @click.stop="emit('rename', element)"
+          title="重命名"
+        >
+          <i class="bi bi-pencil"></i>
+        </button>
+        <button
+          v-if="element.type === 'group'"
+          class="layer-btn"
+          @click.stop="emit('ungroup')"
+          title="取消组合"
+        >
+          <i class="bi bi-box-arrow-in-right"></i>
+        </button>
+        <button class="layer-btn" @click.stop="emit('toggleVis', element.id)">
+          <i :class="element.visible ? 'bi bi-eye' : 'bi bi-eye-slash'"></i>
+        </button>
+        <button class="layer-btn" @click.stop="emit('toggleLock', element.id)">
+          <i :class="element.locked ? 'bi bi-lock-fill' : 'bi bi-unlock'"></i>
+        </button>
+      </div>
+    </div>
+    <!-- recursive children for groups -->
+    <LayerTreeItem
+      v-if="
+        element.type === 'group' &&
+        hasChildren(element) &&
+        getExpanded(element.id)
+      "
+      :elements="[...element.children!].reverse()"
+      :depth="depth + 1"
+      :expanded-groups="expandedGroups"
+      :drag-layer-from="dragLayerFrom"
+      :drag-layer-over="dragLayerOver"
+      @move-up="(id: string) => emit('moveUp', id)"
+      @move-down="(id: string) => emit('moveDown', id)"
+      @rename="(el: EditorElement) => emit('rename', el)"
+      @ungroup="emit('ungroup')"
+      @toggle-vis="(id: string) => emit('toggleVis', id)"
+      @toggle-lock="(id: string) => emit('toggleLock', id)"
+      @select="(id: string, ev: MouseEvent) => emit('select', id, ev)"
+      @drag-start="(id: string, ev: DragEvent) => emit('dragStart', id, ev)"
+      @drag-over="(id: string) => emit('dragOver', id)"
+      @drag-leave="(id: string) => emit('dragLeave', id)"
+      @drop-item="(id: string) => emit('dropItem', id)"
+      @drag-end="emit('dragEnd')"
+      @toggle-expand="(id: string) => emit('toggleExpand', id)"
+    />
+  </template>
+</template>
+
 <style scoped>
 .layer-item {
   display: flex;
+  gap: 4px;
   align-items: center;
   padding: 4px 8px;
-  cursor: pointer;
-  border-radius: 4px;
-  gap: 4px;
   font-size: 13px;
+  cursor: pointer;
   user-select: none;
+  border-radius: 4px;
 }
-.layer-item:hover { background: #f0f0f0; }
-.layer-item.active { background: #e3f2fd; }
-.layer-item.locked { opacity: 0.6; }
-.layer-item.hidden { opacity: 0.4; }
-.layer-item-child { opacity: 0.85; }
-.layer-spacer { width: 14px; display: inline-block; flex-shrink: 0; }
-.layer-drag-handle-placeholder { width: 14px; display: inline-block; flex-shrink: 0; }
-.layer-expand { cursor: pointer; width: 14px; flex-shrink: 0; font-size: 12px; }
-.layer-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.layer-actions { display: flex; gap: 2px; flex-shrink: 0; }
+
+.layer-item:hover {
+  background: #f0f0f0;
+}
+
+.layer-item.active {
+  background: #e3f2fd;
+}
+
+.layer-item.locked {
+  opacity: 0.6;
+}
+
+.layer-item.hidden {
+  opacity: 0.4;
+}
+
+.layer-item-child {
+  opacity: 0.85;
+}
+
+.layer-spacer {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 14px;
+}
+
+.layer-drag-handle-placeholder {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 14px;
+}
+
+.layer-expand {
+  flex-shrink: 0;
+  width: 14px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.layer-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layer-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
 .layer-btn {
-  background: none; border: none; cursor: pointer; padding: 2px 4px;
-  font-size: 12px; color: #666; border-radius: 3px;
+  padding: 2px 4px;
+  font-size: 12px;
+  color: #666;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-radius: 3px;
 }
-.layer-btn:hover { background: #e0e0e0; color: #333; }
-.layer-drag-handle { cursor: grab; color: #999; font-size: 12px; flex-shrink: 0; }
-.layer-dragging { opacity: 0.5; }
-.layer-drag-over { border-top: 2px solid #0d6efd; }
+
+.layer-btn:hover {
+  color: #333;
+  background: #e0e0e0;
+}
+
+.layer-drag-handle {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: #999;
+  cursor: grab;
+}
+
+.layer-dragging {
+  opacity: 0.5;
+}
+
+.layer-drag-over {
+  border-top: 2px solid #0d6efd;
+}
 </style>

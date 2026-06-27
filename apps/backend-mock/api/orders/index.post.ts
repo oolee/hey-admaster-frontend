@@ -6,11 +6,11 @@ import { createError, defineEventHandler, readBody } from 'h3';
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<{
+    contactEmail: string;
+    contactName: string;
+    contactPhone: string;
     packageId: string;
     requirements: string;
-    contactName: string;
-    contactEmail: string;
-    contactPhone: string;
   }>(event);
 
   if (!body || !body.packageId) {

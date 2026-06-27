@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { Icon } from '@iconify/vue'
-import GlassCard from '#/components/ui/GlassCard.vue'
+import { Icon } from '@iconify/vue';
+
+import GlassCard from '#/components/ui/GlassCard.vue';
 
 defineProps<{
-  tag: string
-  icon: string
-  title: string
-  description: string
-  features: string[]
-}>()
+  description: string;
+  features: string[];
+  icon: string;
+  tag: string;
+  title: string;
+}>();
 </script>
 
 <template>
@@ -21,11 +22,7 @@ defineProps<{
       <p class="service-description">{{ description }}</p>
 
       <div class="service-features">
-        <span
-          v-for="feature in features"
-          :key="feature"
-          class="feature-pill"
-        >
+        <span v-for="feature in features" :key="feature" class="feature-pill">
           {{ feature }}
         </span>
       </div>
@@ -42,23 +39,23 @@ defineProps<{
 
 .service-icon {
   font-size: 2rem;
-  color: #C8FF00;
   line-height: 1;
+  color: var(--color-neon);
 }
 
 .service-title {
+  margin: 0;
+  font-family: var(--font-sans);
   font-size: 1.25rem;
   font-weight: 700;
-  color: #f0f0f5;
-  font-family: var(--font-sans);
-  margin: 0;
+  color: var(--color-text-primary);
 }
 
 .service-description {
-  font-size: 0.95rem;
-  color: #8888a0;
-  line-height: 1.6;
   margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
 }
 
 .service-features {
@@ -71,18 +68,18 @@ defineProps<{
 .feature-pill {
   display: inline-block;
   padding: 4px 12px;
+  font-family: var(--font-sans);
   font-size: 0.75rem;
   font-weight: 500;
-  color: #C8FF00;
-  background: rgba(200, 255, 0, 0.08);
-  border: 1px solid rgba(200, 255, 0, 0.15);
+  color: var(--color-neon);
+  background: var(--color-neon-glow);
+  border: 1px solid var(--color-neon-dim);
   border-radius: 9999px;
-  font-family: var(--font-sans);
   transition: all 0.3s ease;
 }
 
 .feature-pill:hover {
-  background: rgba(200, 255, 0, 0.15);
-  border-color: rgba(200, 255, 0, 0.3);
+  background: var(--color-neon-dim);
+  border-color: var(--color-neon);
 }
 </style>

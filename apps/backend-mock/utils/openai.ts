@@ -23,9 +23,9 @@ export interface GeneratedImage {
  * - 否则返回模拟的 base64 图像数据。
  */
 export async function generateImage(params: GenerateImageParams): Promise<{
-  success: boolean;
   data: GeneratedImage[];
   isMock: boolean;
+  success: boolean;
 }> {
   const apiKey = process.env.OPENAI_API_KEY;
 
@@ -37,8 +37,8 @@ export async function generateImage(params: GenerateImageParams): Promise<{
     const response = await $fetch<{
       data: Array<{
         b64_json?: string;
-        url?: string;
         revised_prompt: string;
+        url?: string;
       }>;
     }>('https://api.openai.com/v1/images/generations', {
       method: 'POST',
@@ -76,9 +76,9 @@ export async function generateImage(params: GenerateImageParams): Promise<{
 }
 
 function generateMockImage(params: GenerateImageParams): {
-  success: boolean;
   data: GeneratedImage[];
   isMock: boolean;
+  success: boolean;
 } {
   const count = params.n ?? 1;
   const data: GeneratedImage[] = Array.from({ length: count }, (_, i) => ({

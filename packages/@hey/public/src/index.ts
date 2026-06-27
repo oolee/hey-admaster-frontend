@@ -1,15 +1,15 @@
 export interface PublicService {
-  slug: string;
-  title: string;
-  summary: string;
   deliverables: string[];
+  slug: string;
+  summary: string;
+  title: string;
 }
 
 export interface PortfolioCase {
-  id: string;
-  title: string;
   category: string;
+  id: string;
   result: string;
+  title: string;
 }
 
 export const publicServices: PublicService[] = [

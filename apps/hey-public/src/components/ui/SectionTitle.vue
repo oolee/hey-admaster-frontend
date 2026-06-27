@@ -1,9 +1,9 @@
 <script setup lang="ts">
 defineProps<{
-  title: string
-  subtitle?: string
-  align?: 'left' | 'center'
-}>()
+  align?: 'center' | 'left';
+  subtitle?: string;
+  title: string;
+}>();
 </script>
 
 <template>
@@ -27,22 +27,22 @@ defineProps<{
 }
 
 .section-title-text {
+  margin-bottom: 0;
+  font-family: var(--font-sans);
   font-size: clamp(2rem, 4vw, 3.5rem);
   font-weight: 700;
-  font-family: var(--font-sans);
   line-height: 1.1;
-  margin-bottom: 0;
 }
 
 .section-subtitle {
+  max-width: 600px;
   margin-top: 12px;
   font-size: 1rem;
-  color: #8888a0;
-  max-width: 600px;
+  color: var(--color-text-secondary);
 }
 
 .align-center .section-subtitle {
-  margin-left: auto;
   margin-right: auto;
+  margin-left: auto;
 }
 </style>

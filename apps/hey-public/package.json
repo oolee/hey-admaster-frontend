@@ -19,18 +19,18 @@
     "@hey/invitation": "workspace:*",
     "@hey/public": "workspace:*",
     "@hey/shared-ui": "workspace:*",
+    "@iconify/vue": "catalog:conflicts_@iconify/vue_h4_2_0",
+    "@tresjs/cientos": "catalog:",
+    "@tresjs/core": "catalog:",
     "@vben/styles": "workspace:*",
-    "@iconify/vue": "^4.2.0",
-    "@tresjs/cientos": "^5.7.0",
-    "@tresjs/core": "^5.8.0",
-    "gsap": "^3.12.5",
-    "ofetch": "^1.4.1",
+    "gsap": "catalog:",
+    "ofetch": "catalog:",
     "pinia": "catalog:",
-    "three": "^0.170.0",
+    "three": "catalog:",
     "vue": "catalog:",
     "vue-router": "catalog:"
   },
   "devDependencies": {
-    "@types/three": "^0.170.0"
+    "@types/three": "catalog:"
   }
 }

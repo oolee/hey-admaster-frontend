@@ -1,33 +1,37 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { ofetch } from 'ofetch'
-import type { ApiResponse } from '#/types/api'
-import type { PricingPackage } from '#/types/order'
-import GlassCard from '#/components/ui/GlassCard.vue'
-import NeonButton from '#/components/ui/NeonButton.vue'
+import type { ApiResponse } from '#/types/api';
+import type { PricingPackage } from '#/types/order';
 
-const packages = ref<PricingPackage[]>([])
-const loading = ref(true)
-const error = ref<string | null>(null)
+import { onMounted, ref } from 'vue';
+
+import { ofetch } from 'ofetch';
+
+import GlassCard from '#/components/ui/GlassCard.vue';
+import NeonButton from '#/components/ui/NeonButton.vue';
+
+const packages = ref<PricingPackage[]>([]);
+const loading = ref(true);
+const error = ref<null | string>(null);
 
 onMounted(async () => {
   try {
-    const res = await ofetch<ApiResponse<PricingPackage[]>>('/api/pricing')
-    packages.value = res.data
-  } catch (e) {
-    error.value = '加载价格信息失败，请稍后重试'
-    console.error('[PricingTable] fetch error:', e)
+    const res = await ofetch<ApiResponse<PricingPackage[]>>('/api/pricing');
+    packages.value = res.data;
+  } catch (error) {
+    const err = error as { value?: string };
+    err.value = '加载价格信息失败，请稍后重试';
+    console.error('[PricingTable] fetch error:', err);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-})
+});
 </script>
 
 <template>
   <div class="pricing-table">
     <!-- 加载状态 -->
     <div v-if="loading" class="pricing-loading">
-      <div class="loading-spinner-ring" />
+      <div class="loading-spinner-ring"></div>
       <span class="loading-text">正在加载价格方案...</span>
     </div>
 
@@ -47,11 +51,15 @@ onMounted(async () => {
         <div class="pricing-card">
           <div class="pricing-header">
             <h3 class="pricing-name">{{ pkg.name }}</h3>
-            <p v-if="pkg.description" class="pricing-desc">{{ pkg.description }}</p>
+            <p v-if="pkg.description" class="pricing-desc">
+              {{ pkg.description }}
+            </p>
           </div>
 
           <div class="pricing-price">
-            <span class="price-currency">{{ pkg.currency === 'CNY' ? '¥' : '$' }}</span>
+            <span class="price-currency">{{
+              pkg.currency === 'CNY' ? '¥' : '$'
+            }}</span>
             <span class="price-amount">{{ pkg.price.toLocaleString() }}</span>
           </div>
 
@@ -103,8 +111,8 @@ onMounted(async () => {
 }
 
 .pricing-highlighted {
-  border-color: rgba(200, 255, 0, 0.2) !important;
-  box-shadow: 0 0 40px rgba(200, 255, 0, 0.08);
+  border-color: var(--color-neon-dim) !important;
+  box-shadow: 0 0 40px var(--color-neon-glow);
 }
 
 .pricing-header {
@@ -112,106 +120,108 @@ onMounted(async () => {
 }
 
 .pricing-name {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #f0f0f5;
   margin: 0 0 8px;
   font-family: var(--font-sans);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
 }
 
 .pricing-desc {
-  font-size: 0.85rem;
-  color: #8888a0;
   margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
 }
 
 .pricing-price {
-  text-align: center;
   padding: 16px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: center;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .price-currency {
   font-size: 1.2rem;
-  color: #C8FF00;
   font-weight: 600;
-  vertical-align: top;
   line-height: 1.8;
+  vertical-align: top;
+  color: var(--color-neon);
 }
 
 .price-amount {
+  font-family: var(--font-mono);
   font-size: 2.5rem;
   font-weight: 800;
-  color: #C8FF00;
-  font-family: var(--font-mono);
+  color: var(--color-neon);
   letter-spacing: -0.02em;
 }
 
 .pricing-features {
-  list-style: none;
-  padding: 0;
-  margin: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
 }
 
 .pricing-feature-item {
-  font-size: 0.9rem;
-  color: #8888a0;
   display: flex;
-  align-items: center;
   gap: 10px;
+  align-items: center;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
 }
 
 .feature-check {
-  color: #C8FF00;
-  font-weight: 700;
   flex-shrink: 0;
+  font-weight: 700;
+  color: var(--color-neon);
 }
 
 .pricing-cta {
-  margin-top: auto;
-  width: 100%;
   justify-content: center;
+  width: 100%;
+  margin-top: auto;
 }
 
 /* 加载态 */
 .pricing-loading {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 16px;
+  align-items: center;
   padding: 60px 0;
 }
 
 .loading-spinner-ring {
   width: 40px;
   height: 40px;
+  border: 2px solid var(--color-neon-dim);
+  border-top-color: var(--color-neon);
   border-radius: 50%;
-  border: 2px solid rgba(200, 255, 0, 0.15);
-  border-top-color: #C8FF00;
   animation: spin 0.8s linear infinite;
 }
 
 .loading-text {
-  color: #8888a0;
   font-size: 0.9rem;
+  color: var(--color-text-secondary);
 }
 
 /* 错误态 */
 .pricing-error {
-  text-align: center;
   padding: 40px 0;
+  text-align: center;
 }
 
 .error-text {
-  color: #ff6b6b;
   font-size: 0.9rem;
+  color: #ff6b6b;
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

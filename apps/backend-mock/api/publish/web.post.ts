@@ -8,7 +8,13 @@ export default defineEventHandler(async (event) => {
   const canvasHeight = body?.canvasHeight;
   const pageTransition = body?.pageTransition;
 
-  const record = savePublish({ name, pages, canvasWidth, canvasHeight, pageTransition });
+  const record = savePublish({
+    name,
+    pages,
+    canvasWidth,
+    canvasHeight,
+    pageTransition,
+  });
 
   return {
     code: 0,

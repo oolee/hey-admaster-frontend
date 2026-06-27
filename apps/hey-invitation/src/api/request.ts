@@ -23,7 +23,10 @@ export async function request<T = unknown>(
   };
 
   // 附加 token（如果有）
-  const token = typeof window !== 'undefined' ? window.localStorage.getItem('auth_token') : null;
+  const token =
+    typeof window === 'undefined'
+      ? null
+      : window.localStorage.getItem('auth_token');
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
@@ -34,7 +37,7 @@ export async function request<T = unknown>(
       ...options,
       headers,
     });
-  } catch (err) {
+  } catch {
     // 网络错误：降级为 mock 模式（便于开发阶段不依赖真实后端）
     return {
       code: 0,
@@ -68,17 +71,25 @@ export async function request<T = unknown>(
   };
 }
 
-export function get<T = unknown>(path: string, params?: Record<string, unknown>): Promise<ApiResponse<T>> {
+export function get<T = unknown>(
+  path: string,
+  params?: Record<string, unknown>,
+): Promise<ApiResponse<T>> {
   const query = params
-    ? '?' +
-      Object.keys(params)
-        .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(String(params[k]))}`)
-        .join('&')
+    ? `?${Object.keys(params)
+        .map(
+          (k) =>
+            `${encodeURIComponent(k)}=${encodeURIComponent(String(params[k]))}`,
+        )
+        .join('&')}`
     : '';
   return request<T>(`${path}${query}`, { method: 'GET' });
 }
 
-export function post<T = unknown>(path: string, body?: unknown): Promise<ApiResponse<T>> {
+export function post<T = unknown>(
+  path: string,
+  body?: unknown,
+): Promise<ApiResponse<T>> {
   return request<T>(path, {
     method: 'POST',
     body: body ? JSON.stringify(body) : undefined,

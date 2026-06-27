@@ -1,35 +1,35 @@
-import { ref, onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue';
 
 /**
  * 滚动揭示 composable
  * 当目标元素进入视口时触发 isRevealed = true
  */
 export function useScrollReveal(threshold = 0.15) {
-  const isRevealed = ref(false)
-  const target = ref<HTMLElement | null>(null)
-  let observer: IntersectionObserver | null = null
+  const isRevealed = ref(false);
+  const target = ref<HTMLElement | null>(null);
+  let observer: IntersectionObserver | null = null;
 
   onMounted(() => {
-    if (!target.value) return
+    if (!target.value) return;
     observer = new IntersectionObserver(
       ([entry]) => {
-        if (!entry) return
+        if (!entry) return;
         if (entry.isIntersecting) {
           // 小延迟让遮罩动画先开始
           setTimeout(() => {
-            isRevealed.value = true
-          }, 100)
-          observer?.unobserve(entry.target)
+            isRevealed.value = true;
+          }, 100);
+          observer?.unobserve(entry.target);
         }
       },
-      { threshold }
-    )
-    observer.observe(target.value)
-  })
+      { threshold },
+    );
+    observer.observe(target.value);
+  });
 
   onUnmounted(() => {
-    observer?.disconnect()
-  })
+    observer?.disconnect();
+  });
 
-  return { target, isRevealed }
+  return { target, isRevealed };
 }

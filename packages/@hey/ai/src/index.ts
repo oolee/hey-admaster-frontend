@@ -1,17 +1,17 @@
-export type AiDesignTaskStatus = 'pending' | 'running' | 'succeeded' | 'failed';
+export type AiDesignTaskStatus = 'failed' | 'pending' | 'running' | 'succeeded';
 
 export interface AiPrompt {
   prompt: string;
   style?: string;
-  targetScene?: 'poster' | 'invitation' | 'social' | 'logo' | 'banner';
+  targetScene?: 'banner' | 'invitation' | 'logo' | 'poster' | 'social';
 }
 
 export interface AiGeneratedAsset {
-  id: string;
-  url: string;
-  prompt: AiPrompt;
-  width: number;
   height: number;
-  vectorizationMeta?: unknown;
+  id: string;
+  prompt: AiPrompt;
   segmentationMeta?: unknown;
+  url: string;
+  vectorizationMeta?: unknown;
+  width: number;
 }

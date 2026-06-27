@@ -1,13 +1,16 @@
 <script setup lang="ts">
 defineProps<{
-  cols?: number
-  gap?: string
-}>()
+  cols?: number;
+  gap?: string;
+}>();
 </script>
 
 <template>
-  <div class="bento-grid" :style="{ '--bento-cols': cols || 3, '--bento-gap': gap || '20px' }">
-    <slot />
+  <div
+    class="bento-grid"
+    :style="{ '--bento-cols': cols || 3, '--bento-gap': gap || '20px' }"
+  >
+    <slot></slot>
   </div>
 </template>
 

@@ -1,22 +1,23 @@
 <script setup lang="ts">
-import FloatingIsland from '#/components/three/FloatingIsland.vue'
-import ParticleField from '#/components/three/ParticleField.vue'
-import { ref, onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue';
 
-const isMobile = ref(false)
+import FloatingIsland from '#/components/three/FloatingIsland.vue';
+import ParticleField from '#/components/three/ParticleField.vue';
+
+const isMobile = ref(false);
 
 function checkMobile() {
-  isMobile.value = window.innerWidth < 768
+  isMobile.value = window.innerWidth < 768;
 }
 
 onMounted(() => {
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
-})
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+});
 
 onUnmounted(() => {
-  window.removeEventListener('resize', checkMobile)
-})
+  window.removeEventListener('resize', checkMobile);
+});
 </script>
 
 <template>
@@ -26,7 +27,7 @@ onUnmounted(() => {
       <FloatingIsland />
     </template>
     <div v-else class="hero-fallback">
-      <div class="fallback-glow" />
+      <div class="fallback-glow"></div>
     </div>
   </div>
 </template>
@@ -50,13 +51,23 @@ onUnmounted(() => {
 .fallback-glow {
   width: 300px;
   height: 300px;
+  background: radial-gradient(
+    circle,
+    var(--color-neon-glow) 0%,
+    transparent 70%
+  );
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(200, 255, 0, 0.1) 0%, transparent 70%);
   animation: float 4s ease-in-out infinite;
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-20px) scale(1.05); }
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  50% {
+    transform: translateY(-20px) scale(1.05);
+  }
 }
 </style>

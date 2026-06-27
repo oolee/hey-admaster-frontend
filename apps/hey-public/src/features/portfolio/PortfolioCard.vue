@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import type { PortfolioItem } from '#/types/portfolio'
-import GlassCard from '#/components/ui/GlassCard.vue'
+import type { PortfolioItem } from '#/types/portfolio';
+
+import GlassCard from '#/components/ui/GlassCard.vue';
 
 defineProps<{
-  item: PortfolioItem
-  tag?: string
-}>()
+  item: PortfolioItem;
+  tag?: string;
+}>();
 </script>
 
 <template>
@@ -62,13 +63,13 @@ defineProps<{
   padding: 4px 12px;
   font-size: 0.7rem;
   font-weight: 600;
-  color: #C8FF00;
-  background: rgba(10, 10, 15, 0.8);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(200, 255, 0, 0.2);
-  border-radius: 9999px;
+  color: var(--color-neon);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-neon-dim);
+  border-radius: 9999px;
+  backdrop-filter: blur(8px);
 }
 
 .portfolio-info {
@@ -78,22 +79,22 @@ defineProps<{
 }
 
 .portfolio-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #f0f0f5;
   margin: 0;
   font-family: var(--font-sans);
+  font-size: 1.1rem;
+  font-weight: 700;
   line-height: 1.3;
+  color: var(--color-text-primary);
 }
 
 .portfolio-description {
-  font-size: 0.85rem;
-  color: #8888a0;
-  line-height: 1.5;
-  margin: 0;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  margin: 0;
   overflow: hidden;
+  -webkit-line-clamp: 2;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  -webkit-box-orient: vertical;
 }
 </style>

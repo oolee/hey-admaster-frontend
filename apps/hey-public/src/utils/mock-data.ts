@@ -3,35 +3,35 @@
 // ============================================================
 
 export interface PortfolioItem {
-  id: number
-  title: string
-  category: 'brand' | 'ai-design' | 'video' | 'digital'
-  description: string
-  imageUrl: string
-  tags: string[]
-  client: string
-  year: number
+  id: number;
+  title: string;
+  category: 'ai-design' | 'brand' | 'digital' | 'video';
+  description: string;
+  imageUrl: string;
+  tags: string[];
+  client: string;
+  year: number;
 }
 
 export interface PricingPackage {
-  id: string
-  name: string
-  price: number
-  currency: string
-  description: string
-  features: string[]
-  highlighted: boolean
+  id: string;
+  name: string;
+  price: number;
+  currency: string;
+  description: string;
+  features: string[];
+  highlighted: boolean;
 }
 
 export interface Order {
-  id: string
-  packageId: string
-  requirements: string
-  contactName: string
-  contactEmail: string
-  contactPhone: string
-  status: 'pending' | 'processing' | 'completed' | 'cancelled'
-  createdAt: string
+  id: string;
+  packageId: string;
+  requirements: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  status: 'cancelled' | 'completed' | 'pending' | 'processing';
+  createdAt: string;
 }
 
 /**
@@ -39,7 +39,7 @@ export interface Order {
  * 用于在没有配置 OPENAI_API_KEY 时作为模拟返回数据
  */
 export const MOCK_BASE64_IMAGE =
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg=='
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==';
 
 /**
  * 模拟作品集数据 - 8 个条目
@@ -49,8 +49,9 @@ export const mockPortfolioItems: PortfolioItem[] = [
     id: 1,
     title: '星辰科技品牌全案',
     category: 'brand',
-    description: '为星辰科技打造全新品牌视觉体系，涵盖 Logo 设计、VI 规范、品牌手册及官网视觉升级。',
-    imageUrl: 'https://picsum.photos/seed/1/800/600',
+    description:
+      '为星辰科技打造全新品牌视觉体系，涵盖 Logo 设计、VI 规范、品牌手册及官网视觉升级。',
+    imageUrl: '/images/portfolio/1.svg',
     tags: ['品牌设计', 'VI系统', 'Logo设计'],
     client: '星辰科技有限公司',
     year: 2025,
@@ -59,8 +60,9 @@ export const mockPortfolioItems: PortfolioItem[] = [
     id: 2,
     title: '智能护肤海报系列',
     category: 'ai-design',
-    description: '利用 AI 图像生成技术，为某护肤品牌制作春夏新品上市系列海报及社交媒体素材。',
-    imageUrl: 'https://picsum.photos/seed/2/800/600',
+    description:
+      '利用 AI 图像生成技术，为某护肤品牌制作春夏新品上市系列海报及社交媒体素材。',
+    imageUrl: '/images/portfolio/2.svg',
     tags: ['AI设计', '海报', '美妆'],
     client: '韵芙兰护肤',
     year: 2025,
@@ -69,8 +71,9 @@ export const mockPortfolioItems: PortfolioItem[] = [
     id: 3,
     title: '极光游戏宣传片',
     category: 'video',
-    description: '为极光游戏新作《星域》制作 3 分钟 CGI 宣传片，包含角色动画与场景渲染。',
-    imageUrl: 'https://picsum.photos/seed/3/800/600',
+    description:
+      '为极光游戏新作《星域》制作 3 分钟 CGI 宣传片，包含角色动画与场景渲染。',
+    imageUrl: '/images/portfolio/3.svg',
     tags: ['视频制作', 'CGI', '游戏'],
     client: '极光互动娱乐',
     year: 2024,
@@ -79,8 +82,9 @@ export const mockPortfolioItems: PortfolioItem[] = [
     id: 4,
     title: '智慧零售数字大屏',
     category: 'digital',
-    description: '为连锁零售品牌设计数据可视化大屏，实时展示门店运营数据与客流分析。',
-    imageUrl: 'https://picsum.photos/seed/4/800/600',
+    description:
+      '为连锁零售品牌设计数据可视化大屏，实时展示门店运营数据与客流分析。',
+    imageUrl: '/images/portfolio/4.svg',
     tags: ['数据可视化', '大屏', '零售'],
     client: '万客隆商业集团',
     year: 2025,
@@ -90,7 +94,7 @@ export const mockPortfolioItems: PortfolioItem[] = [
     title: '云栖茶语品牌重塑',
     category: 'brand',
     description: '传统茶品牌年轻化升级，从包装设计到线上线下全渠道视觉统一。',
-    imageUrl: 'https://picsum.photos/seed/5/800/600',
+    imageUrl: '/images/portfolio/5.svg',
     tags: ['品牌升级', '包装设计', '茶文化'],
     client: '云栖茶语文化有限公司',
     year: 2024,
@@ -99,8 +103,9 @@ export const mockPortfolioItems: PortfolioItem[] = [
     id: 6,
     title: 'AI 城市未来概念图',
     category: 'ai-design',
-    description: '通过 AI 生成未来城市概念艺术图集，用于地产项目前期概念展示与营销。',
-    imageUrl: 'https://picsum.photos/seed/6/800/600',
+    description:
+      '通过 AI 生成未来城市概念艺术图集，用于地产项目前期概念展示与营销。',
+    imageUrl: '/images/portfolio/6.svg',
     tags: ['AI艺术', '概念设计', '地产'],
     client: '碧云置业集团',
     year: 2025,
@@ -109,8 +114,9 @@ export const mockPortfolioItems: PortfolioItem[] = [
     id: 7,
     title: '创想教育 MG 动画',
     category: 'video',
-    description: '为创想教育制作系列 MG 动画课程视频，涵盖数学、科学等学科内容。',
-    imageUrl: 'https://picsum.photos/seed/7/800/600',
+    description:
+      '为创想教育制作系列 MG 动画课程视频，涵盖数学、科学等学科内容。',
+    imageUrl: '/images/portfolio/7.svg',
     tags: ['MG动画', '教育', '课程'],
     client: '创想在线教育',
     year: 2025,
@@ -120,12 +126,12 @@ export const mockPortfolioItems: PortfolioItem[] = [
     title: '鲜达生鲜小程序设计',
     category: 'digital',
     description: '为生鲜 O2O 平台设计小程序全套 UI/UX，提升用户下单转化率。',
-    imageUrl: 'https://picsum.photos/seed/8/800/600',
+    imageUrl: '/images/portfolio/8.svg',
     tags: ['UI/UX', '小程序', '生鲜电商'],
     client: '鲜达网络科技',
     year: 2024,
   },
-]
+];
 
 /**
  * 模拟定价套餐数据 - 3 个套餐
@@ -184,7 +190,7 @@ export const mockPricingPackages: PricingPackage[] = [
     ],
     highlighted: false,
   },
-]
+];
 
 /**
  * 模拟订单数据
@@ -220,4 +226,4 @@ export const mockOrders: Order[] = [
     status: 'processing',
     createdAt: '2025-06-03T09:15:00Z',
   },
-]
+];

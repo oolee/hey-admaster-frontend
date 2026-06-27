@@ -3,26 +3,27 @@ import { getPublish } from '../../../utils/publish-store';
 // ========== HTML 生成函数（与 h5/[id].get.ts 版本同步） ==========
 
 function escapeHtml(s: string): string {
-  if (s == null) return '';
+  if (s === null) return '';
   return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
 function cssColor(bg: string | undefined, opacity: number | undefined): string {
   if (!bg || bg === 'transparent') return 'transparent';
   if (bg.startsWith('rgb(') || bg.startsWith('rgba(')) return bg;
-  const op = opacity == null ? 1 : opacity;
+  const op = opacity === null || opacity === undefined ? 1 : opacity;
   if (bg.startsWith('#') && (bg.length === 7 || bg.length === 4)) {
-    const hex = bg.length === 4
-      ? bg.slice(1).split('').map((c) => c + c).join('')
-      : bg.slice(1);
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 4), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
+    const hex =
+      bg.length === 4
+        ? [...bg.slice(1)].map((c) => c + c).join('')
+        : bg.slice(1);
+    const r = Number.parseInt(hex.slice(0, 2), 16);
+    const g = Number.parseInt(hex.slice(2, 4), 16);
+    const b = Number.parseInt(hex.slice(4, 2), 16);
     return `rgba(${r}, ${g}, ${b}, ${op})`;
   }
   return bg;
@@ -41,7 +42,7 @@ function entryAnimClass(type: string | undefined): string {
     flipIn: 'anim-flipIn',
   };
   const t = type || 'fadeIn';
-  return 'h5-el anim-ready ' + (map[t] || 'anim-fadeIn');
+  return `h5-el anim-ready ${map[t] || 'anim-fadeIn'}`;
 }
 
 function renderElement(el: any): string {
@@ -62,9 +63,9 @@ function renderElement(el: any): string {
     `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;` +
     `transform:rotate(${rot}deg);z-index:${z};` +
     `background-color:${cssColor(bg, bgOpacity)};` +
-    `overflow:hidden;animation-duration:${animDur}s;` +
-    (borderR ? `border-radius:${borderR}px;` : '') +
-    (visible ? '' : 'visibility:hidden;');
+    `overflow:hidden;animation-duration:${animDur}s;${
+      borderR ? `border-radius:${borderR}px;` : ''
+    }${visible ? '' : 'visibility:hidden;'}`;
 
   const t = el.type;
 
@@ -96,12 +97,17 @@ function renderElement(el: any): string {
     if (imgCrop === 'circle') cropBr = '50%';
     else if (imgCrop === 'rounded') cropBr = '12px';
     else if (imgCrop === 'flower') cropBr = '40% 60% 30% 70% / 60% 40% 70% 30%';
-    else if (imgCrop === 'triangle') cropCp = 'polygon(50% 0%, 0% 100%, 100% 100%)';
-    else if (imgCrop === 'hexagon') cropCp = 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)';
+    else if (imgCrop === 'triangle')
+      cropCp = 'polygon(50% 0%, 0% 100%, 100% 100%)';
+    else if (imgCrop === 'hexagon')
+      cropCp = 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)';
     // 翻转（与编辑器一致）
-    const flipSx = (el.flip && el.flip.horizontal) ? -1 : 1;
-    const flipSy = (el.flip && el.flip.vertical) ? -1 : 1;
-    const flipTransform = (flipSx !== 1 || flipSy !== 1) ? `transform:scale(${flipSx},${flipSy});` : '';
+    const flipSx = el.flip && el.flip.horizontal ? -1 : 1;
+    const flipSy = el.flip && el.flip.vertical ? -1 : 1;
+    const flipTransform =
+      flipSx !== 1 || flipSy !== 1
+        ? `transform:scale(${flipSx},${flipSy});`
+        : '';
     if (el.imageUrl) {
       return `<div class="${entryAnimClass(el.entryAnimation)} h5-el-image" style="${outer}"><div class="inner" style="width:100%;height:100%;${cropCp ? `clip-path:${cropCp};overflow:hidden;` : ''}"><img src="${escapeHtml(el.imageUrl)}" style="width:100%;height:100%;object-fit:${fit};opacity:${imgOp};border-radius:${cropBr};${flipTransform}filter:${filterCss};${imgRadius ? `border-radius:${imgRadius}px;` : ''}display:block;" alt=""></div></div>`;
     }
@@ -156,12 +162,14 @@ function buildHtml(data: any, name: string): string {
   const totalPages = pages.length;
   const displayName = escapeHtml(name || '请柬');
 
-  const slidesHtml = pages.map((p) => {
-    const bg = p?.backgroundColor || '#ffffff';
-    const elements = (p?.elements || []) as any[];
-    const innerHtml = elements.map((el) => renderElement(el)).join('');
-    return `<div class="h5-slide" style="width:${canvasWidth}px;height:${canvasHeight}px;background:${bg};position:relative;flex-shrink:0;">${innerHtml}</div>`;
-  }).join('\n');
+  const slidesHtml = pages
+    .map((p) => {
+      const bg = p?.backgroundColor || '#ffffff';
+      const elements = (p?.elements || []) as any[];
+      const innerHtml = elements.map((el) => renderElement(el)).join('');
+      return `<div class="h5-slide" style="width:${canvasWidth}px;height:${canvasHeight}px;background:${bg};position:relative;flex-shrink:0;">${innerHtml}</div>`;
+    })
+    .join('\n');
 
   return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -262,9 +270,13 @@ body.h5-mobile .h5-nav-left, body.h5-mobile .h5-nav-right { display: none; }
       <div class="h5-track" id="track">
 ${slidesHtml}
       </div>
-      ${totalPages > 1 ? `
+      ${
+        totalPages > 1
+          ? `
       <button class="h5-nav-left" id="navLeft"><i class="bi bi-chevron-left"></i></button>
-      <button class="h5-nav-right" id="navRight"><i class="bi bi-chevron-right"></i></button>` : ''}
+      <button class="h5-nav-right" id="navRight"><i class="bi bi-chevron-right"></i></button>`
+          : ''
+      }
       <div class="h5-indicator-wrap" id="indicatorWrap"${totalPages < 2 ? ' style="display:none;"' : ''}>
         <div class="h5-dots" id="dots"></div>
         <span class="h5-page-num" id="pageNum">1 / ${totalPages}</span>
@@ -474,7 +486,9 @@ ${slidesHtml}
 
 export default defineEventHandler(async (event: any) => {
   // 支持 /h5/:name/:id 和 /h5/:id 两种路由
-  const parts = (event.node?.req?.url || '').split('/').filter((x: string) => x && x !== 'h5');
+  const parts = (event.node?.req?.url || '')
+    .split('/')
+    .filter((x: string) => x && x !== 'h5');
   let id = parts[parts.length - 1] || '';
   id = id.split('?')[0];
 
@@ -485,10 +499,10 @@ export default defineEventHandler(async (event: any) => {
     return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>未找到</title><style>body{background:#000;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center;}</style></head><body><div><h2>请柬链接已失效</h2><p style="color:#888;font-size:14px;">请从编辑器重新生成分享链接</p></div></body></html>`;
   }
 
-  const displayName = decodeURIComponent((event.context?.params?.name as string) || record.name || '请柬');
+  const displayName = decodeURIComponent(
+    (event.context?.params?.name as string) || record.name || '请柬',
+  );
   event.node.res.setHeader('Content-Type', 'text/html; charset=utf-8');
   event.node.res.setHeader('Cache-Control', 'no-cache');
   return buildHtml(record, displayName);
 });
-
-

@@ -1,12 +1,15 @@
 import { createApp } from 'vue';
-import { createPinia } from 'pinia';
+
 import '@vben/styles';
-import './styles/main.css';
-import './styles/theme.css';
-import './styles/animations.css';
+
+import { createPinia } from 'pinia';
 
 import App from './app.vue';
 import { router } from './router';
+
+import './styles/main.css';
+import './styles/theme.css';
+import './styles/animations.css';
 
 async function bootstrap() {
   const app = createApp(App);

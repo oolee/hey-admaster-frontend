@@ -54,7 +54,6 @@ async function bootstrap(namespace: string) {
   // 初始化时区HANDLER
   initTimezone();
 
-
   // 安装权限指令
   registerAccessDirective(app);
 

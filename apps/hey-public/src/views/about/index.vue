@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import SectionTitle from '#/components/ui/SectionTitle.vue'
-import GlassCard from '#/components/ui/GlassCard.vue'
+import GlassCard from '#/components/ui/GlassCard.vue';
+import SectionTitle from '#/components/ui/SectionTitle.vue';
 
 const stats = [
   { value: '300+', label: '服务客户' },
   { value: '5000+', label: 'AI生成作品' },
   { value: '98%', label: '客户满意度' },
   { value: '8年', label: '行业经验' },
-]
+];
 
 const milestones = [
   { year: '2018', event: '创立于云南曲靖陆良县，主营广告设计、制作、安装' },
@@ -16,7 +16,7 @@ const milestones = [
   { year: '2024', event: '服务客户突破300家，业务覆盖陆良全域' },
   { year: '2026', event: '正式接入AI技术，开启智慧广告新篇章' },
   { year: '未来', event: '打造县域广告AI服务平台，让科技服务本地商业' },
-]
+];
 </script>
 
 <template>
@@ -88,7 +88,11 @@ const milestones = [
           align="center"
         />
         <div class="milestones">
-          <div v-for="(m, i) in milestones" :key="m.year" class="milestone-item">
+          <div
+            v-for="(m, i) in milestones"
+            :key="m.year"
+            class="milestone-item"
+          >
             <div class="milestone-dot">
               <div class="milestone-inner"></div>
             </div>
@@ -159,17 +163,17 @@ const milestones = [
 }
 
 .intro-heading {
+  margin: 0 0 20px;
   font-size: 1.5rem;
   font-weight: 700;
-  color: #e0e0f0;
-  margin: 0 0 20px 0;
+  color: var(--color-text-primary);
 }
 
 .intro-paragraph {
-  color: #8888a0;
+  margin: 0 0 16px;
   font-size: 0.95rem;
   line-height: 1.8;
-  margin: 0 0 16px 0;
+  color: var(--color-text-secondary);
 }
 
 .intro-paragraph:last-child {
@@ -191,26 +195,26 @@ const milestones = [
 
 .service-tag {
   padding: 10px 20px;
-  background: rgba(200, 255, 0, 0.08);
-  border: 1px solid rgba(200, 255, 0, 0.2);
-  border-radius: 9999px;
-  color: #C8FF00;
   font-size: 0.9rem;
   font-weight: 500;
+  color: var(--color-neon);
+  background: var(--color-neon-glow);
+  border: 1px solid var(--color-neon-dim);
+  border-radius: 9999px;
   transition: all 0.3s ease;
 }
 
 .service-tag:hover {
-  background: rgba(200, 255, 0, 0.15);
-  border-color: rgba(200, 255, 0, 0.4);
+  background: var(--color-neon-dim);
+  border-color: var(--color-neon-dim);
   transform: translateY(-2px);
 }
 
 /* Stats Section */
 .stats-section {
-  background: #0a0a0f;
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  background: var(--color-bg-primary);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .stats-grid {
@@ -226,34 +230,34 @@ const milestones = [
 }
 
 .stat-item {
-  text-align: center;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  text-align: center;
 }
 
 .stat-number {
+  font-family: var(--font-mono);
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 800;
-  font-family: var(--font-mono);
 }
 
 .stat-label {
   font-size: 0.85rem;
-  color: #8888a0;
+  color: var(--color-text-secondary);
 }
 
 /* Milestones */
 .milestones {
+  position: relative;
   max-width: 600px;
   margin: 0 auto;
-  position: relative;
 }
 
 .milestone-item {
   position: relative;
-  padding-left: 36px;
   padding-bottom: 32px;
+  padding-left: 36px;
 }
 
 .milestone-item:last-child {
@@ -262,31 +266,31 @@ const milestones = [
 
 .milestone-dot {
   position: absolute;
-  left: 0;
   top: 4px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 2px solid rgba(200, 255, 0, 0.4);
+  left: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-neon-dim);
+  border-radius: 50%;
 }
 
 .milestone-inner {
   width: 6px;
   height: 6px;
+  background: var(--color-neon);
   border-radius: 50%;
-  background: #C8FF00;
 }
 
 .milestone-line {
   position: absolute;
-  left: 7px;
   top: 24px;
   bottom: 0;
+  left: 7px;
   width: 2px;
-  background: rgba(200, 255, 0, 0.15);
+  background: var(--color-neon-dim);
 }
 
 .milestone-content {
@@ -296,15 +300,15 @@ const milestones = [
 .milestone-year {
   font-size: 0.8rem;
   font-weight: 700;
-  color: #C8FF00;
+  color: var(--color-neon);
   letter-spacing: 0.05em;
 }
 
 .milestone-event {
-  color: #8888a0;
+  margin: 4px 0 0;
   font-size: 0.9rem;
-  margin: 4px 0 0 0;
   line-height: 1.5;
+  color: var(--color-text-secondary);
 }
 
 /* Contact Section */
@@ -332,16 +336,16 @@ const milestones = [
 
 .contact-label {
   font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-neon);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #C8FF00;
   opacity: 0.6;
-  font-weight: 600;
 }
 
 .contact-value {
   font-size: 0.95rem;
-  color: #cccce0;
   line-height: 1.5;
+  color: var(--color-text-primary);
 }
 </style>

@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import AppHeader from './AppHeader.vue'
-import AppFooter from './AppFooter.vue'
+import AppFooter from './AppFooter.vue';
+import AppHeader from './AppHeader.vue';
 </script>
 
 <template>
   <div class="app-layout">
     <AppHeader />
     <main class="app-main">
-      <slot />
+      <slot></slot>
     </main>
     <AppFooter />
   </div>

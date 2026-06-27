@@ -1,23 +1,21 @@
 <script setup lang="ts">
-import type { PricingPackage } from '#/types/order'
-import GlassCard from '#/components/ui/GlassCard.vue'
-import NeonButton from '#/components/ui/NeonButton.vue'
+import type { PricingPackage } from '#/types/order';
+
+import GlassCard from '#/components/ui/GlassCard.vue';
+import NeonButton from '#/components/ui/NeonButton.vue';
 
 defineProps<{
-  packages: PricingPackage[]
-}>()
+  packages: PricingPackage[];
+}>();
 
 const emit = defineEmits<{
-  select: [pkg: PricingPackage]
-}>()
+  select: [pkg: PricingPackage];
+}>();
 </script>
 
 <template>
   <div class="package-selector">
-    <div
-      v-if="packages.length === 0"
-      class="selector-empty"
-    >
+    <div v-if="packages.length === 0" class="selector-empty">
       <span class="empty-text">暂无可用套餐</span>
     </div>
 
@@ -31,11 +29,15 @@ const emit = defineEmits<{
         <div class="package-card">
           <div class="package-header">
             <h3 class="package-name">{{ pkg.name }}</h3>
-            <p v-if="pkg.description" class="package-desc">{{ pkg.description }}</p>
+            <p v-if="pkg.description" class="package-desc">
+              {{ pkg.description }}
+            </p>
           </div>
 
           <div class="package-price">
-            <span class="price-currency">{{ pkg.currency === 'CNY' ? '¥' : '$' }}</span>
+            <span class="price-currency">{{
+              pkg.currency === 'CNY' ? '¥' : '$'
+            }}</span>
             <span class="price-amount">{{ pkg.price.toLocaleString() }}</span>
           </div>
 
@@ -70,13 +72,13 @@ const emit = defineEmits<{
 }
 
 .selector-empty {
-  text-align: center;
   padding: 40px 0;
+  text-align: center;
 }
 
 .empty-text {
-  color: #555570;
   font-size: 0.9rem;
+  color: var(--color-text-muted);
 }
 
 .package-grid {
@@ -98,8 +100,8 @@ const emit = defineEmits<{
 }
 
 .package-highlighted {
-  border-color: rgba(200, 255, 0, 0.2) !important;
-  box-shadow: 0 0 40px rgba(200, 255, 0, 0.08);
+  border-color: var(--color-neon-dim) !important;
+  box-shadow: 0 0 40px var(--color-neon-glow);
 }
 
 .package-header {
@@ -107,68 +109,68 @@ const emit = defineEmits<{
 }
 
 .package-name {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #f0f0f5;
   margin: 0 0 8px;
   font-family: var(--font-sans);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
 }
 
 .package-desc {
-  font-size: 0.85rem;
-  color: #8888a0;
   margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
 }
 
 .package-price {
-  text-align: center;
   padding: 16px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: center;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .price-currency {
   font-size: 1.2rem;
-  color: #C8FF00;
   font-weight: 600;
-  vertical-align: top;
   line-height: 1.8;
+  vertical-align: top;
+  color: var(--color-neon);
 }
 
 .price-amount {
+  font-family: var(--font-mono);
   font-size: 2.5rem;
   font-weight: 800;
-  color: #C8FF00;
-  font-family: var(--font-mono);
+  color: var(--color-neon);
   letter-spacing: -0.02em;
 }
 
 .package-features {
-  list-style: none;
-  padding: 0;
-  margin: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
 }
 
 .package-feature-item {
-  font-size: 0.9rem;
-  color: #8888a0;
   display: flex;
-  align-items: center;
   gap: 10px;
+  align-items: center;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
 }
 
 .feature-check {
-  color: #C8FF00;
-  font-weight: 700;
   flex-shrink: 0;
+  font-weight: 700;
+  color: var(--color-neon);
 }
 
 .package-select-btn {
-  margin-top: auto;
-  width: 100%;
   justify-content: center;
+  width: 100%;
+  margin-top: auto;
 }
 </style>

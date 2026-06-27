@@ -90,8 +90,7 @@ export const mockPortfolioItems: PortfolioItem[] = [
     id: 5,
     title: '云栖茶语品牌重塑',
     category: 'brand',
-    description:
-      '传统茶品牌年轻化升级，从包装设计到线上线下全渠道视觉统一。',
+    description: '传统茶品牌年轻化升级，从包装设计到线上线下全渠道视觉统一。',
     imageUrl: 'https://picsum.photos/seed/5/800/600',
     tags: ['品牌升级', '包装设计', '茶文化'],
     client: '云栖茶语文化有限公司',

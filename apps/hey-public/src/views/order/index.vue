@@ -1,61 +1,63 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useOrderFlow } from '#/composables/useOrderFlow'
-import { fetchPricing } from '#/utils/api'
-import PackageSelector from '#/features/order/PackageSelector.vue'
-import OrderForm from '#/features/order/OrderForm.vue'
-import OrderSummary from '#/features/order/OrderSummary.vue'
-import SectionTitle from '#/components/ui/SectionTitle.vue'
-import type { PricingPackage, OrderRequest } from '#/types/order'
+import type { OrderRequest, PricingPackage } from '#/types/order';
 
-const { placeOrder, isLoading, error, currentOrder } = useOrderFlow()
+import { onMounted, ref } from 'vue';
 
-const pricingPackages = ref<PricingPackage[]>([])
-const pricingLoading = ref(false)
-const pricingError = ref<string | null>(null)
+import SectionTitle from '#/components/ui/SectionTitle.vue';
+import { useOrderFlow } from '#/composables/useOrderFlow';
+import OrderForm from '#/features/order/OrderForm.vue';
+import OrderSummary from '#/features/order/OrderSummary.vue';
+import PackageSelector from '#/features/order/PackageSelector.vue';
+import { fetchPricing } from '#/utils/api';
 
-const selectedPackage = ref<PricingPackage | null>(null)
-const orderStep = ref<'select' | 'form' | 'summary'>('select')
+const { placeOrder, isLoading, error, currentOrder } = useOrderFlow();
+
+const pricingPackages = ref<PricingPackage[]>([]);
+const pricingLoading = ref(false);
+const pricingError = ref<null | string>(null);
+
+const selectedPackage = ref<null | PricingPackage>(null);
+const orderStep = ref<'form' | 'select' | 'summary'>('select');
 
 onMounted(async () => {
-  pricingLoading.value = true
+  pricingLoading.value = true;
   try {
-    const res = await fetchPricing()
-    pricingPackages.value = res.data
-  } catch (e) {
-    pricingError.value = (e as Error).message
+    const res = await fetchPricing();
+    pricingPackages.value = res.data;
+  } catch (error) {
+    pricingError.value = (error as Error).message;
   } finally {
-    pricingLoading.value = false
+    pricingLoading.value = false;
   }
-})
+});
 
 function handlePackageSelect(pkg: PricingPackage) {
-  selectedPackage.value = pkg
-  orderStep.value = 'form'
+  selectedPackage.value = pkg;
+  orderStep.value = 'form';
 }
 
 function handleBackToSelect() {
-  selectedPackage.value = null
-  orderStep.value = 'select'
+  selectedPackage.value = null;
+  orderStep.value = 'select';
 }
 
 async function handleOrderSubmit(formData: Omit<OrderRequest, 'packageId'>) {
-  if (!selectedPackage.value) return
+  if (!selectedPackage.value) return;
   try {
     const orderData: OrderRequest = {
       packageId: selectedPackage.value.id,
       ...formData,
-    }
-    await placeOrder(orderData)
-    orderStep.value = 'summary'
+    };
+    await placeOrder(orderData);
+    orderStep.value = 'summary';
   } catch {
     // error is handled by useOrderFlow
   }
 }
 
 function handleNewOrder() {
-  selectedPackage.value = null
-  orderStep.value = 'select'
+  selectedPackage.value = null;
+  orderStep.value = 'select';
 }
 </script>
 
@@ -75,16 +77,34 @@ function handleNewOrder() {
     <section class="section step-section">
       <div class="container-custom">
         <div class="step-indicator">
-          <div class="step" :class="{ active: orderStep === 'select', done: orderStep !== 'select' }">
+          <div
+            class="step"
+            :class="{
+              active: orderStep === 'select',
+              done: orderStep !== 'select',
+            }"
+          >
             <div class="step-number">1</div>
             <span class="step-label">选择套餐</span>
           </div>
-          <div class="step-line" :class="{ done: orderStep !== 'select' }"></div>
-          <div class="step" :class="{ active: orderStep === 'form', done: orderStep === 'summary' }">
+          <div
+            class="step-line"
+            :class="{ done: orderStep !== 'select' }"
+          ></div>
+          <div
+            class="step"
+            :class="{
+              active: orderStep === 'form',
+              done: orderStep === 'summary',
+            }"
+          >
             <div class="step-number">2</div>
             <span class="step-label">填写需求</span>
           </div>
-          <div class="step-line" :class="{ done: orderStep === 'summary' }"></div>
+          <div
+            class="step-line"
+            :class="{ done: orderStep === 'summary' }"
+          ></div>
           <div class="step" :class="{ active: orderStep === 'summary' }">
             <div class="step-number">3</div>
             <span class="step-label">确认下单</span>
@@ -122,7 +142,8 @@ function handleNewOrder() {
       <div class="container-custom">
         <div class="selected-package-badge">
           已选套餐：<span class="text-neon">{{ selectedPackage.name }}</span>
-          &nbsp;&mdash;&nbsp;{{ selectedPackage.currency }} {{ selectedPackage.price }}
+          &nbsp;&mdash;&nbsp;{{ selectedPackage.currency }}
+          {{ selectedPackage.price }}
           <button class="badge-change" @click="handleBackToSelect">更换</button>
         </div>
         <OrderForm
@@ -137,10 +158,7 @@ function handleNewOrder() {
     <!-- Step 3: Order Summary -->
     <section v-if="orderStep === 'summary' && currentOrder" class="section">
       <div class="container-custom">
-        <OrderSummary
-          :order="currentOrder"
-          :package="selectedPackage!"
-        />
+        <OrderSummary :order="currentOrder" :package="selectedPackage!" />
         <div class="summary-actions">
           <button class="btn-neon" @click="handleNewOrder">创建新订单</button>
           <RouterLink to="/" class="btn-neon-outline">返回首页</RouterLink>
@@ -163,9 +181,9 @@ function handleNewOrder() {
 
 .step-indicator {
   display: flex;
+  gap: 0;
   align-items: center;
   justify-content: center;
-  gap: 0;
   padding: 24px;
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
@@ -174,8 +192,8 @@ function handleNewOrder() {
 
 .step {
   display: flex;
-  align-items: center;
   gap: 10px;
+  align-items: center;
   opacity: 0.4;
   transition: opacity 0.3s ease;
 }
@@ -189,77 +207,77 @@ function handleNewOrder() {
 }
 
 .step-number {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 2px solid #444460;
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
+  width: 32px;
+  height: 32px;
   font-size: 0.85rem;
   font-weight: 700;
-  color: #8888a0;
+  color: var(--color-text-secondary);
+  border: 2px solid var(--color-text-muted);
+  border-radius: 50%;
   transition: all 0.3s ease;
-  flex-shrink: 0;
 }
 
 .step.active .step-number {
-  border-color: #C8FF00;
-  color: #C8FF00;
-  background: rgba(200, 255, 0, 0.1);
+  color: var(--color-neon);
+  background: var(--color-neon-glow);
+  border-color: var(--color-neon);
 }
 
 .step.done .step-number {
-  border-color: #C8FF00;
-  background: rgba(200, 255, 0, 0.15);
-  color: #C8FF00;
+  color: var(--color-neon);
+  background: var(--color-neon-dim);
+  border-color: var(--color-neon);
 }
 
 .step-label {
   font-size: 0.85rem;
-  color: #8888a0;
+  color: var(--color-text-secondary);
   white-space: nowrap;
 }
 
 .step.active .step-label {
-  color: #e0e0f0;
+  color: var(--color-text-primary);
 }
 
 .step-line {
   flex: 1;
-  height: 2px;
-  background: #444460;
-  margin: 0 16px;
   min-width: 40px;
+  height: 2px;
+  margin: 0 16px;
+  background: var(--color-text-muted);
   transition: background 0.3s ease;
 }
 
 .step-line.done {
-  background: rgba(200, 255, 0, 0.4);
+  background: var(--color-neon-dim);
 }
 
 /* Selected Package Badge */
 .selected-package-badge {
-  text-align: center;
   padding: 12px 20px;
-  background: var(--glass-bg);
-  border: 1px solid rgba(200, 255, 0, 0.15);
-  border-radius: 12px;
-  color: #8888a0;
-  font-size: 0.9rem;
   margin-bottom: 28px;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  text-align: center;
+  background: var(--glass-bg);
+  border: 1px solid var(--color-neon-dim);
+  border-radius: 12px;
 }
 
 .badge-change {
-  background: none;
-  border: none;
-  color: #C8FF00;
-  cursor: pointer;
-  font-size: 0.85rem;
-  text-decoration: underline;
-  font-family: inherit;
   padding: 0;
   margin-left: 8px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--color-neon);
+  text-decoration: underline;
+  cursor: pointer;
+  background: none;
+  border: none;
 }
 
 .badge-change:hover {
@@ -288,43 +306,49 @@ function handleNewOrder() {
 }
 
 @keyframes skeleton-pulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.6; }
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
 }
 
 .error-state {
-  text-align: center;
   padding: 48px 24px;
+  text-align: center;
 }
 
 .error-text {
-  color: #ff6666;
   margin-bottom: 20px;
+  color: #f66;
 }
 
 /* Summary Actions */
 .summary-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
   justify-content: center;
   margin-top: 40px;
-  flex-wrap: wrap;
 }
 
 .btn-neon-outline {
   padding: 12px 28px;
-  border-radius: 100px;
-  border: 1px solid var(--glass-border);
-  background: transparent;
-  color: #8888a0;
-  cursor: pointer;
-  text-decoration: none;
   font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: 100px;
   transition: all 0.3s ease;
 }
 
 .btn-neon-outline:hover {
-  border-color: rgba(200, 255, 0, 0.3);
-  color: #cccce0;
+  color: var(--color-text-primary);
+  border-color: var(--color-neon-dim);
 }
 </style>

@@ -1,24 +1,23 @@
 <script setup lang="ts">
-import { TresCanvas } from '@tresjs/core'
-import { Color, BufferGeometry, BufferAttribute } from 'three'
-import { onMounted, onUnmounted } from 'vue'
+import { TresCanvas } from '@tresjs/core';
+import { BufferAttribute, BufferGeometry, Color } from 'three';
 
-const starCount = 200
-const positions = new Float32Array(starCount * 3)
+const starCount = 200;
+const positions = new Float32Array(starCount * 3);
 
 for (let i = 0; i < starCount; i++) {
-  positions[i * 3] = (Math.random() - 0.5) * 30
-  positions[i * 3 + 1] = (Math.random() - 0.5) * 20
-  positions[i * 3 + 2] = (Math.random() - 0.5) * 15 - 5
+  positions[i * 3] = (Math.random() - 0.5) * 30;
+  positions[i * 3 + 1] = (Math.random() - 0.5) * 20;
+  positions[i * 3 + 2] = (Math.random() - 0.5) * 15 - 5;
 }
 
-const geometry = new BufferGeometry()
-geometry.setAttribute('position', new BufferAttribute(positions, 3))
+const geometry = new BufferGeometry();
+geometry.setAttribute('position', new BufferAttribute(positions, 3));
 
 const gl = {
   clearColor: '#0a0a0f',
   alpha: false,
-}
+};
 </script>
 
 <template>

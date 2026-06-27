@@ -3,26 +3,27 @@ import { getPublish } from '../../utils/publish-store';
 // ========== 辅助函数 ==========
 
 function escapeHtml(s: string): string {
-  if (s == null) return '';
+  if (s === null) return '';
   return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
 function cssColor(bg: string | undefined, opacity: number | undefined): string {
   if (!bg || bg === 'transparent') return 'transparent';
   if (bg.startsWith('rgb(') || bg.startsWith('rgba(')) return bg;
-  const op = opacity == null ? 1 : opacity;
+  const op = opacity === null ? 1 : opacity;
   if (bg.startsWith('#') && (bg.length === 7 || bg.length === 4)) {
-    const hex = bg.length === 4
-      ? bg.slice(1).split('').map((c) => c + c).join('')
-      : bg.slice(1);
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 4), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
+    const hex =
+      bg.length === 4
+        ? [...bg.slice(1)].map((c) => c + c).join('')
+        : bg.slice(1);
+    const r = Number.parseInt(hex.slice(0, 2), 16);
+    const g = Number.parseInt(hex.slice(2, 4), 16);
+    const b = Number.parseInt(hex.slice(4, 6), 16);
     return `rgba(${r}, ${g}, ${b}, ${op})`;
   }
   return bg;
@@ -44,7 +45,7 @@ function defaultAnimType(type: string): string {
 // ========== 元素渲染 ==========
 
 /** 递归渲染组合元素及其子元素 */
-function renderGroupElement(el: any, idx: number): string {
+function renderGroupElement(el: any): string {
   const x = el.x ?? 0;
   const y = el.y ?? 0;
   const w = el.width ?? 100;
@@ -60,9 +61,9 @@ function renderGroupElement(el: any, idx: number): string {
     `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;` +
     `transform:rotate(${rot}deg);z-index:${z};` +
     `background-color:${cssColor(bg, bgOpacity)};` +
-    `overflow:visible;` +
-    (borderR ? `border-radius:${borderR}px;` : '') +
-    (visible ? '' : 'visibility:hidden;');
+    `overflow:visible;${
+      borderR ? `border-radius:${borderR}px;` : ''
+    }${visible ? '' : 'visibility:hidden;'}`;
 
   // 组背景/边框 overlay
   const gBg = el.groupBackgroundColor || 'transparent';
@@ -80,7 +81,9 @@ function renderGroupElement(el: any, idx: number): string {
 
   // 递归渲染子元素（子元素坐标相对于组）
   const children = (el.children || []) as any[];
-  const childrenHtml = children.map((child, i) => renderElement(child, i)).join('');
+  const childrenHtml = children
+    .map((child, i) => renderElement(child, i))
+    .join('');
 
   return `<div class="h5-el" style="${outer}">${overlay}${childrenHtml}</div>`;
 }
@@ -90,7 +93,7 @@ function renderElement(el: any, idx: number): string {
 
   // 组合元素：递归渲染子元素
   if (el.type === 'group') {
-    return renderGroupElement(el, idx);
+    return renderGroupElement(el);
   }
 
   const x = el.x ?? 0;
@@ -111,9 +114,9 @@ function renderElement(el: any, idx: number): string {
     `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;` +
     `transform:rotate(${rot}deg);z-index:${z};` +
     `background-color:${cssColor(bg, bgOpacity)};` +
-    `overflow:hidden;` +
-    (borderR ? `border-radius:${borderR}px;` : '') +
-    (visible ? '' : 'visibility:hidden;');
+    `overflow:hidden;${
+      borderR ? `border-radius:${borderR}px;` : ''
+    }${visible ? '' : 'visibility:hidden;'}`;
 
   const animAttr = `data-anim="${animType}" data-anim-dur="${animDur}" data-anim-idx="${idx}"`;
   const animClass = 'h5-el';
@@ -134,52 +137,78 @@ function renderElement(el: any, idx: number): string {
     const imgOp = el.imageOpacity ?? 1;
     const imgRadius = el.imageRadius ?? 0;
     if (el.imageUrl) {
-      var hasCrop = !!(el.cropW && el.cropW > 0 && el.cropW < 0.99);
-      var cropW = el.cropW || 1;
-      var cropH = (el.cropH && el.cropH > 0) ? el.cropH : cropW;
-      var cropX = el.cropX || 0;
-      var cropY = el.cropY || 0;
-      var imgStyle = "";
+      const hasCrop = !!(el.cropW && el.cropW > 0 && el.cropW < 0.99);
+      const cropW = el.cropW || 1;
+      const cropH = el.cropH && el.cropH > 0 ? el.cropH : cropW;
+      const cropX = el.cropX || 0;
+      const cropY = el.cropY || 0;
+      let imgStyle;
       if (hasCrop) {
-        var fullW = 100 / cropW;
-        var fullH = 100 / cropH;
-        var cleft = -(cropX) / cropW * 100;
-        var ctop = -(cropY) / cropH * 100;
-        imgStyle = "position:absolute;left:" + cleft.toFixed(4) + "%;top:" + ctop.toFixed(4) + "%;width:" + fullW.toFixed(4) + "%;height:" + fullH.toFixed(4) + "%;display:block;opacity:" + imgOp + ";";
+        const fullW = 100 / cropW;
+        const fullH = 100 / cropH;
+        const cleft = (-cropX / cropW) * 100;
+        const ctop = (-cropY / cropH) * 100;
+        imgStyle = `position:absolute;left:${cleft.toFixed(
+          4,
+        )}%;top:${ctop.toFixed(4)}%;width:${fullW.toFixed(
+          4,
+        )}%;height:${fullH.toFixed(4)}%;display:block;opacity:${imgOp};`;
       } else {
-        imgStyle = "width:100%;height:100%;object-fit:" + fit + ";opacity:" + imgOp + ";display:block;";
+        imgStyle = `width:100%;height:100%;object-fit:${fit};opacity:${
+          imgOp
+        };display:block;`;
       }
       // image filter & flip on the <img> itself
-      if (imgRadius) imgStyle += "border-radius:" + imgRadius + "px;";
-      if (el.imageFilter && el.imageFilter !== "original") {
-        if (el.imageFilter === "grayscale") imgStyle += "filter:grayscale(1);";
-        else if (el.imageFilter === "sepia") imgStyle += "filter:sepia(0.8);";
-        else if (el.imageFilter === "blur") imgStyle += "filter:blur(2px);";
-        else if (el.imageFilter === "brightness") imgStyle += "filter:brightness(1.3);";
-        else if (el.imageFilter === "contrast") imgStyle += "filter:contrast(1.3);";
+      if (imgRadius) imgStyle += `border-radius:${imgRadius}px;`;
+      if (el.imageFilter && el.imageFilter !== 'original') {
+        if (el.imageFilter === 'grayscale') imgStyle += 'filter:grayscale(1);';
+        else if (el.imageFilter === 'sepia') imgStyle += 'filter:sepia(0.8);';
+        else if (el.imageFilter === 'blur') imgStyle += 'filter:blur(2px);';
+        else if (el.imageFilter === 'brightness')
+          imgStyle += 'filter:brightness(1.3);';
+        else if (el.imageFilter === 'contrast')
+          imgStyle += 'filter:contrast(1.3);';
       }
       if (el.flip && (el.flip.horizontal || el.flip.vertical)) {
-        var sx = el.flip.horizontal ? -1 : 1;
-        var sy = el.flip.vertical ? -1 : 1;
-        imgStyle += "transform:scale(" + sx + "," + sy + ");";
+        const sx = el.flip.horizontal ? -1 : 1;
+        const sy = el.flip.vertical ? -1 : 1;
+        imgStyle += `transform:scale(${sx},${sy});`;
       }
       // shape crop (border-radius / clip-path) applied to the CONTAINER,
       // not the scaled-up image, so it correctly masks the crop region
-      var innerExtra = hasCrop ? "overflow:hidden;position:relative;" : "";
-      var innerShape = "";
+      const innerExtra = hasCrop ? 'overflow:hidden;position:relative;' : '';
+      let innerShape = '';
       if (el.imageCrop && el.imageCrop !== 'none') {
-        if (el.imageCrop === "circle" || el.imageCrop === "ellipse") innerShape += "border-radius:50%;overflow:hidden;";
-        else if (el.imageCrop === "rounded") innerShape += "border-radius:12px;overflow:hidden;";
-        else if (el.imageCrop === "flower") innerShape += "border-radius:40% 60% 30% 70% / 60% 40% 70% 30%;overflow:hidden;";
-        else if (el.imageCrop === "triangle") innerShape += "clip-path:polygon(50% 0%, 0% 100%, 100% 100%);";
-        else if (el.imageCrop === "hexagon") innerShape += "clip-path:polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);";
-        else if (el.imageCrop === "pentagon") innerShape += "clip-path:polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);";
-        else if (el.imageCrop === "diamond") innerShape += "clip-path:polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);";
-        else if (el.imageCrop === "star") innerShape += "clip-path:polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);";
-        else if (el.imageCrop === "heart") innerShape += "clip-path:path('M 50,30 A 20,20 0 0,1 90,30 A 20,20 0 0,1 50,85 A 20,20 0 0,1 10,30 A 20,20 0 0,1 50,30 Z');";
-        else if (el.imageCrop === "square") innerShape += "border-radius:0;overflow:hidden;";
-        else if (el.imageCrop === "rectangle") innerShape += "border-radius:0;overflow:hidden;";
-        else if (el.imageCrop === "portrait") innerShape += "border-radius:0;overflow:hidden;";
+        if (el.imageCrop === 'circle' || el.imageCrop === 'ellipse')
+          innerShape += 'border-radius:50%;overflow:hidden;';
+        else if (el.imageCrop === 'rounded')
+          innerShape += 'border-radius:12px;overflow:hidden;';
+        else if (el.imageCrop === 'flower')
+          innerShape +=
+            'border-radius:40% 60% 30% 70% / 60% 40% 70% 30%;overflow:hidden;';
+        else if (el.imageCrop === 'triangle')
+          innerShape += 'clip-path:polygon(50% 0%, 0% 100%, 100% 100%);';
+        else if (el.imageCrop === 'hexagon')
+          innerShape +=
+            'clip-path:polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);';
+        else if (el.imageCrop === 'pentagon')
+          innerShape +=
+            'clip-path:polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);';
+        else if (el.imageCrop === 'diamond')
+          innerShape +=
+            'clip-path:polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);';
+        else if (el.imageCrop === 'star')
+          innerShape +=
+            'clip-path:polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);';
+        else if (el.imageCrop === 'heart')
+          innerShape +=
+            "clip-path:path('M 50,30 A 20,20 0 0,1 90,30 A 20,20 0 0,1 50,85 A 20,20 0 0,1 10,30 A 20,20 0 0,1 50,30 Z');";
+        else if (el.imageCrop === 'square')
+          innerShape += 'border-radius:0;overflow:hidden;';
+        else if (el.imageCrop === 'rectangle')
+          innerShape += 'border-radius:0;overflow:hidden;';
+        else if (el.imageCrop === 'portrait')
+          innerShape += 'border-radius:0;overflow:hidden;';
       }
       return `<div class="${animClass} h5-el-image" style="${outer}" ${animAttr}><div class="inner" style="width:100%;height:100%;${innerExtra}${innerShape}"><img src="${escapeHtml(el.imageUrl)}" style="${imgStyle}" alt=""></div></div>`;
     }
@@ -226,15 +255,18 @@ function renderElement(el: any, idx: number): string {
   return '';
 }
 
-function renderPage(page: any, canvasWidth: number, canvasHeight: number, pageIdx: number): string {
+function renderPage(
+  page: any,
+  canvasWidth: number,
+  canvasHeight: number,
+  pageIdx: number,
+): string {
   const bg = page?.backgroundColor || '#ffffff';
   const elements = (page?.elements || []) as any[];
   const innerHtml = elements.map((el, i) => renderElement(el, i)).join('');
-  return (
-    `<div class="h5-slide" data-page="${pageIdx}" style="width:${canvasWidth}px;height:${canvasHeight}px;background:${bg};position:relative;flex-shrink:0;">` +
-    innerHtml +
-    `</div>`
-  );
+  return `<div class="h5-slide" data-page="${pageIdx}" style="width:${canvasWidth}px;height:${canvasHeight}px;background:${bg};position:relative;flex-shrink:0;">${
+    innerHtml
+  }</div>`;
 }
 
 // ========== HTML 构建 ==========
@@ -247,7 +279,9 @@ function buildHtml(data: any, name: string): string {
   const totalPages = pages.length;
   const displayName = escapeHtml(name || '请柬');
 
-  const slidesHtml = pages.map((p, i) => renderPage(p, canvasWidth, canvasHeight, i)).join('\n');
+  const slidesHtml = pages
+    .map((p, i) => renderPage(p, canvasWidth, canvasHeight, i))
+    .join('\n');
 
   return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -371,9 +405,13 @@ body.h5-mobile .h5-nav-left, body.h5-mobile .h5-nav-right { display: none; }
       <div class="h5-track" id="track">
 ${slidesHtml}
       </div>
-      ${totalPages > 1 ? `
+      ${
+        totalPages > 1
+          ? `
       <button class="h5-nav-left" id="navLeft" aria-label="上一页"><i class="bi bi-chevron-left"></i></button>
-      <button class="h5-nav-right" id="navRight" aria-label="下一页"><i class="bi bi-chevron-right"></i></button>` : ''}
+      <button class="h5-nav-right" id="navRight" aria-label="下一页"><i class="bi bi-chevron-right"></i></button>`
+          : ''
+      }
       <div class="h5-indicator-wrap" id="indicatorWrap"${totalPages < 2 ? ' style="display:none;"' : ''}>
         <div class="h5-dots" id="dots"></div>
         <span class="h5-page-num" id="pageNum">1 / ${totalPages}</span>
@@ -614,7 +652,7 @@ ${slidesHtml}
 
 // ========== 路由处理器 ==========
 
-export default defineEventHandler((event) => {
+export default defineEventHandler((event: any) => {
   const id = (event.context.params?.id as string) || '';
 
   const record = getPublish(id);
@@ -629,8 +667,6 @@ export default defineEventHandler((event) => {
   event.node.res.setHeader('Cache-Control', 'no-cache');
   return buildHtml(record, displayName);
 });
-
-
-
-
-
+function defineEventHandler(_arg0: (event: any) => string) {
+  throw new Error('Function not implemented.');
+}

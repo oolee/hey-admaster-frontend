@@ -34,10 +34,10 @@ function mapSize(size?: string): string {
 }
 
 export async function submitTongyiTask(params: TongyiGenerateParams): Promise<{
+  error?: string;
+  isMock: boolean;
   success: boolean;
   taskId?: string;
-  isMock: boolean;
-  error?: string;
 }> {
   const apiKey = process.env.DASHSCOPE_API_KEY;
 
@@ -47,9 +47,9 @@ export async function submitTongyiTask(params: TongyiGenerateParams): Promise<{
 
   try {
     const response = await $fetch<{
-      output?: { task_id: string; task_status: string };
       code?: string;
       message?: string;
+      output?: { task_id: string; task_status: string };
     }>(`${DASHSCOPE_BASE}/services/aigc/image-generation/generation`, {
       method: 'POST',
       headers: {
@@ -76,11 +76,7 @@ export async function submitTongyiTask(params: TongyiGenerateParams): Promise<{
     });
 
     if (response.code) {
-      console.warn(
-        '通义万相任务提交失败:',
-        response.code,
-        response.message,
-      );
+      console.warn('通义万相任务提交失败:', response.code, response.message);
       return { success: false, isMock: false, error: response.message };
     }
 
@@ -110,9 +106,9 @@ export async function queryTongyiTask(
 
   try {
     const response = await $fetch<{
+      code?: string;
+      message?: string;
       output?: {
-        task_id: string;
-        task_status: string;
         choices?: Array<{
           message?: {
             content?: Array<{
@@ -121,9 +117,9 @@ export async function queryTongyiTask(
             }>;
           };
         }>;
+        task_id: string;
+        task_status: string;
       };
-      code?: string;
-      message?: string;
     }>(`${DASHSCOPE_BASE}/tasks/${taskId}`, {
       headers: {
         Authorization: `Bearer ${apiKey}`,

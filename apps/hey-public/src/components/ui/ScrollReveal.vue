@@ -1,24 +1,30 @@
 <script setup lang="ts">
-import { useScrollReveal } from '#/composables/useScrollReveal'
+import { useScrollReveal } from '#/composables/useScrollReveal';
 
-const props = withDefaults(defineProps<{
-  threshold?: number
-}>(), {
-  threshold: 0.15,
-})
+const props = withDefaults(
+  defineProps<{
+    threshold?: number;
+  }>(),
+  {
+    threshold: 0.15,
+  },
+);
 
-const { target, isRevealed } = useScrollReveal(props.threshold)
+const { target, isRevealed } = useScrollReveal(props.threshold);
 </script>
 
 <template>
   <div ref="target" class="scroll-reveal-section">
     <!-- 遮罩层 -->
     <Transition name="reveal-mask">
-      <div v-if="!isRevealed" class="scroll-reveal-mask" />
+      <div v-if="!isRevealed" class="scroll-reveal-mask"></div>
     </Transition>
     <!-- 内容 -->
-    <div class="scroll-reveal-content" :class="{ revealed: isRevealed, 'reveal-trigger': isRevealed }">
-      <slot />
+    <div
+      class="scroll-reveal-content"
+      :class="{ revealed: isRevealed, 'reveal-trigger': isRevealed }"
+    >
+      <slot></slot>
     </div>
   </div>
 </template>
@@ -33,14 +39,16 @@ const { target, isRevealed } = useScrollReveal(props.threshold)
   position: absolute;
   inset: 0;
   z-index: 10;
-  background: #0a0a0f;
   pointer-events: none;
+  background: var(--color-bg-primary);
 }
 
 .scroll-reveal-content {
   opacity: 0;
   transform: translateY(30px);
-  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+  transition:
+    opacity 0.5s ease-out,
+    transform 0.5s ease-out;
 }
 
 .scroll-reveal-content.revealed {

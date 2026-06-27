@@ -1,41 +1,48 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import type { PortfolioItem } from '#/types/portfolio'
-import type { ApiResponse } from '#/types/api'
-import { fetchPortfolio } from '#/utils/api'
-import PortfolioCard from './PortfolioCard.vue'
-import BentoGrid from '#/components/ui/BentoGrid.vue'
+import type { ApiResponse } from '#/types/api';
+import type { PortfolioItem } from '#/types/portfolio';
 
-const props = withDefaults(defineProps<{
-  limit?: number
-}>(), {
-  limit: undefined,
-})
+import { onMounted, ref } from 'vue';
 
-const items = ref<PortfolioItem[]>([])
-const loading = ref(true)
-const error = ref<string | null>(null)
+import BentoGrid from '#/components/ui/BentoGrid.vue';
+import { fetchPortfolio } from '#/utils/api';
+
+import PortfolioCard from './PortfolioCard.vue';
+
+const props = withDefaults(
+  defineProps<{
+    limit?: number;
+  }>(),
+  {
+    limit: undefined,
+  },
+);
+
+const items = ref<PortfolioItem[]>([]);
+const loading = ref(true);
+const error = ref<null | string>(null);
 
 onMounted(async () => {
   try {
-    const res = await fetchPortfolio()
-    const data = res.data as unknown as ApiResponse<PortfolioItem[]>
-    const allItems = Array.isArray(data) ? data : (data.data ?? [])
-    items.value = props.limit ? allItems.slice(0, props.limit) : allItems
-  } catch (e) {
-    error.value = '加载作品集失败，请稍后重试'
-    console.error('[PortfolioGrid] fetch error:', e)
+    const res = await fetchPortfolio();
+    const data = res.data as unknown as ApiResponse<PortfolioItem[]>;
+    const allItems = Array.isArray(data) ? data : (data.data ?? []);
+    items.value = props.limit ? allItems.slice(0, props.limit) : allItems;
+  } catch (error) {
+    const err = error as { value?: string };
+    err.value = '加载作品集失败，请稍后重试';
+    console.error('[PortfolioGrid] fetch error:', err);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-})
+});
 </script>
 
 <template>
   <div class="portfolio-grid">
     <!-- 加载状态 -->
     <div v-if="loading" class="grid-loading">
-      <div class="loading-spinner-ring" />
+      <div class="loading-spinner-ring"></div>
       <span class="loading-text">正在加载作品集...</span>
     </div>
 
@@ -69,46 +76,48 @@ onMounted(async () => {
 .grid-loading {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 16px;
+  align-items: center;
   padding: 60px 0;
 }
 
 .loading-spinner-ring {
   width: 40px;
   height: 40px;
+  border: 2px solid var(--color-neon-dim);
+  border-top-color: var(--color-neon);
   border-radius: 50%;
-  border: 2px solid rgba(200, 255, 0, 0.15);
-  border-top-color: #C8FF00;
   animation: spin 0.8s linear infinite;
 }
 
 .loading-text {
-  color: #8888a0;
   font-size: 0.9rem;
+  color: var(--color-text-secondary);
 }
 
 .grid-error {
-  text-align: center;
   padding: 40px 0;
+  text-align: center;
 }
 
 .error-text {
-  color: #ff6b6b;
   font-size: 0.9rem;
+  color: #ff6b6b;
 }
 
 .grid-empty {
-  text-align: center;
   padding: 40px 0;
+  text-align: center;
 }
 
 .empty-text {
-  color: #555570;
   font-size: 0.9rem;
+  color: var(--color-text-muted);
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

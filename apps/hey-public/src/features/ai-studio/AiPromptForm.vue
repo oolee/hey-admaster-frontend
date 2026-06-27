@@ -1,57 +1,60 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { Icon } from '@iconify/vue'
-import { IMAGE_SIZE_PRESETS, QUALITY_OPTIONS } from '#/utils/constants'
-import type { AdTemplate } from '#/types/ai'
+import type { AdTemplate } from '#/types/ai';
+
+import { computed, ref } from 'vue';
+
+import { Icon } from '@iconify/vue';
+
+import { IMAGE_SIZE_PRESETS, QUALITY_OPTIONS } from '#/utils/constants';
+
+const props = defineProps<{
+  categories: Record<string, AdTemplate[]>;
+  isLoading: boolean;
+  model: string;
+  templates: AdTemplate[];
+}>();
 
 const emit = defineEmits<{
   generate: [
     payload: {
-      prompt: string
-      size: string
-      quality: string
-      template?: AdTemplate
-      templateInput?: Record<string, string>
+      prompt: string;
+      quality: string;
+      size: string;
+      template?: AdTemplate;
+      templateInput?: Record<string, string>;
     },
-  ]
-}>()
+  ];
+}>();
 
-const props = defineProps<{
-  templates: AdTemplate[]
-  categories: Record<string, AdTemplate[]>
-  isLoading: boolean
-  model: string
-}>()
-
-const selectedTemplate = ref<AdTemplate | null>(null)
-const selectedCategory = ref<string>('')
-const showTemplates = ref(false)
-const templateInputs = ref<Record<string, string>>({})
+const selectedTemplate = ref<AdTemplate | null>(null);
+const selectedCategory = ref<string>('');
+const showTemplates = ref(false);
+const templateInputs = ref<Record<string, string>>({});
 
 // 自由模式
-const prompt = ref('')
-const selectedSize = ref<string>(IMAGE_SIZE_PRESETS[0]?.value ?? '1024x1024')
-const selectedQuality = ref<string>(QUALITY_OPTIONS[1]?.value ?? 'medium')
+const prompt = ref('');
+const selectedSize = ref<string>(IMAGE_SIZE_PRESETS[0]?.value ?? '1024x1024');
+const selectedQuality = ref<string>(QUALITY_OPTIONS[1]?.value ?? 'medium');
 
 // 当选中模板时自动设置尺寸
 function selectTemplate(tpl: AdTemplate) {
-  selectedTemplate.value = tpl
-  selectedSize.value = tpl.defaultSize
-  templateInputs.value = {}
-  showTemplates.value = false
+  selectedTemplate.value = tpl;
+  selectedSize.value = tpl.defaultSize;
+  templateInputs.value = {};
+  showTemplates.value = false;
 }
 
 // 清除模板
 function clearTemplate() {
-  selectedTemplate.value = null
-  templateInputs.value = {}
+  selectedTemplate.value = null;
+  templateInputs.value = {};
 }
 
 // 分类切换
-const categoryKeys = computed(() => Object.keys(props.categories))
+const categoryKeys = computed(() => Object.keys(props.categories));
 
 function selectCategory(key: string) {
-  selectedCategory.value = selectedCategory.value === key ? '' : key
+  selectedCategory.value = selectedCategory.value === key ? '' : key;
 }
 
 function handleSubmit() {
@@ -60,14 +63,16 @@ function handleSubmit() {
     size: selectedSize.value,
     quality: selectedQuality.value,
     template: selectedTemplate.value || undefined,
-    templateInput: selectedTemplate.value ? { ...templateInputs.value } : undefined,
-  })
+    templateInput: selectedTemplate.value
+      ? { ...templateInputs.value }
+      : undefined,
+  });
 }
 
 const canSubmit = computed(() => {
-  if (selectedTemplate.value) return true
-  return prompt.value.trim().length > 0
-})
+  if (selectedTemplate.value) return true;
+  return prompt.value.trim().length > 0;
+});
 </script>
 
 <template>
@@ -94,8 +99,12 @@ const canSubmit = computed(() => {
         <div class="selected-template-info">
           <Icon :icon="selectedTemplate.icon" class="template-icon" />
           <div>
-            <span class="selected-template-name">{{ selectedTemplate.name }}</span>
-            <span class="selected-template-desc">{{ selectedTemplate.description }}</span>
+            <span class="selected-template-name">{{
+              selectedTemplate.name
+            }}</span>
+            <span class="selected-template-desc">{{
+              selectedTemplate.description
+            }}</span>
           </div>
         </div>
         <button class="clear-template-btn" @click="clearTemplate">
@@ -105,18 +114,20 @@ const canSubmit = computed(() => {
 
       <!-- 模板分类网格 -->
       <div v-if="showTemplates" class="template-categories">
-        <div
-          v-for="key in categoryKeys"
-          :key="key"
-          class="category-group"
-        >
+        <div v-for="key in categoryKeys" :key="key" class="category-group">
           <button class="category-title" @click="selectCategory(key)">
             <Icon
-              :icon="selectedCategory === key ? 'mdi:chevron-down' : 'mdi:chevron-right'"
+              :icon="
+                selectedCategory === key
+                  ? 'mdi:chevron-down'
+                  : 'mdi:chevron-right'
+              "
               class="category-arrow"
             />
             {{ key }}
-            <span class="category-count">{{ categories[key]?.length ?? 0 }}</span>
+            <span class="category-count">{{
+              categories[key]?.length ?? 0
+            }}</span>
           </button>
           <div v-if="selectedCategory === key" class="template-grid">
             <button
@@ -147,7 +158,7 @@ const canSubmit = computed(() => {
         class="prompt-input"
         rows="3"
         placeholder="例如：品牌名称、风格、材质、颜色偏好等..."
-      />
+      ></textarea>
     </div>
 
     <!-- 自由模式输入 -->
@@ -161,7 +172,7 @@ const canSubmit = computed(() => {
         class="prompt-input"
         :rows="3"
         placeholder="描述你想要的画面，例如：一家奶茶店的门头设计，简约清新风格，白色为主色调，亚克力发光字..."
-      />
+      ></textarea>
     </div>
 
     <!-- 尺寸和质量选择 -->
@@ -210,7 +221,11 @@ const canSubmit = computed(() => {
     <!-- 模型信息 -->
     <p class="model-info">
       <Icon icon="mdi:cpu-64-bit" />
-      当前引擎：{{ selectedTemplate ? selectedTemplate.recommendedModel : '通义万相 2.7 Pro' }}
+      当前引擎：{{
+        selectedTemplate
+          ? selectedTemplate.recommendedModel
+          : '通义万相 2.7 Pro'
+      }}
     </p>
 
     <!-- 模板打印尺寸 -->
@@ -230,25 +245,25 @@ const canSubmit = computed(() => {
 
 .form-label {
   display: flex;
-  align-items: center;
   gap: 6px;
+  align-items: center;
+  margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #e0e0f0;
-  margin: 0;
+  color: var(--color-text-primary);
 }
 
 .label-icon {
-  color: #C8FF00;
   font-size: 1.1rem;
+  color: var(--color-neon);
 }
 
 /* Template Section */
 .template-section {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
   padding: 16px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
 }
 
 .template-header {
@@ -259,22 +274,22 @@ const canSubmit = computed(() => {
 
 .template-toggle {
   display: flex;
-  align-items: center;
   gap: 4px;
-  background: none;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  color: #8888a0;
-  font-size: 0.8rem;
+  align-items: center;
   padding: 6px 12px;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
   cursor: pointer;
+  background: none;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
   transition: all 0.2s;
 }
 
 .template-toggle:hover,
 .template-toggle.active {
-  color: #C8FF00;
-  border-color: rgba(200, 255, 0, 0.3);
+  color: var(--color-neon);
+  border-color: var(--color-neon-dim);
 }
 
 /* Selected Template */
@@ -282,23 +297,23 @@ const canSubmit = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(200, 255, 0, 0.06);
-  border: 1px solid rgba(200, 255, 0, 0.15);
-  border-radius: 10px;
   padding: 12px 14px;
   margin-top: 12px;
+  background: var(--color-neon-glow);
+  border: 1px solid var(--color-neon-dim);
+  border-radius: 10px;
 }
 
 .selected-template-info {
   display: flex;
-  align-items: flex-start;
   gap: 10px;
+  align-items: flex-start;
 }
 
 .selected-template-info .template-icon {
-  font-size: 1.4rem;
-  color: #C8FF00;
   margin-top: 2px;
+  font-size: 1.4rem;
+  color: var(--color-neon);
 }
 
 .selected-template-info > div {
@@ -310,40 +325,40 @@ const canSubmit = computed(() => {
 .selected-template-name {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #C8FF00;
+  color: var(--color-neon);
 }
 
 .selected-template-desc {
   font-size: 0.75rem;
-  color: #8888a0;
+  color: var(--color-text-secondary);
 }
 
 .clear-template-btn {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: none;
-  color: #8888a0;
+  color: var(--color-text-secondary);
   cursor: pointer;
+  background: none;
+  border: 1px solid var(--glass-border);
+  border-radius: 50%;
   transition: all 0.2s;
-  flex-shrink: 0;
 }
 
 .clear-template-btn:hover {
-  color: #ff5555;
-  border-color: rgba(255, 85, 85, 0.3);
+  color: #f55;
+  border-color: rgb(255 85 85 / 30%);
 }
 
 /* Template Categories */
 .template-categories {
-  margin-top: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-top: 12px;
 }
 
 .category-group {
@@ -354,33 +369,33 @@ const canSubmit = computed(() => {
 
 .category-title {
   display: flex;
-  align-items: center;
   gap: 6px;
-  background: none;
-  border: none;
-  color: #aaaabc;
+  align-items: center;
+  padding: 6px 0;
   font-size: 0.85rem;
   font-weight: 500;
-  cursor: pointer;
-  padding: 6px 0;
+  color: var(--color-text-primary);
   text-align: left;
+  cursor: pointer;
+  background: none;
+  border: none;
   transition: color 0.2s;
 }
 
 .category-title:hover {
-  color: #C8FF00;
+  color: var(--color-neon);
 }
 
 .category-arrow {
   font-size: 0.8rem;
-  color: #666680;
+  color: var(--color-text-muted);
 }
 
 .category-count {
-  font-size: 0.7rem;
-  color: #666680;
-  background: rgba(255, 255, 255, 0.05);
   padding: 2px 8px;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  background: var(--color-bg-card);
   border-radius: 10px;
 }
 
@@ -399,42 +414,42 @@ const canSubmit = computed(() => {
 .template-card {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 4px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 10px;
+  align-items: center;
   padding: 12px 8px;
-  cursor: pointer;
-  transition: all 0.2s;
   text-align: center;
+  cursor: pointer;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  transition: all 0.2s;
 }
 
 .template-card:hover {
-  border-color: rgba(200, 255, 0, 0.2);
-  background: rgba(200, 255, 0, 0.04);
+  background: var(--color-neon-glow);
+  border-color: var(--color-neon-dim);
 }
 
 .template-card.active {
-  border-color: #C8FF00;
-  background: rgba(200, 255, 0, 0.08);
+  background: var(--color-neon-glow);
+  border-color: var(--color-neon);
 }
 
 .template-card-icon {
   font-size: 1.4rem;
-  color: #C8FF00;
+  color: var(--color-neon);
 }
 
 .template-card-name {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #e0e0f0;
+  color: var(--color-text-primary);
 }
 
 .template-card-desc {
   font-size: 0.65rem;
-  color: #8888a0;
   line-height: 1.3;
+  color: var(--color-text-secondary);
 }
 
 /* Template Inputs */
@@ -445,10 +460,10 @@ const canSubmit = computed(() => {
 }
 
 .prompt-hint {
-  font-size: 0.8rem;
-  color: #8888a0;
   margin: 0;
+  font-size: 0.8rem;
   line-height: 1.4;
+  color: var(--color-text-secondary);
 }
 
 /* Free Input */
@@ -460,25 +475,25 @@ const canSubmit = computed(() => {
 
 .prompt-input {
   width: 100%;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  color: #e0e0f0;
-  font-size: 0.9rem;
   padding: 12px 14px;
-  resize: vertical;
   font-family: inherit;
+  font-size: 0.9rem;
   line-height: 1.5;
+  color: var(--color-text-primary);
+  resize: vertical;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
   transition: border-color 0.2s;
 }
 
 .prompt-input:focus {
   outline: none;
-  border-color: rgba(200, 255, 0, 0.4);
+  border-color: var(--color-neon-dim);
 }
 
 .prompt-input::placeholder {
-  color: #555570;
+  color: var(--color-text-muted);
 }
 
 /* Options */
@@ -496,7 +511,7 @@ const canSubmit = computed(() => {
 
 .option-label {
   font-size: 0.75rem;
-  color: #666680;
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -508,54 +523,54 @@ const canSubmit = computed(() => {
 
 .option-btn {
   padding: 6px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  color: #8888a0;
   font-size: 0.75rem;
-  cursor: pointer;
-  transition: all 0.2s;
+  color: var(--color-text-secondary);
   white-space: nowrap;
+  cursor: pointer;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  transition: all 0.2s;
 }
 
 .option-btn:hover {
-  border-color: rgba(200, 255, 0, 0.2);
-  color: #aaaabc;
+  color: var(--color-text-primary);
+  border-color: var(--color-neon-dim);
 }
 
 .option-btn.active {
-  border-color: #C8FF00;
-  color: #C8FF00;
-  background: rgba(200, 255, 0, 0.08);
+  color: var(--color-neon);
+  background: var(--color-neon-glow);
+  border-color: var(--color-neon);
 }
 
 /* Submit Button */
 .submit-btn {
   display: flex;
+  gap: 8px;
   align-items: center;
   justify-content: center;
-  gap: 8px;
   width: 100%;
   padding: 14px 24px;
-  background: #C8FF00;
-  border: none;
-  border-radius: 12px;
-  color: #0a0a0f;
   font-size: 0.95rem;
   font-weight: 700;
+  color: var(--color-bg-primary);
   cursor: pointer;
+  background: var(--color-neon);
+  border: none;
+  border-radius: 12px;
   transition: all 0.3s;
 }
 
 .submit-btn:hover:not(:disabled) {
-  background: #d4ff22;
-  box-shadow: 0 0 40px rgba(200, 255, 0, 0.3);
+  background: var(--color-neon);
+  box-shadow: 0 0 40px var(--color-neon-dim);
   transform: translateY(-1px);
 }
 
 .submit-btn:disabled {
-  opacity: 0.4;
   cursor: not-allowed;
+  opacity: 0.4;
   transform: none;
 }
 
@@ -564,29 +579,34 @@ const canSubmit = computed(() => {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Model Info */
 .model-info {
   display: flex;
+  gap: 6px;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  font-size: 0.7rem;
-  color: #555570;
   margin: 0;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
 }
 
 .print-info {
   display: flex;
+  gap: 6px;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  font-size: 0.7rem;
-  color: #C8FF00;
-  opacity: 0.6;
   margin: 0;
+  font-size: 0.7rem;
+  color: var(--color-neon);
+  opacity: 0.6;
 }
 </style>

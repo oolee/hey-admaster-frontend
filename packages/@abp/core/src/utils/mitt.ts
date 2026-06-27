@@ -86,7 +86,7 @@ export default function mitt(all?: EventHandlerMap): Emitter {
     off<T = any>(type: EventType, handler: Handler<T>) {
       const handlers = all?.get(type);
       if (handlers) {
-        handlers.splice(handlers.indexOf(handler) >>> 0, 1);
+        handlers.splice(Math.trunc(handlers.indexOf(handler)), 1);
       }
     },
 

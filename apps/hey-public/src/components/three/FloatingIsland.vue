@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { TresCanvas } from '@tresjs/core'
-import { OrbitControls } from '@tresjs/cientos'
-import { BasicShadowMap, SRGBColorSpace, NoToneMapping, Color } from 'three'
-import { ref } from 'vue'
+import { ref } from 'vue';
+
+import { OrbitControls } from '@tresjs/cientos';
+import { TresCanvas } from '@tresjs/core';
+import { BasicShadowMap, Color, NoToneMapping, SRGBColorSpace } from 'three';
 
 const gl = {
   clearColor: 'transparent',
@@ -11,10 +12,10 @@ const gl = {
   shadowMapType: BasicShadowMap,
   outputColorSpace: SRGBColorSpace,
   toneMapping: NoToneMapping,
-}
+};
 
-const neonColor = new Color('#C8FF00')
-const islandRotation = ref(0)
+const neonColor = new Color('#C8FF00');
+const islandRotation = ref(0);
 </script>
 
 <template>
@@ -77,11 +78,13 @@ const islandRotation = ref(0)
       </TresMesh>
 
       <!-- Crystal structures on top -->
-      <TresMesh v-for="i in 5" :key="'crystal-' + i"
+      <TresMesh
+        v-for="i in 5"
+        :key="`crystal-${i}`"
         :position="[
           Math.cos((i / 5) * Math.PI * 2) * 1.5,
           0.8 + Math.random() * 0.6,
-          Math.sin((i / 5) * Math.PI * 2) * 1.5
+          Math.sin((i / 5) * Math.PI * 2) * 1.5,
         ]"
         :rotation="[Math.random() * 0.5, Math.random() * Math.PI, 0]"
       >
@@ -97,11 +100,13 @@ const islandRotation = ref(0)
       </TresMesh>
 
       <!-- Small floating rocks -->
-      <TresMesh v-for="i in 8" :key="'rock-' + i"
+      <TresMesh
+        v-for="i in 8"
+        :key="`rock-${i}`"
         :position="[
           Math.cos((i / 8) * Math.PI * 2) * (2.5 + Math.random() * 1.5),
           Math.random() * 0.5 - 0.5,
-          Math.sin((i / 8) * Math.PI * 2) * (2.5 + Math.random() * 1.5)
+          Math.sin((i / 8) * Math.PI * 2) * (2.5 + Math.random() * 1.5),
         ]"
         :rotation="[Math.random() * Math.PI, Math.random() * Math.PI, 0]"
       >
@@ -141,7 +146,7 @@ const islandRotation = ref(0)
 .floating-island-canvas {
   position: absolute;
   inset: 0;
-  pointer-events: none;
   z-index: 1;
+  pointer-events: none;
 }
 </style>

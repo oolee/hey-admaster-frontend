@@ -1,6 +1,8 @@
 import { getPublish } from '../../utils/publish-store';
 
-export default defineEventHandler((event) => {
+declare function defineEventHandler(handler: (event: any) => any): any;
+
+export default defineEventHandler((event: any) => {
   const id = (event.context.params?.id as string) || '';
   const record = getPublish(id);
   if (!record) {

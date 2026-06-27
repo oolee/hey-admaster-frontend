@@ -1,4 +1,6 @@
-import { defineStore } from 'pinia';
 import { portfolioCases } from '@hey/public';
+import { defineStore } from 'pinia';
 
-export const usePortfolioStore = defineStore('hey-public-portfolio', { state: () => ({ cases: portfolioCases }) });
+export const usePortfolioStore = defineStore('hey-public-portfolio', {
+  state: () => ({ cases: portfolioCases }),
+});
