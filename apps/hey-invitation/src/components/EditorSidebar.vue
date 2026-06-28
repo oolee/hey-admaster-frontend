@@ -185,14 +185,9 @@ const onTemplateClick = (index: number) => {
   const tpl = filteredTemplates.value[index];
   if (!tpl) return;
 
-  // 只在有未保存的操作时才提示
-  if (
-    store.hasUnsavedChanges &&
-    window.confirm(
-      `当前项目有未保存的更改。\n\n是否保存当前项目并切换到模板"${tpl.name}"？`,
-    )
-  ) {
+  if (store.hasUnsavedChanges) {
     store.saveToLocal();
+    store.showToast('已自动保存当前项目', 'success');
   }
   // 应用新模板
   store.projectName = tpl.name;
@@ -201,6 +196,7 @@ const onTemplateClick = (index: number) => {
   store.history = [];
   store.historyIndex = -1;
   doApplyTemplate(tpl);
+  store.showToast(`已应用模板"${tpl.name}"`, 'success');
 };
 
 const doApplyTemplate = (tpl: any) => {

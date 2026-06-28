@@ -6,9 +6,12 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useEditorStore } from '../store/editor';
 import FontPicker from './FontPicker.vue';
 import LayerTreeItem from './LayerTreeItem.vue';
+import PromptDialog from './PromptDialog.vue';
 
 const store = useEditorStore();
 const expandedGroups = ref<Record<string, boolean>>({});
+const showRenameLayerPrompt = ref(false);
+const renameLayerTarget = ref<EditorElement | null>(null);
 
 // 背景预设
 const bgPresets = [
@@ -153,9 +156,8 @@ const onDeletePage = (pageId: string) => {
   if (store.pages.length <= 1) return;
   const page = store.pages.find((p) => p.id === pageId);
   if (!page) return;
-  if (confirm(`确定要删除"${page.name}"吗？`)) {
-    store.deletePage(pageId);
-  }
+  store.deletePage(pageId);
+  store.showToast(`已删除页面"${page.name}"`, 'success');
 };
 
 const onPageTransitionChange = (e: Event) => {
@@ -356,13 +358,18 @@ const getElementDisplay = (element: EditorElement) => {
 };
 
 const renameLayer = (element: EditorElement) => {
-  const newName = prompt(
-    '请输入图层名称',
-    element.name || getElementDisplay(element),
-  );
-  if (newName !== null && newName.trim()) {
-    store.updateElement(element.id, { name: newName.trim() } as any);
+  renameLayerTarget.value = element;
+  showRenameLayerPrompt.value = true;
+};
+
+const onConfirmRenameLayer = (newName: string) => {
+  if (renameLayerTarget.value && newName.trim()) {
+    store.updateElement(renameLayerTarget.value.id, {
+      name: newName.trim(),
+    } as any);
+    store.showToast('图层已重命名', 'success');
   }
+  renameLayerTarget.value = null;
 };
 
 const sortedElements = computed(() => {
@@ -434,9 +441,9 @@ const onBulkToggleLock = () => {
 };
 
 const onBulkDelete = () => {
-  if (confirm(`确定要删除 ${store.selectedElementIds.length} 个元素吗？`)) {
-    store.bulkDelete();
-  }
+  const count = store.selectedElementIds.length;
+  store.bulkDelete();
+  store.showToast(`已删除 ${count} 个元素`, 'success');
 };
 
 const getContrastTextColor = (bgColor: string): string => {
@@ -561,18 +568,16 @@ const onDeleteMusic = () => {
     store.showToast('没有音频元素可删除', 'warning');
     return;
   }
-  if (confirm('确定要删除当前音乐吗？')) {
-    store.deleteAudio();
-    if (audioRef.value) {
-      audioRef.value.pause();
-      audioRef.value.src = '';
-      audioRef.value = null;
-    }
-    musicProgress.value = 0;
-    currentTime.value = 0;
-    duration.value = 0;
-    store.showToast('音乐已删除', 'success');
+  store.deleteAudio();
+  if (audioRef.value) {
+    audioRef.value.pause();
+    audioRef.value.src = '';
+    audioRef.value = null;
   }
+  musicProgress.value = 0;
+  currentTime.value = 0;
+  duration.value = 0;
+  store.showToast('音乐已删除', 'success');
 };
 
 const onFileSelected = (e: Event) => {
@@ -841,7 +846,7 @@ watch(
                   </div>
                   <div style="display: flex; gap: 4px">
                     <button
-                      class="btn btn-sm action-btn"
+                      class="btn btn-outline-secondary btn-sm action-btn"
                       style="flex: 1; padding: 1px 8px; font-size: 10px"
                       :disabled="!hasAudio"
                       @click="onTogglePlayPause"
@@ -1349,6 +1354,15 @@ watch(
       @change="onFileSelected"
     />
   </aside>
+
+  <!-- 重命名图层弹窗 -->
+  <PromptDialog
+    v-model="showRenameLayerPrompt"
+    message="重命名图层"
+    placeholder="请输入图层名称"
+    :default-value="renameLayerTarget?.name || ''"
+    @confirm="onConfirmRenameLayer"
+  />
 </template>
 
 <style scoped>

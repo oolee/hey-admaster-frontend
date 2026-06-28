@@ -1,3 +1,5 @@
+import { defineEventHandler } from 'h3';
+
 import { listProjects } from '../../utils/storage';
 
 export default defineEventHandler(() => {

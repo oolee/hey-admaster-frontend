@@ -1,3 +1,5 @@
+import { defineEventHandler } from 'h3';
+
 import { getPublish } from '../../utils/publish-store';
 
 // ========== 辅助函数 ==========
@@ -667,6 +669,3 @@ export default defineEventHandler((event: any) => {
   event.node.res.setHeader('Cache-Control', 'no-cache');
   return buildHtml(record, displayName);
 });
-function defineEventHandler(_arg0: (event: any) => string) {
-  throw new Error('Function not implemented.');
-}

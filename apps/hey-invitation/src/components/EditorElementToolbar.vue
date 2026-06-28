@@ -1588,12 +1588,12 @@ const onTriggerActionChange = () => syncTrigger();
               @change="onAnimTypeChange"
             >
               <option value="none">无动画</option>
-              <option value="fadeIn">淡入</option>
-              <option value="slideUp">上滑进入</option>
-              <option value="slideLeft">左滑进入</option>
-              <option value="scaleIn">缩放进入</option>
-              <option value="rotateIn">旋转进入</option>
-              <option value="bounceIn">弹入</option>
+              <option value="fade-in">淡入</option>
+              <option value="slide-up">上滑进入</option>
+              <option value="slide-left">左滑进入</option>
+              <option value="scale-in">缩放进入</option>
+              <option value="rotate-in">旋转进入</option>
+              <option value="bounce-in">弹入</option>
             </select>
           </div>
           <div class="style-control-group">

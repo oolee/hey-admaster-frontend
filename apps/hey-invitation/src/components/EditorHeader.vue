@@ -10,6 +10,7 @@ import { jsPDF as JsFPD } from 'jspdf';
 import { publishVideo, publishWeb } from '../api/publish';
 import { useEditorStore } from '../store/editor';
 import { createDefaultElement, generateId } from '../types/editor';
+import PromptDialog from './PromptDialog.vue';
 
 const router = useRouter();
 
@@ -18,6 +19,7 @@ const store = useEditorStore();
 const isPublishDropdownOpen = ref(false);
 const isSettingsDropdownOpen = ref(false);
 const showProjectManager = ref(false);
+const showCreateProjectPrompt = ref(false);
 
 // 发布对话框
 const showPublishDialog = ref(false);
@@ -854,11 +856,13 @@ const onProjectManager = () => {
 };
 
 const onCreateProject = () => {
-  const name = prompt('请输入项目名称：', '我的请柬');
-  if (name) {
-    store.createNewProject(name);
-    showProjectManager.value = false;
-  }
+  showCreateProjectPrompt.value = true;
+};
+
+const onConfirmCreateProject = (name: string) => {
+  store.createNewProject(name);
+  showProjectManager.value = false;
+  store.showToast('已创建新项目', 'success');
 };
 
 const onSwitchProject = (projectId: string) => {
@@ -866,16 +870,15 @@ const onSwitchProject = (projectId: string) => {
     showProjectManager.value = false;
     return;
   }
-  if (window.confirm('切换项目将自动保存当前项目，是否继续？')) {
-    store.loadProject(projectId);
-    showProjectManager.value = false;
-  }
+  store.saveToLocal();
+  store.loadProject(projectId);
+  showProjectManager.value = false;
+  store.showToast('已切换项目', 'success');
 };
 
 const onDeleteProject = (projectId: string) => {
-  if (window.confirm('确定要删除该项目吗？此操作不可撤销。')) {
-    store.deleteProject(projectId);
-  }
+  store.deleteProject(projectId);
+  store.showToast('项目已删除', 'success');
 };
 </script>
 
@@ -1436,6 +1439,15 @@ const onDeleteProject = (projectId: string) => {
       </div>
     </div>
   </Teleport>
+
+  <!-- 创建项目弹窗 -->
+  <PromptDialog
+    v-model="showCreateProjectPrompt"
+    message="新建项目"
+    placeholder="请输入项目名称"
+    default-value="我的请柬"
+    @confirm="onConfirmCreateProject"
+  />
 </template>
 
 <style scoped>

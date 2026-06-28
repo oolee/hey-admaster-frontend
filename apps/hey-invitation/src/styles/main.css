@@ -1,12 +1,7 @@
 /* === Tailwind 指令（阶段 0 注入，不影响下方手写样式） === */
 
-/* @tailwind base;
-@tailwind components;
-@tailwind utilities; */
-
 /* Tailwind v4 标准引入 */
-@import 'tailwindcss/preflight';
-@import 'tailwindcss/utilities';
+@import 'tailwindcss';
 
 /* ========== 婚礼主题 CSS 变量 ========== */
 :root {

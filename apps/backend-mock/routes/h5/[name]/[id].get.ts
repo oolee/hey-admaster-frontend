@@ -1,3 +1,5 @@
+import { defineEventHandler } from 'h3';
+
 import { getPublish } from '../../../utils/publish-store';
 
 // ========== HTML 生成函数（与 h5/[id].get.ts 版本同步） ==========

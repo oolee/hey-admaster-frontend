@@ -68,13 +68,13 @@ export interface EditorElement {
     duration: number;
     easing: 'ease' | 'ease-in' | 'ease-in-out' | 'ease-out' | 'linear';
     type:
-      | 'bounceIn'
-      | 'fadeIn'
+      | 'bounce-in'
+      | 'fade-in'
       | 'none'
-      | 'rotateIn'
-      | 'scaleIn'
-      | 'slideLeft'
-      | 'slideUp';
+      | 'rotate-in'
+      | 'scale-in'
+      | 'slide-left'
+      | 'slide-up';
   };
   // 元素触发器
   trigger?: {

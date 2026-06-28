@@ -1096,24 +1096,19 @@ export const useEditorStore = defineStore('editor', {
     },
 
     // 重命名页面或元素
-    renameSelected() {
+    renameSelected(newName?: string) {
+      if (!newName || !newName.trim()) return;
       const page = this.currentPage;
       if (!page) return;
       if (this.selectedElementId) {
         const el = page.elements.find((e) => e.id === this.selectedElementId);
-        // oxlint-disable-next-line no-alert
-        const newName = prompt('请输入元素名称', el?.name || '');
-        if (newName !== null && el) {
-          el.name = newName;
+        if (el) {
+          el.name = newName.trim();
           this.showToast('元素已重命名', 'success');
         }
       } else {
-        // oxlint-disable-next-line no-alert
-        const newName = prompt('请输入页面名称', page.name || '');
-        if (newName !== null) {
-          page.name = newName;
-          this.showToast('页面已重命名', 'success');
-        }
+        page.name = newName.trim();
+        this.showToast('页面已重命名', 'success');
       }
     },
 

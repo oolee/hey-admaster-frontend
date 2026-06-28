@@ -1,3 +1,5 @@
+import { defineEventHandler, getRouterParam } from 'h3';
+
 import { deleteProject } from '../../utils/storage';
 
 export default defineEventHandler((event) => {

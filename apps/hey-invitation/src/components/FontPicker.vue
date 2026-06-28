@@ -99,17 +99,11 @@ const onFileSelected = (e: Event) => {
 };
 
 const onDeleteUserFont = (family: string) => {
-  if (
-    // oxlint-disable-next-line no-alert
-    confirm(
-      '确定删除该字体吗？删除后如其他元素仍引用该字体，将回退为默认字体。',
-    )
-  ) {
-    store.deleteCustomFont(family);
-    if (props.modelValue === family) {
-      emit('update:modelValue', 'Microsoft YaHei');
-    }
+  store.deleteCustomFont(family);
+  if (props.modelValue === family) {
+    emit('update:modelValue', 'Microsoft YaHei');
   }
+  store.showToast('字体已删除', 'success');
 };
 
 const handleClickOutside = (e: MouseEvent) => {

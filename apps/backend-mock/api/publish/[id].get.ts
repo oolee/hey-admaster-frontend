@@ -1,6 +1,6 @@
-import { getPublish } from '../../utils/publish-store';
+import { defineEventHandler } from 'h3';
 
-declare function defineEventHandler(handler: (event: any) => any): any;
+import { getPublish } from '../../utils/publish-store';
 
 export default defineEventHandler((event: any) => {
   const id = (event.context.params?.id as string) || '';
