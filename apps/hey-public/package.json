@@ -19,7 +19,7 @@
     "@hey/invitation": "workspace:*",
     "@hey/public": "workspace:*",
     "@hey/shared-ui": "workspace:*",
-    "@iconify/vue": "catalog:conflicts_@iconify/vue_h4_2_0",
+    "@iconify/vue": "catalog:",
     "@tresjs/cientos": "catalog:",
     "@tresjs/core": "catalog:",
     "@vben/styles": "workspace:*",
