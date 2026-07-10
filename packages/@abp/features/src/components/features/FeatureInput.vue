@@ -106,12 +106,12 @@ const isSelection = computed(
       <InputNumber
         v-if="isNumeric"
         style="width: 100%"
-        :value="feature.value"
+        v-model:value="feature.value"
         @change="handleChange"
       />
       <Input
         v-else
-        :value="feature.value"
+        v-model:value="feature.value"
         autocomplete="off"
         @change="handleChange"
       />
@@ -120,7 +120,7 @@ const isSelection = computed(
     <!-- 选择类型 -->
     <Select
       v-else-if="isSelection"
-      :value="feature.value"
+      v-model:value="feature.value"
       :options="feature.valueType.itemSource?.items"
       :field-names="{ label: 'displayName', value: 'value' }"
       @change="handleChange"

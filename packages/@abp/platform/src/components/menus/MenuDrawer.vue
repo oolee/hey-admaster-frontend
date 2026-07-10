@@ -237,9 +237,7 @@ async function onLayoutChange(layoutId?: string) {
     const layoutDto = await getLayoutApi(layoutId);
     const dataDto = await getDataDictionaryApi(layoutDto.dataId);
     basicFormApi.setFieldValue('component', layoutDto.path);
-    menuMetas.value = dataDto.items.toSorted((a, b) =>
-      a.name.localeCompare(b.name),
-    );
+    menuMetas.value = dataDto.items.sort();
     onInitMetaFormSchemas();
   } finally {
     drawerApi.setState({ loading: false });

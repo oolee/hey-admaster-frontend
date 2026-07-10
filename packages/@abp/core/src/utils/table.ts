@@ -9,6 +9,8 @@ export function sorter(
 
   if (a[field] && !b[field]) return 1;
 
+  if (b[field] && !a[field]) return -1;
+
   const va = a[field];
   const vb = b[field];
   if (isDate(va) && isDate(vb)) return va.getTime() - vb.getTime();

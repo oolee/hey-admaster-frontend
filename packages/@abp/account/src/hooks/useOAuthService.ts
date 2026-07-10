@@ -1,4 +1,8 @@
+import type { SigninRedirectArgs, SignoutRedirectArgs } from 'oidc-client-ts';
+
 import type {
+  ImpersonationTokenRequest,
+  LinkUserTokenRequest,
   PasswordTokenRequestModel,
   PhoneNumberTokenRequest,
   QrCodeTokenRequest,
@@ -7,8 +11,16 @@ import type {
 import { userManager } from '../utils/auth';
 
 export function useOAuthService() {
-  async function login() {
-    return userManager.signinRedirect();
+  async function login(args?: SigninRedirectArgs) {
+    return userManager.signinRedirect(args);
+  }
+
+  async function loginByLinkUser(input: LinkUserTokenRequest) {
+    return userManager.signinLinkUser(input);
+  }
+
+  async function loginByImpersonation(input: ImpersonationTokenRequest) {
+    return userManager.signinImpersonation(input);
   }
 
   async function loginByPassword(input: PasswordTokenRequestModel) {
@@ -23,8 +35,8 @@ export function useOAuthService() {
     return userManager.signinQrCode(input);
   }
 
-  async function logout() {
-    return userManager.signoutRedirect();
+  async function logout(args?: SignoutRedirectArgs) {
+    return userManager.signoutRedirect(args);
   }
 
   async function revokeTokens() {
@@ -55,10 +67,12 @@ export function useOAuthService() {
 
   return {
     login,
+    loginByLinkUser,
     loginByPassword,
     loginBySmsCode,
     loginByQrCode,
     logout,
+    loginByImpersonation,
     refreshToken,
     revokeTokens,
     getAccessToken,

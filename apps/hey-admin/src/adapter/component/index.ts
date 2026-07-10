@@ -66,7 +66,17 @@ import { IconifyIcon } from '@vben/icons';
 import { $t } from '@vben/locales';
 import { isEmpty } from '@vben/utils';
 
+import { FeatureStateCheck, GlobalFeatureStateCheck } from '@abp/features';
+import { PermissionStateCheck } from '@abp/permissions';
+import { TenantSelect } from '@abp/saas';
 import { message, Modal, notification } from 'ant-design-vue';
+
+const ColorPicker = defineAsyncComponent(() =>
+  import('vue3-colorpicker').then((res) => {
+    import('vue3-colorpicker/style.css');
+    return res.ColorPicker;
+  }),
+);
 
 type AdapterUploadProps = UploadProps & {
   aspectRatio?: string;
@@ -92,12 +102,16 @@ const DatePicker = defineAsyncComponent(
   () => import('ant-design-vue/es/date-picker'),
 );
 const Divider = defineAsyncComponent(() => import('ant-design-vue/es/divider'));
+const Empty = defineAsyncComponent(() => import('ant-design-vue/es/empty'));
 const Input = defineAsyncComponent(() => import('ant-design-vue/es/input'));
 const InputNumber = defineAsyncComponent(
   () => import('ant-design-vue/es/input-number'),
 );
 const InputPassword = defineAsyncComponent(() =>
   import('ant-design-vue/es/input').then((res) => res.InputPassword),
+);
+const InputSearch = defineAsyncComponent(() =>
+  import('ant-design-vue/es/input').then((res) => res.InputSearch),
 );
 const Mentions = defineAsyncComponent(
   () => import('ant-design-vue/es/mentions'),
@@ -119,6 +133,7 @@ const Textarea = defineAsyncComponent(() =>
 const TimePicker = defineAsyncComponent(
   () => import('ant-design-vue/es/time-picker'),
 );
+const Tree = defineAsyncComponent(() => import('ant-design-vue/es/tree'));
 const TreeSelect = defineAsyncComponent(
   () => import('ant-design-vue/es/tree-select'),
 );
@@ -131,8 +146,8 @@ const PreviewGroup = defineAsyncComponent(() =>
   import('ant-design-vue/es/image').then((res) => res.ImagePreviewGroup),
 );
 
-const withDefaultPlaceholder = (
-  component: Component,
+const withDefaultPlaceholder = <T extends Component>(
+  component: T,
   type: 'input' | 'select',
   componentProps: Recordable<any> = {},
 ) => {
@@ -460,9 +475,12 @@ const withPreviewUpload = () => {
 
       const handleChange = (event: UploadChangeParam) => {
         try {
+          // 行内写法 handleChange: (event) => {}
           attrs.handleChange?.(event);
+          // template写法 @handle-change="(event) => {}"
           attrs.onHandleChange?.(event);
         } catch (error) {
+          // Avoid breaking internal v-model sync on user handler errors
           console.error(error);
         }
         fileList.value = event.fileList.filter(
@@ -604,14 +622,20 @@ export type ComponentType =
   | 'Cascader'
   | 'Checkbox'
   | 'CheckboxGroup'
+  | 'ColorPicker'
   | 'DatePicker'
   | 'DefaultButton'
   | 'Divider'
+  | 'Empty'
+  | 'FeatureStateCheck'
+  | 'GlobalFeatureStateCheck'
   | 'IconPicker'
   | 'Input'
   | 'InputNumber'
   | 'InputPassword'
+  | 'InputSearch'
   | 'Mentions'
+  | 'PermissionStateCheck'
   | 'PrimaryButton'
   | 'Radio'
   | 'RadioGroup'
@@ -620,8 +644,10 @@ export type ComponentType =
   | 'Select'
   | 'Space'
   | 'Switch'
+  | 'TenantSelect'
   | 'Textarea'
   | 'TimePicker'
+  | 'Tree'
   | 'TreeSelect'
   | 'Upload'
   | BaseFormComponentType;
@@ -690,21 +716,22 @@ async function initComponentAdapter() {
     Cascader,
     Checkbox,
     CheckboxGroup,
+    ColorPicker,
     DatePicker,
     // 自定义默认按钮
     DefaultButton: (props, { attrs, slots }) => {
       return h(Button, { ...props, attrs, type: 'default' }, slots);
     },
     Divider,
+    Empty,
     IconPicker: withDefaultPlaceholder(IconPicker, 'select', {
       iconSlot: 'addonAfter',
       inputComponent: Input,
       modelValueProp: 'value',
     }),
     Input: withDefaultPlaceholder(Input, 'input'),
-    InputNumber: withDefaultPlaceholder(InputNumber, 'input', {
-      style: { width: '100%' },
-    }),
+    InputNumber: withDefaultPlaceholder(InputNumber, 'input'),
+    InputSearch: withDefaultPlaceholder(InputSearch, 'input'),
     InputPassword: withDefaultPlaceholder(InputPassword, 'input'),
     Mentions: withDefaultPlaceholder(Mentions, 'input'),
     // 自定义主要按钮
@@ -720,8 +747,13 @@ async function initComponentAdapter() {
     Switch,
     Textarea: withDefaultPlaceholder(Textarea, 'input'),
     TimePicker,
+    Tree,
     TreeSelect: withDefaultPlaceholder(TreeSelect, 'select'),
     Upload: withPreviewUpload(),
+    FeatureStateCheck,
+    GlobalFeatureStateCheck,
+    PermissionStateCheck,
+    TenantSelect,
   };
 
   // 将组件注册到全局共享状态中

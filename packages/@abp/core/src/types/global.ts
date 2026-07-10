@@ -1,6 +1,8 @@
 /** 名称/值键值对 */
 interface NameValue<T> {
+  /** 名称 */
   name: string;
+  /** 值 */
   value: T;
 }
 

@@ -10,13 +10,14 @@ import { computed, onMounted, ref, toValue } from 'vue';
 import { $t } from '@vben/locales';
 import { useTimezoneStore } from '@vben/stores';
 
-import { formatToDate } from '@abp/core';
+import { formatToDate, useFeatures } from '@abp/core';
 import {
   Button,
   Card,
   Checkbox,
   Collapse,
   DatePicker,
+  Empty,
   Form,
   Input,
   InputNumber,
@@ -27,6 +28,7 @@ import {
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
+import { SettingManagementEnable } from '../../constants/features';
 import { ValueType } from '../../types';
 
 defineOptions({
@@ -48,6 +50,8 @@ const defaultModel: SettingsUpdateInput = {
   settings: [],
 };
 
+const { isEnabled } = useFeatures();
+
 const activeTab = ref(0);
 const submiting = ref(false);
 const settingGroups = ref<SettingGroup[]>([]);
@@ -64,7 +68,10 @@ const getExpandedCollapseKeys = computed(() => {
 });
 
 async function onGet() {
-  settingGroups.value = await props.getApi();
+  settingGroups.value = [];
+  if (isEnabled(SettingManagementEnable)) {
+    settingGroups.value = await props.getApi();
+  }
 }
 
 async function onSubmit() {
@@ -119,6 +126,15 @@ function onValueChange(setting: SettingDetail) {
   }
 }
 
+function onFilterOption(input: string, option: any) {
+  if (option?.value || option?.name) {
+    return (
+      option?.name?.toLowerCase().includes(input.toLowerCase()) ||
+      option?.value?.toLowerCase().includes(input.toLowerCase())
+    );
+  }
+}
+
 onMounted(onGet);
 </script>
 
@@ -140,11 +156,12 @@ onMounted(onGet);
       </div>
     </template>
     <Form
+      v-if="isEnabled(SettingManagementEnable)"
       :label-col="{ span: 5 }"
       :wrapper-col="{ span: 15 }"
       class="h-[700px] overflow-y-scroll"
     >
-      <Tabs v-model="activeTab">
+      <Tabs tab-position="left" type="card" v-model="activeTab">
         <TabPane
           v-for="(group, index) in settingGroups"
           :key="index"
@@ -209,16 +226,20 @@ onMounted(onGet);
                   <Select
                     v-if="detail.valueType === ValueType.Option"
                     v-model:value="detail.value"
+                    :filter-option="onFilterOption"
+                    :field-names="{ label: 'name', value: 'value' }"
+                    :options="detail.options"
+                    show-search
                     @change="onValueChange(detail)"
-                  >
-                    <SelectOption
+                  />
+                  <!-- <SelectOption
                       v-for="option in detail.options"
                       :key="option.value"
                       :disabled="option.value === detail.value"
                     >
                       {{ option.name }}
                     </SelectOption>
-                  </Select>
+                  </Select> -->
                   <Checkbox
                     v-if="detail.valueType === ValueType.Boolean"
                     :checked="detail.value?.toLowerCase() === 'true'"
@@ -233,7 +254,28 @@ onMounted(onGet);
         </TabPane>
       </Tabs>
     </Form>
+    <Empty
+      :description="
+        $t('AbpFeature.Volo_Feature:010001', {
+          FeatureName: $t(
+            'AbpSettingManagement.Feature:SettingManagementEnable',
+          ),
+        })
+      "
+    />
   </Card>
 </template>
 
-<style scoped></style>
+<style lang="scss" scoped>
+:deep(.ant-tabs) {
+  height: 75vh;
+
+  .ant-tabs-nav {
+    width: 14rem;
+  }
+
+  .ant-tabs-content-holder {
+    overflow: hidden auto !important;
+  }
+}
+</style>

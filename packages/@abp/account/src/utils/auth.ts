@@ -4,6 +4,8 @@ import type { Logger, UserManagerSettings } from 'oidc-client-ts';
 import type _SecureLS from 'secure-ls';
 
 import type {
+  ImpersonationTokenRequest,
+  LinkUserTokenRequest,
   PasswordTokenRequestModel,
   PhoneNumberTokenRequest,
   QrCodeTokenRequest,
@@ -103,6 +105,55 @@ class AbpUserManager extends UserManager {
     if (model.userId) {
       params.set('userId', model.userId);
     }
+  }
+  async signinImpersonation(params: ImpersonationTokenRequest) {
+    const logger = this._logger.create('signinImpersonationUser');
+    const body = new URLSearchParams({
+      grant_type: 'impersonation',
+      client_id: this.settings.client_id,
+    });
+    if (params.accessToken) {
+      body.set('access_token', params.accessToken);
+    }
+    if (params.userId) {
+      body.set('UserId', params.userId);
+    }
+    if (params.userDelegationId) {
+      body.set('UserDelegationId', params.userDelegationId);
+    }
+    if (params.tenantId) {
+      body.set('TenantId', params.tenantId);
+    }
+    if (params.tenantUserName) {
+      body.set('TenantUserName', params.tenantUserName);
+    }
+    const client_secret = this.settings.client_secret;
+    if (client_secret) {
+      body.set('client_secret', client_secret);
+    }
+    this._writeTwoFactorToken(body, params);
+    return await this._fetchUser(logger, body);
+  }
+  async signinLinkUser(params: LinkUserTokenRequest) {
+    const logger = this._logger.create('signinLinkUser');
+    const body = new URLSearchParams({
+      LinkUserId: params.linkUserId,
+      grant_type: 'link_user',
+      client_id: this.settings.client_id,
+    });
+    if (params.accessToken) {
+      body.set('access_token', params.accessToken);
+    }
+    if (params.linkTenantId) {
+      body.set('LinkTenantId', params.linkTenantId);
+    }
+    const client_secret = this.settings.client_secret;
+    if (client_secret) {
+      body.set('client_secret', client_secret);
+    }
+    this._writeTenantId(body, params);
+    this._writeTwoFactorToken(body, params);
+    return await this._fetchUser(logger, body);
   }
   async signinQrCode(params: QrCodeTokenRequest) {
     const logger = this._logger.create('signinQrCode');

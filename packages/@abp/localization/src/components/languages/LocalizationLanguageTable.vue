@@ -30,7 +30,7 @@ defineOptions({
 const dataSource = ref<LanguageDto[]>([]);
 
 const abpStore = useAbpStore();
-const { deleteApi, getListApi } = useLanguagesApi();
+const { deleteApi, getPagedListApi } = useLanguagesApi();
 const { getLocalizationApi } = useLocalizationsApi();
 
 const formOptions: VbenFormProps = {
@@ -61,21 +61,21 @@ const gridOptions: VxeGridProps<LanguageDto> = {
       field: 'cultureName',
       minWidth: 150,
       sortable: true,
-      title: $t('AbpLocalization.DisplayName:CultureName'),
+      title: $t('LocalizationManagement.DisplayName:CultureName'),
     },
     {
       align: 'left',
       field: 'displayName',
       minWidth: 150,
       sortable: true,
-      title: $t('AbpLocalization.DisplayName:DisplayName'),
+      title: $t('LocalizationManagement.DisplayName:DisplayName'),
     },
     {
       align: 'left',
       field: 'uiCultureName',
       minWidth: 150,
       sortable: true,
-      title: $t('AbpLocalization.DisplayName:UiCultureName'),
+      title: $t('LocalizationManagement.DisplayName:UiCultureName'),
     },
     {
       field: 'action',
@@ -89,20 +89,13 @@ const gridOptions: VxeGridProps<LanguageDto> = {
   keepSource: true,
   proxyConfig: {
     ajax: {
-      query: async ({ page, sort }) => {
-        let items = sortby(dataSource.value, sort.field);
-        if (sort.order === 'desc') {
-          items = items.toReversed();
-        }
-        const result = {
-          totalCount: dataSource.value.length,
-          items: items.slice(
-            (page.currentPage - 1) * page.pageSize,
-            page.currentPage * page.pageSize,
-          ),
-        };
-        return new Promise((resolve) => {
-          resolve(result);
+      query: async ({ page, sort }, formValues) => {
+        const sorting = sort.order ? `${sort.field} ${sort.order}` : undefined;
+        return await getPagedListApi({
+          sorting,
+          maxResultCount: page.pageSize,
+          skipCount: (page.currentPage - 1) * page.pageSize,
+          ...formValues,
         });
       },
     },
@@ -196,7 +189,7 @@ onMounted(onGet);
 </script>
 
 <template>
-  <Grid :table-title="$t('AbpLocalization.Languages')">
+  <Grid :table-title="$t('LocalizationManagement.Languages')">
     <template #toolbar-tools>
       <Button
         :icon="h(PlusOutlined)"
@@ -219,7 +212,6 @@ onMounted(onGet);
           {{ $t('AbpUi.Edit') }}
         </Button>
         <Button
-          v-if="!row.isStatic"
           :icon="h(DeleteOutlined)"
           block
           danger

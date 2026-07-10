@@ -234,7 +234,7 @@ function mapToDefaultValue(valueType: ValueType, defaultValue?: any) {
       return (defaultValue as string[]).join(',');
     }
     case ValueType.Boolean: {
-      return defaultValue.toString();
+      return (defaultValue as Boolean).toString();
     }
     case ValueType.Date: {
       return formatToDate(defaultValue);
@@ -243,7 +243,7 @@ function mapToDefaultValue(valueType: ValueType, defaultValue?: any) {
       return formatToDateTime(defaultValue);
     }
     case ValueType.Numeic: {
-      return defaultValue.toString();
+      return (defaultValue as Number).toString();
     }
   }
   return defaultValue;

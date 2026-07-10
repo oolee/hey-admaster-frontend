@@ -46,10 +46,10 @@ import {
 } from './valueType';
 
 interface Props {
-  allowDelete?: boolean;
-  allowEdit?: boolean;
-  disabled?: boolean;
-  value?: string;
+  allowDelete: boolean;
+  allowEdit: boolean;
+  disabled: boolean;
+  value: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {

@@ -19,7 +19,7 @@ interface SetTextInput {
   value: string;
 }
 
-interface RestoreDefaultTextInput {
+interface DeleteTextInput {
   cultureName: string;
   key: string;
   resourceName: string;
@@ -42,6 +42,7 @@ interface TextDto {
 }
 
 export type {
+  DeleteTextInput,
   GetTextByKeyInput,
   GetTextsInput,
   RestoreDefaultTextInput,

@@ -8,6 +8,7 @@ const routes: RouteRecordRaw[] = [
       icon: 'lucide:layout-dashboard',
       order: -1,
       title: $t('page.dashboard.title'),
+      hideInMenu: true, // 菜单由后端返回，前端不再显示
     },
     name: 'Dashboard',
     path: '/dashboard',

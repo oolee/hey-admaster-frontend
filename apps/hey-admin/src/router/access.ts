@@ -20,7 +20,7 @@ async function generateAccess(options: GenerateMenuAndRoutesOptions) {
   const { getAllApi } = useMyMenusApi();
   const { transformRoutes } = useMenuTransform();
   const pageMap: ComponentRecordType = import.meta.glob('../views/**/*.vue');
-  // const { uiFramework } = useAppConfig(import.meta.env, import.meta.env.PROD);
+
   const { uiFramework } = useAppConfigExtended(
     import.meta.env,
     import.meta.env.PROD,
@@ -29,6 +29,7 @@ async function generateAccess(options: GenerateMenuAndRoutesOptions) {
   const layoutMap: ComponentRecordType = {
     BasicLayout,
     IFrameView,
+    IFrame: IFrameView,
   };
   return await generateAccessible(preferences.app.accessMode, {
     ...options,

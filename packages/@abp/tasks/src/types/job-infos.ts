@@ -52,6 +52,7 @@ interface BackgroundJobInfoDto
   maxTryCount: number;
   name: string;
   nextRunTime?: string;
+  nodeName?: string;
   priority: JobPriority;
   result?: string;
   source: JobSource;

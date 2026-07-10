@@ -51,6 +51,19 @@ catalog:
   '@eslint-community/eslint-plugin-eslint-comments': ^4.7.2
   '@eslint/js': ^10.0.1
   '@faker-js/faker': ^10.4.0
+  '@iconify/icons-ant-design': ^1.2.0
+  '@iconify/icons-carbon': ^1.2.0
+  '@iconify/icons-codicon': ^1.2.0
+  '@iconify/icons-fluent-mdl2': ^1.2.0
+  '@iconify/icons-grommet-icons': ^1.2.0
+  '@iconify/icons-heroicons-outline': ^1.2.0
+  '@iconify/icons-ic': ^1.2.0
+  '@iconify/icons-icon-park-outline': ^1.2.0
+  '@iconify/icons-la': ^1.2.0
+  '@iconify/icons-material-symbols': ^1.2.0
+  '@iconify/icons-mdi': ^1.2.0
+  '@iconify/icons-pajamas': ^1.2.0
+  '@iconify/icons-solar': ^1.2.0
   '@iconify/json': ^2.2.487
   '@iconify/tailwind4': ^1.2.3
   '@iconify/vue': ^5.0.1
@@ -107,6 +120,7 @@ catalog:
   '@vite-pwa/vitepress': ^1.1.0
   '@vitejs/plugin-vue': ^6.0.7
   '@vitejs/plugin-vue-jsx': ^5.1.5
+  '@vue-files-preview': ^1.0.43
   '@vue-office/docx': ^1.6.3
   '@vue-office/excel': ^1.7.14
   '@vue-office/pdf': ^2.0.10
@@ -240,10 +254,11 @@ catalog:
   vue: ^3.5.38
   vue-demi: ^0.14.10
   vue-eslint-parser: ^10.4.1
+  vue-files-preview: ^1.0.43
   vue-i18n: ^11.4.5
   vue-json-pretty: ^2.6.0
   vue-router: ^5.1.0
-  vue-simple-uploader: ^0.7.6
+  vue-simple-uploader: ^1.0.3
   vue-tippy: ^6.7.1
   vue-tsc: ^3.3.5
   vue3-colorpicker: ^2.3.0

@@ -11,6 +11,15 @@ export function generatePermissionTree(
 ): PermissionTree[] {
   const trees: PermissionTree[] = [];
   permissionGroups.forEach((g) => {
+    const children: PermissionTree[] = g.permissions.map((permission) => {
+      return {
+        ...permission,
+        children: [],
+        isRoot: false,
+        disabled: false,
+        key: permission.name,
+      };
+    });
     const tree: PermissionTree = {
       key: g.name,
       disabled: false,
@@ -18,7 +27,7 @@ export function generatePermissionTree(
       isRoot: true,
       name: g.name,
       parentName: g.name,
-      children: listToTree(g.permissions, {
+      children: listToTree(children, {
         id: 'name',
         pid: 'parentName',
       }),

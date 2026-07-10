@@ -79,6 +79,8 @@
   },
   "account": {
     "title": "Account",
+    "linkAccount": "Link Account",
+    "revertImpersonation": "Revert My Account",
     "settings": {
       "title": "My Settings",
       "basic": {

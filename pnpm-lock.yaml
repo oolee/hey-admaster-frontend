@@ -594,6 +594,9 @@ catalogs:
     vue-eslint-parser:
       specifier: ^10.4.1
       version: 10.4.1
+    vue-files-preview:
+      specifier: ^1.0.43
+      version: 1.0.43
     vue-i18n:
       specifier: ^11.4.5
       version: 11.4.6
@@ -604,8 +607,8 @@ catalogs:
       specifier: ^5.1.0
       version: 5.1.0
     vue-simple-uploader:
-      specifier: ^0.7.6
-      version: 0.7.6
+      specifier: ^1.0.3
+      version: 1.0.3
     vue-tippy:
       specifier: ^6.7.1
       version: 6.7.1
@@ -750,6 +753,9 @@ importers:
       vue-tsc:
         specifier: 'catalog:'
         version: 3.3.5(typescript@6.0.3)
+      vue3-colorpicker:
+        specifier: 'catalog:'
+        version: 2.3.0(@aesoper/normal-utils@0.1.5)(@popperjs/core@2.11.8)(@vueuse/core@14.3.0(vue@3.5.38(typescript@6.0.3)))(gradient-parser@1.2.0)(lodash-es@4.18.1)(tinycolor2@1.6.0)(vue-types@3.0.2(vue@3.5.38(typescript@6.0.3)))(vue@3.5.38(typescript@6.0.3))
 
   apps/backend-mock:
     dependencies:
@@ -778,30 +784,75 @@ importers:
       '@abp/ai-management':
         specifier: workspace:*
         version: link:../../packages/@abp/ai-management
+      '@abp/auditing':
+        specifier: workspace:*
+        version: link:../../packages/@abp/auditing
+      '@abp/blob-management':
+        specifier: workspace:*
+        version: link:../../packages/@abp/blob-management
+      '@abp/cache-management':
+        specifier: workspace:*
+        version: link:../../packages/@abp/cache-management
       '@abp/components':
         specifier: workspace:*
         version: link:../../packages/@abp/components
       '@abp/core':
         specifier: workspace:*
         version: link:../../packages/@abp/core
+      '@abp/data-protection':
+        specifier: workspace:*
+        version: link:../../packages/@abp/data-protection
+      '@abp/demo':
+        specifier: workspace:*
+        version: link:../../packages/@abp/demo
+      '@abp/features':
+        specifier: workspace:*
+        version: link:../../packages/@abp/features
       '@abp/identity':
         specifier: workspace:*
         version: link:../../packages/@abp/identity
       '@abp/localization':
         specifier: workspace:*
         version: link:../../packages/@abp/localization
+      '@abp/notifications':
+        specifier: workspace:*
+        version: link:../../packages/@abp/notifications
+      '@abp/openiddict':
+        specifier: workspace:*
+        version: link:../../packages/@abp/openiddict
+      '@abp/permissions':
+        specifier: workspace:*
+        version: link:../../packages/@abp/permissions
       '@abp/platform':
         specifier: workspace:*
         version: link:../../packages/@abp/platform
       '@abp/request':
         specifier: workspace:*
         version: link:../../packages/@abp/request
+      '@abp/saas':
+        specifier: workspace:*
+        version: link:../../packages/@abp/saas
       '@abp/settings':
         specifier: workspace:*
         version: link:../../packages/@abp/settings
+      '@abp/tasks':
+        specifier: workspace:*
+        version: link:../../packages/@abp/tasks
+      '@abp/text-templating':
+        specifier: workspace:*
+        version: link:../../packages/@abp/text-templating
+      '@abp/ui':
+        specifier: workspace:*
+        version: link:../../packages/@abp/ui
+      '@abp/webhooks':
+        specifier: workspace:*
+        version: link:../../packages/@abp/webhooks
       '@abp/wechat':
         specifier: workspace:*
         version: link:../../packages/@abp/wechat
+      '@vben-core/shadcn-ui':
+        specifier: workspace:*
+        version: link:../../packages/@core/ui-kit/shadcn-ui
       '@vben/access':
         specifier: workspace:*
         version: link:../../packages/effects/access
@@ -862,6 +913,9 @@ importers:
       vue-router:
         specifier: 'catalog:'
         version: 5.1.0(@vue/compiler-sfc@3.5.38)(pinia@3.0.4(typescript@6.0.3)(vue@3.5.38(typescript@6.0.3)))(vite@8.0.16(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(less@4.6.6)(sass-embedded@1.100.0)(sass@1.101.0)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.38(typescript@6.0.3))
+      vue3-colorpicker:
+        specifier: 'catalog:'
+        version: 2.3.0(@aesoper/normal-utils@0.1.5)(@popperjs/core@2.11.8)(@vueuse/core@14.3.0(vue@3.5.38(typescript@6.0.3)))(gradient-parser@1.2.0)(lodash-es@4.18.1)(tinycolor2@1.6.0)(vue-types@3.0.2(vue@3.5.38(typescript@6.0.3)))(vue@3.5.38(typescript@6.0.3))
 
   apps/hey-invitation:
     dependencies:
@@ -1843,9 +1897,12 @@ importers:
       vue-demi:
         specifier: 'catalog:'
         version: 0.14.10(vue@3.5.38(typescript@6.0.3))
+      vue-files-preview:
+        specifier: 'catalog:'
+        version: 1.0.43
       vue-simple-uploader:
         specifier: 'catalog:'
-        version: 0.7.6(vue@3.5.38(typescript@6.0.3))
+        version: 1.0.3(vue@3.5.38(typescript@6.0.3))
       vxe-table:
         specifier: 'catalog:'
         version: 4.19.17(vue@3.5.38(typescript@6.0.3))
@@ -2290,6 +2347,9 @@ importers:
       '@vben/locales':
         specifier: workspace:*
         version: link:../../locales
+      '@vueuse/core':
+        specifier: 'catalog:'
+        version: 14.3.0(vue@3.5.38(typescript@6.0.3))
       ant-design-vue:
         specifier: 'catalog:'
         version: 4.2.6(vue@3.5.38(typescript@6.0.3))
@@ -2464,7 +2524,7 @@ importers:
         version: 3.5.38(typescript@6.0.3)
       vue-simple-uploader:
         specifier: 'catalog:'
-        version: 0.7.6(vue@3.5.38(typescript@6.0.3))
+        version: 1.0.3(vue@3.5.38(typescript@6.0.3))
       vxe-table:
         specifier: 'catalog:'
         version: 4.19.17(vue@3.5.38(typescript@6.0.3))
@@ -2681,6 +2741,9 @@ importers:
       '@ant-design/icons-vue':
         specifier: 'catalog:'
         version: 7.0.1(vue@3.5.38(typescript@6.0.3))
+      '@vben-core/shadcn-ui':
+        specifier: workspace:*
+        version: link:../../@core/ui-kit/shadcn-ui
       '@vben/access':
         specifier: workspace:*
         version: link:../../effects/access
@@ -12031,8 +12094,8 @@ packages:
     resolution: {integrity: sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw==}
     engines: {node: '>=14'}
 
-  simple-uploader.js@0.5.6:
-    resolution: {integrity: sha512-ukjL0wZhK1dNMaQa6sd+UpCSmnUjblaUGbAd/B8f5IFrChMzDsC/7eFSK4bs4BS5NPJFSZVLI+l6Ri7THTkQtw==}
+  simple-uploader.js@0.6.0:
+    resolution: {integrity: sha512-EXN+o+LD6PVnfzTq/usP8k8yYrI6wKrAx8e+fPcPLVzzttonkyn1KT+Ycx5JnPBSnp6lpiVhNG4JhDJucdPnhA==}
 
   sirv@3.0.2:
     resolution: {integrity: sha512-2wcC/oGxHis/BoHkkPwldgiPSYcpZK3JU28WoMVv55yHJgcZ8rlXvuG9iZggz+sU1d4bRgIGASwyWqjxu3FM0g==}
@@ -13198,6 +13261,9 @@ packages:
     peerDependencies:
       eslint: ^8.57.0 || ^9.0.0 || ^10.0.0
 
+  vue-files-preview@1.0.43:
+    resolution: {integrity: sha512-aClCRqq7ikQsPOx20JnUHQSHAb+12zMEBWPM1EWtMK/u6a4gJqWt6sbgGfFYyOgCjckzvKTE537zGm8t4R3P6g==}
+
   vue-i18n@11.4.6:
     resolution: {integrity: sha512-l0gE7Rfy0phCa5ChKYkOq543Wgd39BCK6hkktfr1Ed4D99oRkgPK9ffShASZdeC8OJxGfdWmpYoAaAH6iLEuIg==}
     engines: {node: '>= 22'}
@@ -13228,8 +13294,8 @@ packages:
       vite:
         optional: true
 
-  vue-simple-uploader@0.7.6:
-    resolution: {integrity: sha512-DYddedNi+ZZzqxmKgW2t4lBN3aiB66oKOxgAfS9Hz9J1FHv7Xt+u1Pq8F48BFS4vG0+MFHCNzjzS2xaEUOIcHQ==}
+  vue-simple-uploader@1.0.3:
+    resolution: {integrity: sha512-RIghV5rG1CaA41R7VlQP0UG9xevs+cRaCN0k7gH4cFHdG9yIf4206fGKA90NRKzlPxGSBTwLm5dCajLHfqd2+w==}
     engines: {node: '>= 4.0.0', npm: '>= 3.0.0'}
     peerDependencies:
       vue: ^3.5.38
@@ -22052,7 +22118,7 @@ snapshots:
 
   signal-exit@4.1.0: {}
 
-  simple-uploader.js@0.5.6: {}
+  simple-uploader.js@0.6.0: {}
 
   sirv@3.0.2:
     dependencies:
@@ -23259,6 +23325,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  vue-files-preview@1.0.43: {}
+
   vue-i18n@11.4.6(vue@3.5.38(typescript@6.0.3)):
     dependencies:
       '@intlify/core-base': 11.4.6
@@ -23296,9 +23364,9 @@ snapshots:
       pinia: 3.0.4(typescript@6.0.3)(vue@3.5.38(typescript@6.0.3))
       vite: 8.0.16(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(less@4.6.6)(sass-embedded@1.100.0)(sass@1.101.0)(terser@5.48.0)(yaml@2.9.0)
 
-  vue-simple-uploader@0.7.6(vue@3.5.38(typescript@6.0.3)):
+  vue-simple-uploader@1.0.3(vue@3.5.38(typescript@6.0.3)):
     dependencies:
-      simple-uploader.js: 0.5.6
+      simple-uploader.js: 0.6.0
       vue: 3.5.38(typescript@6.0.3)
 
   vue-tippy@6.7.1(vue@3.5.38(typescript@6.0.3)):

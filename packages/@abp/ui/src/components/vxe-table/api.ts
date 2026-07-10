@@ -29,7 +29,6 @@ function getDefaultState(): VxeGridProps {
 export class VxeGridApi<T extends Record<string, any> = any> {
   public formApi = {} as ExtendedFormApi;
 
-  // private prevState: null | VxeGridProps = null;
   public grid = {} as VxeGridInstance<T>;
   public state: null | VxeGridProps<T> = null;
 
@@ -45,15 +44,11 @@ export class VxeGridApi<T extends Record<string, any> = any> {
     const defaultState = getDefaultState();
     this.store = new Store<VxeGridProps>(
       mergeWithArrayOverride(storeState, defaultState),
-      // {
-      //   onUpdate: () => {
-      //     // this.prevState = this.state;
-      //     this.state = this.store.state;
-      //   },
-      // },
     );
 
-    this.store.subscribe(() => (this.state = this.store.state));
+    this.store.subscribe((state) => {
+      this.state = state;
+    });
 
     this.state = this.store.state;
     this.stateHandler = new StateHandler();
@@ -117,9 +112,6 @@ export class VxeGridApi<T extends Record<string, any> = any> {
     this.setState({
       showSearchForm: isBoolean(show) ? show : !this.state?.showSearchForm,
     });
-    // nextTick(() => {
-    //   this.grid.recalculate();
-    // });
     return this.state?.showSearchForm;
   }
 

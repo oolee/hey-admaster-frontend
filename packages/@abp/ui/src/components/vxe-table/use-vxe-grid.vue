@@ -43,7 +43,7 @@ import { VxeButton } from 'vxe-pc-ui';
 import { VxeGrid, VxeUI } from 'vxe-table';
 
 import { extendProxyOptions } from './extends';
-import { tableForm } from './init';
+import { useTableForm } from './init';
 
 import 'vxe-table/styles/cssvar.scss';
 import 'vxe-pc-ui/styles/cssvar.scss';
@@ -100,7 +100,7 @@ const separatorBg = computed(() => {
 });
 const slots: SetupContext['slots'] = useSlots();
 
-const [Form, formApi] = tableForm.useTableForm({
+const [Form, formApi] = useTableForm({
   compact: true,
   handleSubmit: async () => {
     const formValues = await formApi.getValues();
@@ -328,7 +328,7 @@ async function init() {
 watch(
   formOptions,
   () => {
-    formApi.setState((prev: any) => {
+    formApi.setState((prev) => {
       const finalFormOptions: VbenFormProps = mergeWithArrayOverride(
         {},
         formOptions.value,

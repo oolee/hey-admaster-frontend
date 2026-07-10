@@ -123,7 +123,16 @@ function onChange(prop: Record<string, string>) {
     <div class="justify-center">
       <Table bordered :columns="getTableColumns" :data-source="getDataResource">
         <template #bodyCell="{ record, column }">
-          <template v-if="column.dataIndex === 'action'">
+          <template v-if="column.dataIndex === 'key'">
+            <div class="flex flex-col">
+              <span>{{ record.key }}</span>
+              <span
+                v-if="props.displayNameMap && props.displayNameMap[record.key]"
+                >{{ props.displayNameMap[record.key] }}
+              </span>
+            </div>
+          </template>
+          <template v-else-if="column.dataIndex === 'action'">
             <div class="flex flex-row">
               <Button
                 v-if="!props.disabled && props.allowEdit"

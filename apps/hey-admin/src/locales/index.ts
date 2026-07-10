@@ -16,9 +16,11 @@ import { preferences } from '@vben/preferences';
 import { loadComponentMessages } from '@abp/components/locales';
 import { useAbpStore } from '@abp/core';
 import { useLocalizationsApi } from '@abp/localization';
+import { loadPaltformMessages } from '@abp/platform';
 import antdEnLocale from 'ant-design-vue/es/locale/en_US';
 import antdDefaultLocale from 'ant-design-vue/es/locale/zh_CN';
 import dayjs from 'dayjs';
+import localizedFormat from 'dayjs/plugin/localizedFormat';
 
 const antdLocale = ref<Locale>(antdDefaultLocale);
 
@@ -34,41 +36,20 @@ const localesMap = loadLocalesMapFromDir(
  * @param lang
  */
 async function loadMessages(lang: SupportedLanguagesType) {
-  const [appLocaleMessages, compLocales, _, abpLocales] = await Promise.all([
-    localesMap[lang]?.(),
-    loadComponentMessages(lang),
-    loadThirdPartyMessage(lang),
-    loadAbpLocale(lang),
-  ]);
+  const [appLocaleMessages, compLocales, platformLocales, _, abpLocales] =
+    await Promise.all([
+      localesMap[lang]?.(),
+      loadComponentMessages(lang),
+      loadPaltformMessages(lang),
+      loadThirdPartyMessage(lang),
+      loadAbpLocale(lang),
+    ]);
   return {
     ...appLocaleMessages?.default,
     ...compLocales?.default,
+    ...platformLocales?.default,
     ...abpLocales,
   };
-}
-
-/**
- * 加载abp的语言包
- * @param lang
- */
-async function loadAbpLocale(lang: SupportedLanguagesType) {
-  const abpStore = useAbpStore();
-  const { getLocalizationApi } = useLocalizationsApi();
-  let localization = abpStore.localization;
-
-  if (!localization || lang !== localization?.currentCulture.cultureName) {
-    localization = await getLocalizationApi({
-      cultureName: lang,
-      onlyDynamics: false,
-    });
-  }
-  if (!localization.resources) {
-    console.error(`Failed to load ABP localization for ${lang}`);
-    return {};
-  }
-  abpStore.setLocalization(localization);
-  const locales = abpStore.getI18nLocales();
-  return locales;
 }
 
 /**
@@ -100,7 +81,9 @@ async function loadDayjsLocale(lang: SupportedLanguagesType) {
     }
   }
   if (locale) {
+    dayjs.extend(localizedFormat);
     dayjs.locale(locale);
+    dayjs.extend(localizedFormat);
   } else {
     console.error(`Failed to load dayjs locale for ${lang}`);
   }
@@ -121,6 +104,30 @@ async function loadAntdLocale(lang: SupportedLanguagesType) {
       break;
     }
   }
+}
+
+/**
+ * 加载abp的语言包
+ * @param lang
+ */
+async function loadAbpLocale(lang: SupportedLanguagesType) {
+  const abpStore = useAbpStore();
+  const { getLocalizationApi } = useLocalizationsApi();
+  let localization = abpStore.localization;
+
+  if (!localization || lang !== localization?.currentCulture.cultureName) {
+    localization = await getLocalizationApi({
+      cultureName: lang,
+      onlyDynamics: false,
+    });
+  }
+  if (!localization.resources) {
+    console.error(`Failed to load ABP localization for ${lang}`);
+    return {};
+  }
+  abpStore.setLocalization(localization);
+  const locales = abpStore.getI18nLocales();
+  return locales;
 }
 
 async function setupI18n(app: App, options: LocaleSetupOptions = {}) {

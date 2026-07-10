@@ -8,7 +8,6 @@ export function useMyMenusApi() {
   const { cancel, request } = useRequest();
 
   function getAllApi(input?: MenuGetInput): Promise<ListResultDto<MenuDto>> {
-    console.log('getAllApi called with input', input);
     return request<ListResultDto<MenuDto>>(
       '/api/platform/menus/by-current-user',
       {

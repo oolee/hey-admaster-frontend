@@ -1,4 +1,4 @@
-import type { OAuthError, TokenResult } from '@abp/account';
+import type { OAuthError, SigninRedirectArgs, TokenResult } from '@abp/account';
 
 import type { Recordable, UserInfo } from '@vben/types';
 
@@ -47,8 +47,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function oidcLogin() {
-    await oAuthService.login();
+  async function oidcLogin(args?: SigninRedirectArgs) {
+    await oAuthService.login(args);
   }
 
   async function oidcCallback(onError?: (error: OAuthError) => void) {
@@ -105,7 +105,63 @@ export const useAuthStore = defineStore('auth', () => {
           accessToken: user.access_token,
           tokenType: user.token_type,
           refreshToken: user.refresh_token ?? '',
+          expiresIn: user.expires_in!,
+        },
+        onSuccess,
+      );
+    } finally {
+      loginLoading.value = false;
+    }
+  }
 
+  async function linkUseLogin(
+    userId: string,
+    tenantId?: string,
+    onSuccess?: () => Promise<void> | void,
+  ) {
+    try {
+      loginLoading.value = true;
+      const accessToken = await oAuthService.getAccessToken();
+      const user = await oAuthService.loginByLinkUser({
+        accessToken,
+        linkUserId: userId,
+        linkTenantId: tenantId,
+      });
+      return await _loginSuccess(
+        {
+          accessToken: user.access_token,
+          tokenType: user.token_type,
+          refreshToken: user.refresh_token ?? '',
+          expiresIn: user.expires_in!,
+        },
+        onSuccess,
+      );
+    } finally {
+      loginLoading.value = false;
+    }
+  }
+
+  async function impersonationUserLogin(
+    params: {
+      tenantId?: string;
+      tenantUserName?: string;
+      userDelegationId?: string;
+      userId?: string;
+    },
+    onSuccess?: () => Promise<void> | void,
+  ) {
+    try {
+      loginLoading.value = true;
+      const accessToken = await oAuthService.getAccessToken();
+      const user = await oAuthService.loginByImpersonation({
+        accessToken,
+        ...params,
+      });
+      return await _loginSuccess(
+        {
+          accessToken: user.access_token,
+          tokenType: user.token_type,
+          refreshToken: user.refresh_token ?? '',
           expiresIn: user.expires_in!,
         },
         onSuccess,
@@ -193,6 +249,7 @@ export const useAuthStore = defineStore('auth', () => {
       userId: userInfoRes.sub ?? abpConfig.currentUser.id,
       username: userInfoRes.uniqueName ?? abpConfig.currentUser.userName,
       realName:
+        userInfoRes.given_name ??
         userInfoRes.name ??
         abpConfig.currentUser.name ??
         abpConfig.currentUser.userName,
@@ -281,6 +338,8 @@ export const useAuthStore = defineStore('auth', () => {
     oidcLogin,
     oidcCallback,
     fetchUserInfo,
+    linkUseLogin,
+    impersonationUserLogin,
     loginLoading,
     logout,
     refreshSession,

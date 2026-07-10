@@ -44,6 +44,7 @@ interface PermissionTree {
   /** 是否授权 */
   isGranted?: boolean;
   isRoot: boolean;
+  /** 权限标识 */
   key: string;
   /** 权限标识 */
   name: string;
@@ -51,7 +52,12 @@ interface PermissionTree {
   parentName?: string;
 }
 
+interface GetPermissionGrantedWithProviderListResultDto {
+  grantedProviders: PermissionProvider[];
+}
+
 export type {
+  GetPermissionGrantedWithProviderListResultDto,
   PermissionDto,
   PermissionGroupDto,
   PermissionProvider,

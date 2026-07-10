@@ -16,10 +16,14 @@ import { initSetupVbenForm } from './adapter/form';
 import { initRequestClient } from './adapter/request';
 import App from './app.vue';
 import { router } from './router';
-import { initTimezone } from './timezone-init';
+import {
+  cleanupInvalidTimezoneFromStorage,
+  initTimezone,
+} from './timezone-init';
 
 async function bootstrap(namespace: string) {
-  // 初始化组件适配器
+  cleanupInvalidTimezoneFromStorage(namespace);
+
   await initComponentAdapter();
 
   // 初始化表单组件
@@ -41,7 +45,7 @@ async function bootstrap(namespace: string) {
 
   // 注册v-loading指令
   registerLoadingDirective(app, {
-    loading: 'loading', // 在这里可以自定义指令名称，也可以明确提供false表示不注册这个指令
+    loading: 'loading',
     spinning: 'spinning',
   });
 

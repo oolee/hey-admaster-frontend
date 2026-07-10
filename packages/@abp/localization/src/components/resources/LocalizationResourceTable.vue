@@ -29,7 +29,7 @@ defineOptions({
 
 const dataSource = ref<ResourceDto[]>([]);
 const abpStore = useAbpStore();
-const { deleteApi, getListApi } = useResourcesApi();
+const { deleteApi, getPagedListApi } = useResourcesApi();
 const { getLocalizationApi } = useLocalizationsApi();
 
 const formOptions: VbenFormProps = {
@@ -81,20 +81,13 @@ const gridOptions: VxeGridProps<ResourceDto> = {
   keepSource: true,
   proxyConfig: {
     ajax: {
-      query: async ({ page, sort }) => {
-        let items = sortby(dataSource.value, sort.field);
-        if (sort.order === 'desc') {
-          items = items.toReversed();
-        }
-        const result = {
-          totalCount: dataSource.value.length,
-          items: items.slice(
-            (page.currentPage - 1) * page.pageSize,
-            page.currentPage * page.pageSize,
-          ),
-        };
-        return new Promise((resolve) => {
-          resolve(result);
+      query: async ({ page, sort }, formValues) => {
+        const sorting = sort.order ? `${sort.field} ${sort.order}` : undefined;
+        return await getPagedListApi({
+          sorting,
+          maxResultCount: page.pageSize,
+          skipCount: (page.currentPage - 1) * page.pageSize,
+          ...formValues,
         });
       },
     },
@@ -185,7 +178,7 @@ onMounted(onGet);
 </script>
 
 <template>
-  <Grid :table-title="$t('AbpLocalization.Resources')">
+  <Grid :table-title="$t('LocalizationManagement.Resources')">
     <template #toolbar-tools>
       <Button
         :icon="h(PlusOutlined)"

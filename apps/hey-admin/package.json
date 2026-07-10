@@ -28,14 +28,29 @@
   "dependencies": {
     "@abp/account": "workspace:*",
     "@abp/ai-management": "workspace:*",
+    "@abp/auditing": "workspace:*",
+    "@abp/blob-management": "workspace:*",
+    "@abp/cache-management": "workspace:*",
     "@abp/components": "workspace:*",
     "@abp/core": "workspace:*",
+    "@abp/data-protection": "workspace:*",
+    "@abp/demo": "workspace:*",
+    "@abp/features": "workspace:*",
     "@abp/identity": "workspace:*",
     "@abp/localization": "workspace:*",
+    "@abp/notifications": "workspace:*",
+    "@abp/openiddict": "workspace:*",
+    "@abp/permissions": "workspace:*",
     "@abp/platform": "workspace:*",
     "@abp/request": "workspace:*",
+    "@abp/saas": "workspace:*",
     "@abp/settings": "workspace:*",
+    "@abp/tasks": "workspace:*",
+    "@abp/text-templating": "workspace:*",
+    "@abp/ui": "workspace:*",
+    "@abp/webhooks": "workspace:*",
     "@abp/wechat": "workspace:*",
+    "@vben-core/shadcn-ui": "workspace:*",
     "@vben/access": "workspace:*",
     "@vben/common-ui": "workspace:*",
     "@vben/constants": "workspace:*",
@@ -55,6 +70,7 @@
     "dayjs": "catalog:",
     "pinia": "catalog:",
     "vue": "catalog:",
-    "vue-router": "catalog:"
+    "vue-router": "catalog:",
+    "vue3-colorpicker": "catalog:"
   }
 }

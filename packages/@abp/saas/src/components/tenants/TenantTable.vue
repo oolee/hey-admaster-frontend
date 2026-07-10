@@ -21,6 +21,7 @@ import {
   DeleteOutlined,
   EditOutlined,
   EllipsisOutlined,
+  LoginOutlined,
   PlusOutlined,
 } from '@ant-design/icons-vue';
 import { Button, Dropdown, Menu, message, Modal } from 'ant-design-vue';
@@ -32,7 +33,12 @@ defineOptions({
   name: 'EditionTable',
 });
 
+const emit = defineEmits<{
+  (event: 'impersonation', tenant: TenantDto): void;
+}>();
+
 const MenuItem = Menu.Item;
+const MenuDivider = Menu.Divider;
 const CheckIcon = createIconifyIcon('ant-design:check-outlined');
 const CloseIcon = createIconifyIcon('ant-design:close-outlined');
 const AuditLogIcon = createIconifyIcon('fluent-mdl2:compliance-audit');
@@ -128,7 +134,8 @@ const gridOptions: VxeGridProps<TenantDto> = {
   toolbarConfig: {
     custom: true,
     export: true,
-    refresh: {
+    refresh: true,
+    refreshOptions: {
       code: 'query',
     },
     zoom: true,
@@ -210,6 +217,10 @@ const onMenuClick = (row: TenantDto, info: MenuInfo) => {
         providerName: 'T',
       });
       tenantFeatureModalApi.open();
+      break;
+    }
+    case 'impersonation': {
+      emit('impersonation', row);
     }
   }
 };
@@ -273,6 +284,15 @@ const onMenuClick = (row: TenantDto, info: MenuInfo) => {
               >
                 {{ $t('AbpSaas.ManageFeatures') }}
               </MenuItem>
+              <MenuDivider />
+              <MenuItem
+                v-if="hasAccessByCodes([TenantsPermissions.Impersonation])"
+                key="impersonation"
+                :icon="h(LoginOutlined)"
+              >
+                {{ $t('AbpSaas.ImpersonationTenant') }}
+              </MenuItem>
+              <MenuDivider />
               <MenuItem
                 v-if="
                   isEnabled('AbpAuditing.Logging.AuditLog') &&
