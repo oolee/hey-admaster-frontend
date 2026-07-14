@@ -217,7 +217,7 @@ catalog:
   tdesign-vue-next: ^1.20.1
   theme-colors: ^0.1.0
   three: ^0.170.0
-  tinymce: ^5.10.7
+  tinymce: ^8.7.0
   tippy.js: ^6.3.7
   tsdown: ^0.22.3
   turbo: ^2.9.18
