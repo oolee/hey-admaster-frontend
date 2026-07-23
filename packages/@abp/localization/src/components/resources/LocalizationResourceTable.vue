@@ -10,7 +10,7 @@ import { defineAsyncComponent, h, onMounted, ref } from 'vue';
 import { useVbenModal } from '@vben/common-ui';
 import { $t } from '@vben/locales';
 
-import { sortby, useAbpStore } from '@abp/core';
+import { useAbpStore } from '@abp/core';
 import { useVbenVxeGrid } from '@abp/ui';
 import {
   DeleteOutlined,

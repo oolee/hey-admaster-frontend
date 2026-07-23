@@ -18,8 +18,8 @@ import {
   EditOutlined,
   PlusOutlined,
 } from '@ant-design/icons-vue';
-import { Button, Select } from 'ant-design-vue';
 import { useDebounceFn } from '@vueuse/core';
+import { Button, Select } from 'ant-design-vue';
 
 import { useLanguagesApi } from '../../api/useLanguagesApi';
 import { useLocalizationsApi } from '../../api/useLocalizationsApi';
