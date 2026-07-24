@@ -201,13 +201,14 @@ export const useAuthStore = defineStore('auth', () => {
   async function logout(redirect: boolean = true) {
     try {
       if (await oAuthService.getAccessToken()) {
+        console.log('logout');
         accessStore.setAccessToken(null);
         await oAuthService.logout();
       } else {
         await oAuthService.revokeTokens();
       }
-    } catch {
-      // 不做任何处理
+    } catch (error) {
+      console.error('Error occurred while logging out:', error);
     }
     resetAllStores();
     accessStore.setLoginExpired(false);

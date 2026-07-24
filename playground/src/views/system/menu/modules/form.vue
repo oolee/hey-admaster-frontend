@@ -56,12 +56,13 @@ const schema: VbenFormSchema[] = [
         async (value: string) => {
           return !(await isMenuNameExists(value, formData.value?.id));
         },
-        (value) => ({
-          message: $t('ui.formRules.alreadyExists', [
-            $t('system.menu.menuName'),
-            value,
-          ]),
-        }),
+        {
+          error: (issue) =>
+            $t('ui.formRules.alreadyExists', [
+              $t('system.menu.menuName'),
+              issue.input,
+            ]),
+        },
       ),
   },
   {
@@ -88,7 +89,13 @@ const schema: VbenFormSchema[] = [
     label: $t('system.menu.parent'),
     renderComponentContent() {
       return {
-        title({ label, meta }: { label: string; meta: Recordable<any> }) {
+        treeTitleRender({
+          label,
+          meta,
+        }: {
+          label: string;
+          meta: Recordable<any>;
+        }) {
           const coms = [];
           if (!label) return '';
           if (meta?.icon) {
@@ -130,21 +137,16 @@ const schema: VbenFormSchema[] = [
       .min(2, $t('ui.formRules.minLength', [$t('system.menu.path'), 2]))
       .max(100, $t('ui.formRules.maxLength', [$t('system.menu.path'), 100]))
       .refine(
-        (value: string) => {
-          return value.startsWith('/');
-        },
-        $t('ui.formRules.startWith', [$t('system.menu.path'), '/']),
-      )
-      .refine(
         async (value: string) => {
           return !(await isMenuPathExists(value, formData.value?.id));
         },
-        (value) => ({
-          message: $t('ui.formRules.alreadyExists', [
-            $t('system.menu.path'),
-            value,
-          ]),
-        }),
+        {
+          error: (issue) =>
+            $t('ui.formRules.alreadyExists', [
+              $t('system.menu.path'),
+              issue.input,
+            ]),
+        },
       ),
   },
   {
@@ -162,12 +164,6 @@ const schema: VbenFormSchema[] = [
       .string()
       .min(2, $t('ui.formRules.minLength', [$t('system.menu.path'), 2]))
       .max(100, $t('ui.formRules.maxLength', [$t('system.menu.path'), 100]))
-      .refine(
-        (value: string) => {
-          return value.startsWith('/');
-        },
-        $t('ui.formRules.startWith', [$t('system.menu.path'), '/']),
-      )
       .refine(async (value: string) => {
         return await isMenuPathExists(value, formData.value?.id);
       }, $t('system.menu.activePathMustExist'))
@@ -233,7 +229,7 @@ const schema: VbenFormSchema[] = [
     },
     fieldName: 'linkSrc',
     label: $t('system.menu.linkSrc'),
-    rules: z.string().url($t('ui.formRules.invalidURL')),
+    rules: z.url($t('ui.formRules.invalidURL')),
   },
   {
     component: 'Input',
@@ -284,18 +280,18 @@ const schema: VbenFormSchema[] = [
   },
   {
     component: 'Input',
-    componentProps: (values) => {
-      return {
-        allowClear: true,
-        class: 'w-full',
-        disabled: values.meta?.badgeType !== 'normal',
-      };
-    },
     dependencies: {
-      show: (values) => {
-        return values.type !== 'button';
+      resolve: ({ values }) => {
+        return {
+          componentProps: {
+            allowClear: true,
+            class: 'w-full',
+            disabled: values.meta?.badgeType !== 'normal',
+          },
+          show: values.type !== 'button',
+        };
       },
-      triggerFields: ['type'],
+      triggerFields: ['meta.badgeType', 'type'],
     },
     fieldName: 'meta.badge',
     label: $t('system.menu.badge'),
@@ -457,7 +453,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
           ? $t(formData.value.meta.title)
           : '';
       } else {
-        formApi.resetForm();
+        formApi.reset();
         titleSuffix.value = '';
       }
     }

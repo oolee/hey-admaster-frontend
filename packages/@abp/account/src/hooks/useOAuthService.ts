@@ -48,7 +48,9 @@ export function useOAuthService() {
   }
 
   async function getAccessToken() {
+    console.log('getAccessToken');
     const user = await userManager.getUser();
+    console.log('getAccessToken', user?.access_token);
     return user?.access_token;
   }
 
