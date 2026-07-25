@@ -1,0 +1,9 @@
+{
+  "name": "Name",
+  "nameTip": "Please enter your name",
+  "emailInvalid": "Invalid email format",
+  "registerSuccess": "Registration successful",
+  "registerSuccessDesc": "Congratulations on your successful registration, please login",
+  "registerFailed": "Registration failed",
+  "registerFailedDesc": "An error occurred during registration, please try again"
+}

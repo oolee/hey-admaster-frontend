@@ -1,0 +1,9 @@
+{
+  "name": "姓名",
+  "nameTip": "请输入姓名",
+  "emailInvalid": "邮箱格式不正确",
+  "registerSuccess": "注册成功",
+  "registerSuccessDesc": "恭喜您注册成功，请登录",
+  "registerFailed": "注册失败",
+  "registerFailedDesc": "注册过程中出现错误，请重试"
+}

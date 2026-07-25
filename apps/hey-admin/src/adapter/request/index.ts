@@ -9,6 +9,7 @@ import { useOAuthError } from '@abp/account';
 import { useAbpStore } from '@abp/core';
 import { requestClient, useWrapperResult } from '@abp/request';
 import { message } from 'ant-design-vue';
+import Cookies from 'universal-cookie';
 
 import { useAuthStore } from '#/store';
 
@@ -70,8 +71,15 @@ export function initRequestClient() {
         // see: https://github.com/abpframework/abp/blob/dev/framework/src/Volo.Abp.MultiTenancy.Abstractions/Volo/Abp/MultiTenancy/TenantResolverConsts.cs
         config.headers.__tenant = abpStore.tenantId;
       }
-      if (abpStore.xsrfToken) {
-        config.headers.RequestVerificationToken = abpStore.xsrfToken;
+      // 从 cookie 实时读取 xsrfToken，避免持久化的旧 token 导致
+      // "The provided antiforgery token was meant for a different claims-based user" 错误
+      const cookies = new Cookies(null, {
+        domain: window.location.host,
+        path: '/',
+      });
+      const xsrfToken = cookies.get('XSRF-TOKEN');
+      if (xsrfToken) {
+        config.headers.RequestVerificationToken = xsrfToken;
       }
       if (timezoneStore.timezone) {
         // see: https://github.com/abpframework/abp/blob/dev/framework/src/Volo.Abp.Timing/Volo/Abp/Timing/TimeZoneConsts.cs

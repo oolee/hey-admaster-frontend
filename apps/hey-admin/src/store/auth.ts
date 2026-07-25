@@ -201,14 +201,13 @@ export const useAuthStore = defineStore('auth', () => {
   async function logout(redirect: boolean = true) {
     try {
       if (await oAuthService.getAccessToken()) {
-        console.log('logout');
         accessStore.setAccessToken(null);
         await oAuthService.logout();
       } else {
         await oAuthService.revokeTokens();
       }
-    } catch (error) {
-      console.error('Error occurred while logging out:', error);
+    } catch {
+      // 不做任何处理
     }
     resetAllStores();
     accessStore.setLoginExpired(false);
@@ -308,6 +307,8 @@ export const useAuthStore = defineStore('auth', () => {
               userInfo?.homePath || preferences.app.defaultHomePath,
             );
       }
+
+      accessStore.unlockScreen();
 
       if (userInfo?.realName) {
         notification.success({

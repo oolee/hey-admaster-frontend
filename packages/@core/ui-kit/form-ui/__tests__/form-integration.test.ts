@@ -104,6 +104,34 @@ describe('useVbenForm integration', () => {
     expect(validateValue).toHaveBeenCalledTimes(initialValidationCount + 1);
   });
 
+  it('keeps values reactive when exposed through the default slot', async () => {
+    const [Form, formApi] = useVbenForm({
+      schema: [
+        {
+          component: TestInput,
+          defaultValue: 'Ada',
+          fieldName: 'name',
+        },
+      ],
+      showDefaultActions: false,
+    });
+    const wrapper = mount(Form, {
+      slots: {
+        default: ({ values }: { values: Record<string, any> }) =>
+          h('span', { class: 'slot-value' }, values.name),
+      },
+    });
+    wrappers.push(wrapper);
+    await flushPromises();
+
+    expect(wrapper.get('.slot-value').text()).toBe('Ada');
+
+    await formApi.setFieldValue('name', 'Grace');
+    await flushPromises();
+
+    expect(wrapper.get('.slot-value').text()).toBe('Grace');
+  });
+
   it('supports a field-level change event fallback for legacy components', async () => {
     const [Form, formApi] = useVbenForm({
       schema: [
@@ -485,6 +513,85 @@ describe('useVbenForm integration', () => {
     });
   });
 
+  it('preserves array row inputs and focus while editing', async () => {
+    const [Form] = useVbenForm({
+      schema: [
+        {
+          children: [
+            {
+              component: TestInput,
+              fieldName: 'name',
+              label: 'Name',
+            },
+          ],
+          defaultValue: [{ name: 'Ada' }],
+          fieldName: 'contacts',
+          type: 'array',
+        },
+      ],
+    });
+    const wrapper = mount(Form, { attachTo: document.body });
+    wrappers.push(wrapper);
+    await flushPromises();
+    const input = wrapper.get('input');
+    const inputElement = input.element;
+    inputElement.focus();
+
+    await input.setValue('Ada Lovelace');
+    await flushPromises();
+
+    expect(wrapper.get('input').element).toBe(inputElement);
+    expect((input.element as HTMLInputElement).value).toBe('Ada Lovelace');
+    expect(document.activeElement).toBe(inputElement);
+  });
+
+  it('updates optimized array rows when values and schemas change', async () => {
+    const [Form, formApi] = useVbenForm({
+      schema: [
+        {
+          children: [
+            {
+              component: TestInput,
+              fieldName: 'name',
+              label: 'Name',
+            },
+          ],
+          defaultValue: [{ name: 'Ada' }, { name: 'Grace' }],
+          fieldName: 'contacts',
+          type: 'array',
+        },
+      ],
+    });
+    const wrapper = mount(Form);
+    wrappers.push(wrapper);
+    await flushPromises();
+    const firstInput = wrapper.get('input[name="contacts[0].name"]');
+    const firstInputElement = firstInput.element;
+
+    await formApi.setFieldValue('contacts[0].name', 'Ada Lovelace');
+    await flushPromises();
+
+    expect(wrapper.get('input[name="contacts[0].name"]').element).toBe(
+      firstInputElement,
+    );
+    expect(firstInput.element.getAttribute('value')).toBe('Ada Lovelace');
+
+    formApi.updateSchema([
+      {
+        componentProps: { disabled: true },
+        fieldName: 'contacts.name',
+      },
+    ]);
+    await flushPromises();
+
+    expect(
+      wrapper.get('input[name="contacts[0].name"]').attributes(),
+    ).toHaveProperty('disabled');
+    expect(
+      wrapper.get('input[name="contacts[1].name"]').attributes(),
+    ).toHaveProperty('disabled');
+  });
+
   it('scopes resolve dependencies to array rows', async () => {
     const resolve = vi.fn(({ schema }: Record<string, any>) => ({
       componentProps: {
@@ -652,5 +759,182 @@ describe('useVbenForm integration', () => {
     await flushPromises();
 
     expect(formApi.form.getFieldError('username')).toBeUndefined();
+  });
+
+  it('passes formatted values and raw values to handleSubmit callback', async () => {
+    const handleSubmit = vi.fn();
+    const [Form, formApi] = useVbenForm({
+      codec: {
+        decode(values: Readonly<{ normalizedName: string }>) {
+          return { name: values.normalizedName };
+        },
+        encode(values: Readonly<{ name: string }>) {
+          return { normalizedName: values.name.trim().toUpperCase() };
+        },
+      },
+      handleSubmit,
+      schema: [
+        {
+          component: TestInput,
+          defaultValue: '',
+          fieldName: 'name',
+          rules: 'required',
+        },
+      ],
+    });
+    const wrapper = mount(Form);
+    wrappers.push(wrapper);
+    await flushPromises();
+
+    await formApi.setFieldValue('name', ' test ');
+    await formApi.validateAndSubmit();
+    await flushPromises();
+
+    expect(handleSubmit).toHaveBeenCalledOnce();
+    expect(handleSubmit).toHaveBeenCalledWith(
+      { normalizedName: 'TEST' },
+      { name: ' test ' },
+    );
+  });
+
+  it('does not expose raw values through native form submit events', async () => {
+    const onSubmit = vi.fn();
+    const [Form, formApi] = useVbenForm({
+      schema: [
+        {
+          component: TestInput,
+          defaultValue: '',
+          fieldName: 'name',
+          rules: 'required',
+          valueFormat: (value) => value.trim().toUpperCase(),
+        },
+      ],
+    });
+    const wrapper = mount(Form, { attrs: { onSubmit } });
+    wrappers.push(wrapper);
+    await flushPromises();
+
+    await formApi.setFieldValue('name', ' raw ');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+
+    expect(onSubmit).toHaveBeenCalledOnce();
+    expect(onSubmit).toHaveBeenCalledWith(undefined);
+  });
+
+  it('calls handleReset with formatted values on reset button click', async () => {
+    const handleReset = vi.fn();
+    const [Form, formApi] = useVbenForm({
+      codec: {
+        decode(values: Readonly<{ normalizedName: string }>) {
+          return { name: values.normalizedName };
+        },
+        encode(values: Readonly<{ name: string }>) {
+          return { normalizedName: values.name.toUpperCase() };
+        },
+      },
+      handleReset,
+      schema: [
+        {
+          component: TestInput,
+          defaultValue: 'hello',
+          fieldName: 'name',
+        },
+      ],
+    });
+    const wrapper = mount(Form);
+    wrappers.push(wrapper);
+    await flushPromises();
+
+    expect(await formApi.getValues()).toEqual({ normalizedName: 'HELLO' });
+    const resetButton = wrapper.findAll('button')[0];
+    expect(resetButton).toBeDefined();
+    if (!resetButton) return;
+    await resetButton.trigger('click');
+    await flushPromises();
+
+    expect(handleReset).toHaveBeenCalledOnce();
+    expect(handleReset).toHaveBeenCalledWith({ normalizedName: 'HELLO' });
+  });
+
+  it('setValues with multiple fields emits only the final values', async () => {
+    const handleValuesChange = vi.fn();
+    const [Form, formApi] = useVbenForm({
+      handleValuesChange,
+      schema: [
+        { component: TestInput, fieldName: 'first' },
+        { component: TestInput, fieldName: 'second' },
+        { component: TestInput, fieldName: 'third' },
+      ],
+    });
+    const wrapper = mount(Form);
+    wrappers.push(wrapper);
+    await flushPromises();
+    const initialCallCount = handleValuesChange.mock.calls.length;
+
+    await formApi.setValues({ first: 'a', second: 'b', third: 'c' });
+    await flushPromises();
+
+    const calls = handleValuesChange.mock.calls.slice(initialCallCount);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.[0]).toEqual({
+      first: 'a',
+      second: 'b',
+      third: 'c',
+    });
+  });
+
+  it('retains initial values for unspecified fields on partial reset', async () => {
+    const [Form, formApi] = useVbenForm({
+      schema: [
+        { component: TestInput, defaultValue: 'original', fieldName: 'name' },
+        { component: TestInput, defaultValue: 'keep', fieldName: 'alias' },
+      ],
+    });
+    const wrapper = mount(Form);
+    wrappers.push(wrapper);
+    await flushPromises();
+
+    await formApi.setValues({ alias: 'changed', name: 'changed' });
+    await formApi.reset({ values: { name: 'reset' } });
+    await flushPromises();
+
+    expect(await formApi.getValues()).toEqual({
+      alias: 'keep',
+      name: 'reset',
+    });
+  });
+
+  it('applies valueFormat consistently across value APIs', async () => {
+    const handleSubmit = vi.fn();
+    const [Form, formApi] = useVbenForm({
+      handleSubmit,
+      schema: [
+        {
+          component: TestInput,
+          fieldName: 'name',
+          valueFormat: (value) => (value ? value.trim().toUpperCase() : ''),
+        },
+      ],
+    });
+    const wrapper = mount(Form);
+    wrappers.push(wrapper);
+    await flushPromises();
+
+    await formApi.setFieldValue('name', ' hello ');
+    await flushPromises();
+
+    expect(await formApi.getValues()).toEqual({ name: 'HELLO' });
+    expect(await formApi.getValueSnapshot()).toEqual({
+      rawValues: { name: ' hello ' },
+      values: { name: 'HELLO' },
+    });
+
+    await formApi.validateAndSubmit();
+    await flushPromises();
+    expect(handleSubmit).toHaveBeenCalledWith(
+      { name: 'HELLO' },
+      { name: ' hello ' },
+    );
   });
 });

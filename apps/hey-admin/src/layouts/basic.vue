@@ -142,6 +142,7 @@ const avatar = computed(() => {
 });
 
 async function handleLogout() {
+  console.log('handleLogout');
   await authStore.logout(false);
 }
 
@@ -232,7 +233,7 @@ watch(
 </script>
 
 <template>
-  <BasicLayout @clear-preferences-and-logout="handleLogout">
+  <BasicLayout @clear-preferences-and-logout="handleLogout" @logout="handleLogout">
     <template #user-dropdown>
       <UserDropdown
         :avatar
