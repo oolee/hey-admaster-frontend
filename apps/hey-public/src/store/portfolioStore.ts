@@ -15,8 +15,8 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     if (items.value.length > 0) return;
     loading.value = true;
     try {
-      const res = await fetchPortfolio();
-      items.value = res.data;
+      const res = await fetchPortfolio({ maxResultCount: 100 });
+      items.value = res.items;
     } catch (error) {
       console.error('Failed to load portfolio', error);
     } finally {

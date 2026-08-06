@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import type { ApiResponse } from '#/types/api';
-import type { PortfolioItem } from '#/types/portfolio';
+import type { FeaturedPortfolio } from '#/types/api';
 
 import { onMounted, ref } from 'vue';
 
@@ -18,20 +17,18 @@ const props = withDefaults(
   },
 );
 
-const items = ref<PortfolioItem[]>([]);
+const items = ref<FeaturedPortfolio[]>([]);
 const loading = ref(true);
-const error = ref<null | string>(null);
+const fetchError = ref<null | string>(null);
 
 onMounted(async () => {
   try {
-    const res = await fetchPortfolio();
-    const data = res.data as unknown as ApiResponse<PortfolioItem[]>;
-    const allItems = Array.isArray(data) ? data : (data.data ?? []);
+    const res = await fetchPortfolio({ maxResultCount: 100 });
+    const allItems = res.items as FeaturedPortfolio[];
     items.value = props.limit ? allItems.slice(0, props.limit) : allItems;
   } catch (error) {
-    const err = error as { value?: string };
-    err.value = '加载作品集失败，请稍后重试';
-    console.error('[PortfolioGrid] fetch error:', err);
+    fetchError.value = '加载作品集失败，请稍后重试';
+    console.error('[PortfolioGrid] fetch error:', error);
   } finally {
     loading.value = false;
   }
@@ -47,8 +44,8 @@ onMounted(async () => {
     </div>
 
     <!-- 错误状态 -->
-    <div v-else-if="error" class="grid-error">
-      <span class="error-text">{{ error }}</span>
+    <div v-else-if="fetchError" class="grid-error">
+      <span class="error-text">{{ fetchError }}</span>
     </div>
 
     <!-- 空状态 -->

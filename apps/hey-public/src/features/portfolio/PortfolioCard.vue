@@ -1,36 +1,50 @@
 <script setup lang="ts">
-import type { PortfolioItem } from '#/types/portfolio';
+import type { FeaturedPortfolio } from '#/types/api';
+
+import { RouterLink } from 'vue-router';
 
 import GlassCard from '#/components/ui/GlassCard.vue';
 
 defineProps<{
-  item: PortfolioItem;
+  item: FeaturedPortfolio;
   tag?: string;
 }>();
 </script>
 
 <template>
   <GlassCard :tag="tag" :hoverable="true">
-    <div class="portfolio-card">
-      <div class="portfolio-image-wrapper">
-        <img
-          :src="item.imageUrl"
-          :alt="item.title"
-          class="portfolio-image"
-          loading="lazy"
-        />
-        <span class="portfolio-category">{{ item.category }}</span>
-      </div>
+    <RouterLink :to="`/portfolio/${item.id}`" class="portfolio-card-link">
+      <div class="portfolio-card">
+        <div class="portfolio-image-wrapper">
+          <img
+            :src="item.coverImageUrl"
+            :alt="item.title"
+            class="portfolio-image"
+            loading="lazy"
+          />
+          <span class="portfolio-category">{{ item.category }}</span>
+        </div>
 
-      <div class="portfolio-info">
-        <h3 class="portfolio-title">{{ item.title }}</h3>
-        <p class="portfolio-description">{{ item.description }}</p>
+        <div class="portfolio-info">
+          <h3 class="portfolio-title">{{ item.title }}</h3>
+          <p class="portfolio-description">{{ item.description }}</p>
+        </div>
       </div>
-    </div>
+    </RouterLink>
   </GlassCard>
 </template>
 
 <style scoped>
+.portfolio-card-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.portfolio-card-link:hover .portfolio-title {
+  color: var(--color-neon);
+}
+
 .portfolio-card {
   display: flex;
   flex-direction: column;

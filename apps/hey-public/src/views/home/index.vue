@@ -1,4 +1,13 @@
 <script setup lang="ts">
+import type {
+  CarouselItem,
+  DailyPrompt,
+  FeaturedPortfolio,
+  ServiceItem,
+  StatItem,
+} from '#/types/api';
+
+import { onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 
 import BentoGrid from '#/components/ui/BentoGrid.vue';
@@ -6,62 +15,39 @@ import NeonButton from '#/components/ui/NeonButton.vue';
 import ScrollReveal from '#/components/ui/ScrollReveal.vue';
 import SectionTitle from '#/components/ui/SectionTitle.vue';
 import HeroSection from '#/features/hero/HeroSection.vue';
-import PortfolioGrid from '#/features/portfolio/PortfolioGrid.vue';
+import PortfolioCard from '#/features/portfolio/PortfolioCard.vue';
 import ServiceCard from '#/features/services/ServiceCard.vue';
+import { fetchHomepage } from '#/utils/api';
 
-const services = [
-  {
-    tag: '01',
-    icon: 'mdi:lightbulb-on-outline',
-    title: '品牌策略',
-    description:
-      '从市场洞察到品牌定位，构建完整的品牌基因体系，让你的品牌在竞争中脱颖而出。',
-    features: ['品牌定位', '视觉识别', '传播策略', '竞品分析'],
-  },
-  {
-    tag: '02',
-    icon: 'mdi:robot-outline',
-    title: 'AI创意设计',
-    description:
-      'GPT-image2驱动的视觉内容生产，从海报到社交媒体素材，AI赋能创意无限。',
-    features: ['AI生图', '模板定制', '批量生产', '风格迁移'],
-  },
-  {
-    tag: '03',
-    icon: 'mdi:video-outline',
-    title: '视频制作',
-    description: '从创意脚本到后期成片，全流程视频制作服务，打造品牌视觉故事。',
-    features: ['创意脚本', '拍摄制作', '后期剪辑', '3D动画'],
-  },
-  {
-    tag: '04',
-    icon: 'mdi:chart-line',
-    title: '数字营销',
-    description: '数据驱动的精准投放与优化，让每一分预算都花在刀刃上。',
-    features: ['SEM/SEO', '信息流投放', '数据分析', 'A/B测试'],
-  },
-];
+const services = ref<ServiceItem[]>([]);
+const dailyPrompts = ref<DailyPrompt[]>([]);
+const carouselItems = ref<CarouselItem[]>([]);
+const featuredPortfolios = ref<FeaturedPortfolio[]>([]);
+const stats = ref<StatItem[]>([]);
+const loading = ref(true);
+const fetchError = ref<null | string>(null);
 
-const dailyPrompts = [
-  {
-    prompt: '赛博朋克风格的咖啡品牌Logo，霓虹灯管效果，深色背景',
-    label: '品牌Logo',
-  },
-  {
-    prompt: '极简主义护肤品海报，白色大理石纹理背景，产品居中悬浮',
-    label: '产品海报',
-  },
-  {
-    prompt: '科技公司年度峰会主视觉，粒子流线汇聚成品牌标志',
-    label: '活动主视觉',
-  },
-];
+onMounted(async () => {
+  try {
+    const data = await fetchHomepage();
+    services.value = data.services;
+    dailyPrompts.value = data.dailyPrompts;
+    carouselItems.value = data.carouselItems;
+    featuredPortfolios.value = data.featuredPortfolios ?? [];
+    stats.value = data.stats;
+  } catch (error) {
+    console.error('[HomePage] fetch error:', error);
+    fetchError.value = '加载首页数据失败，请稍后重试';
+  } finally {
+    loading.value = false;
+  }
+});
 </script>
 
 <template>
   <div class="home-page">
     <!-- Hero（不需要遮罩，直接显示） -->
-    <HeroSection />
+    <HeroSection :carousel-items="carouselItems" />
 
     <!-- Services Section -->
     <ScrollReveal>
@@ -122,7 +108,14 @@ const dailyPrompts = [
               title="精选案例"
               subtitle="用作品说话，看看我们为品牌做了什么"
             />
-            <PortfolioGrid :limit="4" />
+            <BentoGrid :cols="3" gap="24px">
+              <PortfolioCard
+                v-for="(item, index) in featuredPortfolios"
+                :key="item.id"
+                :item="item"
+                :tag="String(index + 1).padStart(2, '0')"
+              />
+            </BentoGrid>
             <div class="text-center mt-8">
               <NeonButton to="/portfolio" variant="outline">
                 查看全部案例
@@ -138,21 +131,14 @@ const dailyPrompts = [
       <section class="section stats-section">
         <div class="container-custom">
           <div class="stats-grid reveal-stagger">
-            <div class="stat-item" style="transition-delay: 0.1s">
-              <span class="stat-number text-neon">300+</span>
-              <span class="stat-label">服务客户</span>
-            </div>
-            <div class="stat-item" style="transition-delay: 0.2s">
-              <span class="stat-number text-neon">5000+</span>
-              <span class="stat-label">AI生成作品</span>
-            </div>
-            <div class="stat-item" style="transition-delay: 0.3s">
-              <span class="stat-number text-neon">98%</span>
-              <span class="stat-label">客户满意度</span>
-            </div>
-            <div class="stat-item" style="transition-delay: 0.4s">
-              <span class="stat-number text-neon">8年</span>
-              <span class="stat-label">行业经验</span>
+            <div
+              v-for="(stat, i) in stats"
+              :key="stat.label"
+              class="stat-item"
+              :style="{ transitionDelay: `${0.1 + i * 0.1}s` }"
+            >
+              <span class="stat-number text-neon">{{ stat.number }}</span>
+              <span class="stat-label">{{ stat.label }}</span>
             </div>
           </div>
         </div>

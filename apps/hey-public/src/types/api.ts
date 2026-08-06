@@ -3,7 +3,7 @@ export interface PortfolioItem {
   title: string;
   category: string;
   description: string;
-  imageUrl: string;
+  coverImageUrl: string;
   tags: string[];
   client?: string;
   year: number;
@@ -21,6 +21,50 @@ export interface GenerateRequest {
   size?: string;
   quality?: 'high' | 'low' | 'medium';
   n?: number;
+}
+
+export interface ServiceItem {
+  tag: string;
+  icon: string;
+  title: string;
+  description: string;
+  features: string[];
+}
+
+export interface DailyPrompt {
+  prompt: string;
+  label: string;
+}
+
+export interface StatItem {
+  number: string;
+  label: string;
+}
+
+export interface CarouselItem {
+  id: number;
+  imageUrl: string;
+  title: string;
+  description: string;
+}
+
+export interface FeaturedPortfolio {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+  coverImageUrl: string;
+  tags: string[];
+  client?: string;
+  year: number;
+}
+
+export interface PublicHomepageData {
+  services: ServiceItem[];
+  dailyPrompts: DailyPrompt[];
+  stats: StatItem[];
+  carouselItems: CarouselItem[];
+  featuredPortfolios: FeaturedPortfolio[];
 }
 
 export interface GeneratedImage {

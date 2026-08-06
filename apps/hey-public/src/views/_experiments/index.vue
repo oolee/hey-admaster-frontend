@@ -91,6 +91,8 @@ onMounted(() => {
           <a href="/experiments" class="nav-item">Projects</a>
           <span class="nav-separator"></span>
           <a href="/experiments" class="nav-item">About</a>
+          <span class="nav-separator"></span>
+          <a href="/experiments/project-showcase" class="nav-item">项目展示</a>
         </nav>
         <button
           class="theme-toggle"

@@ -16,6 +16,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('#/views/portfolio/index.vue'),
       },
       {
+        path: 'portfolio/:id',
+        name: 'PublicPortfolioDetail',
+        component: () => import('#/views/portfolio/detail.vue'),
+      },
+      {
         path: 'services',
         name: 'PublicServices',
         component: () => import('#/views/services/index.vue'),
@@ -58,6 +63,34 @@ const routes: RouteRecordRaw[] = [
       },
     ],
   },
+  // 认证页面（独立布局）
+  {
+    path: '/login',
+    name: 'PublicLogin',
+    component: () => import('#/views/auth/login.vue'),
+  },
+  {
+    path: '/register',
+    name: 'PublicRegister',
+    component: () => import('#/views/auth/register.vue'),
+  },
+  {
+    path: '/profile',
+    name: 'PublicProfile',
+    component: () => import('#/views/auth/profile.vue'),
+  },
+  // AI 设计页面（独立布局，全屏体验）
+  {
+    path: '/ai-design',
+    component: () => import('#/layouts/empty.vue'),
+    children: [
+      {
+        path: '',
+        name: 'AiDesign',
+        component: () => import('#/views/ai-design/index.vue'),
+      },
+    ],
+  },
   // 实验页面（独立布局，无菜单）
   {
     path: '/experiments',
@@ -72,6 +105,31 @@ const routes: RouteRecordRaw[] = [
         path: 'sn',
         name: 'PublicExperimentsSN',
         component: () => import('#/views/_experiments/SimplexNoise.vue'),
+      },
+      // 项目展示
+      {
+        path: 'project-showcase',
+        name: 'PublicProjectShowcase',
+        component: () =>
+          import('#/views/_experiments/project-showcase/index.vue'),
+      },
+      {
+        path: 'project-showcase/list',
+        name: 'PublicProjectShowcaseList',
+        component: () =>
+          import('#/views/_experiments/project-showcase/list.vue'),
+      },
+      {
+        path: 'project-showcase/:slug',
+        name: 'PublicProjectShowcaseDetail',
+        component: () =>
+          import('#/views/_experiments/project-showcase/detail.vue'),
+      },
+      {
+        path: 'project-showcase/about',
+        name: 'PublicProjectShowcaseAbout',
+        component: () =>
+          import('#/views/_experiments/project-showcase/about.vue'),
       },
     ],
   },

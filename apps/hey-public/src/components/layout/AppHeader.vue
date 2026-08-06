@@ -1,21 +1,48 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue';
-import { RouterLink, useRoute } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 
+import { useAuth } from '#/composables/useAuth';
 import { useTheme } from '#/composables/useTheme';
 
 const route = useRoute();
+const router = useRouter();
 const { isDark, toggleTheme } = useTheme();
+const { isLoggedIn, user, logout, checkAuth } = useAuth();
 const isScrolled = ref(false);
 const isMobileMenuOpen = ref(false);
 const activeDropdown = ref<null | string>(null);
+const isUserDropdownOpen = ref(false);
 
 function onScroll() {
   isScrolled.value = window.scrollY > 50;
 }
 
-onMounted(() => window.addEventListener('scroll', onScroll, { passive: true }));
+onMounted(() => {
+  window.addEventListener('scroll', onScroll, { passive: true });
+  checkAuth();
+});
 onUnmounted(() => window.removeEventListener('scroll', onScroll));
+
+async function handleLogout() {
+  isUserDropdownOpen.value = false;
+  isMobileMenuOpen.value = false;
+  await logout();
+  router.push('/');
+}
+
+function toggleUserDropdown() {
+  isUserDropdownOpen.value = !isUserDropdownOpen.value;
+}
+
+function closeUserDropdown() {
+  isUserDropdownOpen.value = false;
+}
+
+function getUserInitial(): string {
+  const name = user.value?.realName || user.value?.username || 'U';
+  return name.charAt(0).toUpperCase();
+}
 
 const navItems = [
   { label: '首页', to: '/' },
@@ -24,6 +51,7 @@ const navItems = [
 ];
 
 const aiDesignItems = [
+  { label: 'AI 灵感创作', to: '/ai-design' },
   { label: '一键生成', to: '/studio' },
   { label: '门头店招', to: '/studio?template=sign' },
   { label: '展厅文化墙', to: '/studio?template=wall' },
@@ -45,6 +73,10 @@ const experimentItems = [
 
 function isActive(path: string): boolean {
   if (path === '/') return route.path === '/';
+  if (path === '/studio')
+    return (
+      route.path.startsWith('/studio') || route.path.startsWith('/ai-design')
+    );
   return route.path.startsWith(path);
 }
 
@@ -219,10 +251,95 @@ function hideDropdown() {
           </svg>
         </button>
 
-        <RouterLink to="/studio" class="btn-neon btn-sm"> 开始创作 </RouterLink>
-        <RouterLink to="/order" class="btn-neon-filled btn-sm">
+        <RouterLink to="/studio" class="btn-neon btn-sm btn-studio">
+          开始创作
+        </RouterLink>
+        <RouterLink to="/order" class="btn-neon-filled btn-sm btn-order">
           在线下单
         </RouterLink>
+
+        <!-- 未登录：登录/注册按钮 -->
+        <RouterLink
+          v-if="!isLoggedIn"
+          to="/login"
+          class="btn-neon-filled btn-sm btn-auth"
+        >
+          登录 / 注册
+        </RouterLink>
+
+        <!-- 已登录：用户头像下拉 -->
+        <div
+          v-else
+          class="user-dropdown"
+          @mouseenter="isUserDropdownOpen = true"
+          @mouseleave="closeUserDropdown"
+        >
+          <button class="user-avatar-btn" @click="toggleUserDropdown">
+            <img
+              v-if="user?.avatar"
+              :src="user.avatar"
+              :alt="user.realName"
+              class="user-avatar-img"
+            />
+            <span v-else class="user-avatar-placeholder">
+              {{ getUserInitial() }}
+            </span>
+          </button>
+          <Transition name="dropdown">
+            <div v-show="isUserDropdownOpen" class="user-dropdown-menu">
+              <div class="user-dropdown-header">
+                <span class="user-dropdown-name">{{
+                  user?.realName || user?.username
+                }}</span>
+                <span class="user-dropdown-email">{{
+                  user?.email || user?.username
+                }}</span>
+              </div>
+              <div class="user-dropdown-divider"></div>
+              <RouterLink
+                to="/profile"
+                class="user-dropdown-item"
+                @click="closeUserDropdown"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                个人中心
+              </RouterLink>
+              <button
+                class="user-dropdown-item logout-item"
+                @click="handleLogout"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                退出登录
+              </button>
+            </div>
+          </Transition>
+        </div>
+
         <button
           class="mobile-menu-btn"
           @click="isMobileMenuOpen = !isMobileMenuOpen"
@@ -296,6 +413,46 @@ function hideDropdown() {
         </RouterLink>
 
         <div class="nav-mobile-actions">
+          <!-- 未登录 -->
+          <template v-if="!isLoggedIn">
+            <RouterLink
+              to="/login"
+              class="nav-mobile-action-btn btn-neon-filled"
+              @click="isMobileMenuOpen = false"
+            >
+              登录 / 注册
+            </RouterLink>
+          </template>
+          <!-- 已登录 -->
+          <template v-else>
+            <RouterLink
+              to="/profile"
+              class="nav-mobile-action-btn btn-neon"
+              @click="isMobileMenuOpen = false"
+            >
+              个人中心
+            </RouterLink>
+            <button
+              class="nav-mobile-action-btn btn-logout"
+              @click="handleLogout"
+            >
+              退出登录
+            </button>
+          </template>
+          <RouterLink
+            to="/studio"
+            class="nav-mobile-action-btn btn-neon-filled"
+            @click="isMobileMenuOpen = false"
+          >
+            开始创作
+          </RouterLink>
+          <RouterLink
+            to="/order"
+            class="nav-mobile-action-btn btn-neon"
+            @click="isMobileMenuOpen = false"
+          >
+            在线下单
+          </RouterLink>
           <button class="theme-toggle-mobile" @click="toggleTheme">
             <span v-if="isDark">🌙 夜间模式</span>
             <span v-else>☀️ 日间模式</span>
@@ -349,9 +506,17 @@ function hideDropdown() {
   font-weight: 700;
   color: var(--color-bg-primary);
   letter-spacing: -0.01em;
+  white-space: nowrap;
   background: var(--color-neon);
   border-radius: 9999px;
   transition: all 0.3s ease;
+}
+
+@media (max-width: 480px) {
+  .brand-text {
+    padding: 6px 16px;
+    font-size: 0.85rem;
+  }
 }
 
 .brand:hover .brand-text {
@@ -475,6 +640,133 @@ function hideDropdown() {
 .btn-sm {
   padding: 8px 18px;
   font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+/* 手机端按钮缩小 */
+@media (max-width: 480px) {
+  .btn-sm {
+    padding: 6px 12px;
+    font-size: 0.72rem;
+  }
+}
+
+/* 小屏幕隐藏开始创作和在线下单按钮，放入移动端菜单 */
+@media (max-width: 640px) {
+  .btn-studio,
+  .btn-order {
+    display: none;
+  }
+}
+
+/* ===== 用户头像下拉 ===== */
+.user-dropdown {
+  position: relative;
+}
+
+.user-avatar-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  background: none;
+  border: 2px solid var(--color-neon-dim);
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.user-avatar-btn:hover {
+  border-color: var(--color-neon);
+  box-shadow: 0 0 16px var(--color-neon-glow);
+}
+
+.user-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-neon);
+  background: var(--color-neon-glow);
+}
+
+.user-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 10002;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  padding: 8px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgb(0 0 0 / 40%);
+  backdrop-filter: blur(20px);
+}
+
+.user-dropdown-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px 8px;
+}
+
+.user-dropdown-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.user-dropdown-email {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.user-dropdown-divider {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--color-border);
+}
+
+.user-dropdown-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 14px;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.user-dropdown-item:hover {
+  color: var(--color-neon);
+  background: var(--color-neon-glow);
+}
+
+.user-dropdown-item.logout-item:hover {
+  color: #ff4d4f;
+  background: rgb(255 77 79 / 10%);
 }
 
 .mobile-menu-btn {
@@ -546,6 +838,11 @@ function hideDropdown() {
   gap: 4px;
   padding: 16px;
   margin-top: 8px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgb(0 0 0 / 40%);
+  backdrop-filter: blur(24px);
 }
 
 .nav-mobile-link {
@@ -587,9 +884,42 @@ function hideDropdown() {
 }
 
 .nav-mobile-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   padding-top: 12px;
   margin-top: 12px;
   border-top: 1px solid var(--color-border);
+}
+
+.nav-mobile-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.nav-mobile-action-btn.btn-neon-filled {
+  color: var(--color-bg-primary);
+  background: var(--color-neon);
+  border: none;
+}
+
+.nav-mobile-action-btn.btn-neon {
+  color: var(--color-neon);
+  background: transparent;
+  border: 1px solid var(--color-neon-dim);
+}
+
+.nav-mobile-action-btn.btn-logout {
+  color: #ff4d4f;
+  background: rgb(255 77 79 / 10%);
+  border: 1px solid rgb(255 77 79 / 20%);
 }
 
 .theme-toggle-mobile {

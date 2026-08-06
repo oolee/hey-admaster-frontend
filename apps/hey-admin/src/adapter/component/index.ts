@@ -198,11 +198,16 @@ function isImageFile(file: UploadFile): boolean {
     try {
       const pathname = new URL(file.url, 'http://localhost').pathname;
       const ext = pathname.split('.').pop()?.toLowerCase();
-      return ext ? IMAGE_EXTENSIONS.has(ext) : false;
+      if (ext) return IMAGE_EXTENSIONS.has(ext);
     } catch {
       const ext = file.url?.split('.').pop()?.toLowerCase();
-      return ext ? IMAGE_EXTENSIONS.has(ext) : false;
+      if (ext) return IMAGE_EXTENSIONS.has(ext);
     }
+    // URL 无扩展名（如 /api/app/public/homepage/image/carousel/{id}）时，
+    // 回退到文件类型/文件名后缀判断，保证能弹出图片预览
+    if (file.type) return file.type.startsWith('image/');
+    const ext = file.name?.split('.').pop()?.toLowerCase();
+    return ext ? IMAGE_EXTENSIONS.has(ext) : false;
   }
   if (!file.type) {
     const ext = file.name?.split('.').pop()?.toLowerCase();

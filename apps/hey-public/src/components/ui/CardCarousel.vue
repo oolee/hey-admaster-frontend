@@ -1,67 +1,23 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue';
+import type { CarouselItem } from '#/types/api';
 
-interface CardItem {
-  id: number;
-  imageUrl: string;
-  title: string;
-  description: string;
-}
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 
-const items: CardItem[] = [
+const props = withDefaults(
+  defineProps<{
+    items?: CarouselItem[];
+  }>(),
   {
-    id: 1,
-    imageUrl: '/images/carousel/ai1.svg',
-    title: '赛博都市',
-    description: 'AI 生成 · 概念艺术',
+    items: () => [],
   },
-  {
-    id: 2,
-    imageUrl: '/images/carousel/ai2.svg',
-    title: '极简海报',
-    description: 'AI 生成 · 品牌设计',
-  },
-  {
-    id: 3,
-    imageUrl: '/images/carousel/ai3.svg',
-    title: '未来界面',
-    description: 'AI 生成 · UI/UX',
-  },
-  {
-    id: 4,
-    imageUrl: '/images/carousel/ai4.svg',
-    title: '梦幻场景',
-    description: 'AI 生成 · 插画艺术',
-  },
-  {
-    id: 5,
-    imageUrl: '/images/carousel/ai5.svg',
-    title: '产品渲染',
-    description: 'AI 生成 · 3D 视觉',
-  },
-  {
-    id: 6,
-    imageUrl: '/images/carousel/ai6.svg',
-    title: '霓虹街景',
-    description: 'AI 生成 · 摄影风格',
-  },
-  {
-    id: 7,
-    imageUrl: '/images/carousel/ai7.svg',
-    title: '抽象几何',
-    description: 'AI 生成 · 图形设计',
-  },
-  {
-    id: 8,
-    imageUrl: '/images/carousel/ai8.svg',
-    title: '潮流插画',
-    description: 'AI 生成 · 商业插画',
-  },
-];
+);
 
 // 三倍列表：保证任意方向拖拽都有足够内容
-const tripled = [...items, ...items, ...items];
-const selectedItem = ref<CardItem | null>(null);
+const tripled = computed(() => {
+  if (props.items.length === 0) return [];
+  return [...props.items, ...props.items, ...props.items];
+});
+const selectedItem = ref<CarouselItem | null>(null);
 
 const trackRef = ref<HTMLDivElement | null>(null);
 const isDragging = ref(false);
@@ -76,7 +32,7 @@ let lastTime = 0;
 const cardWidth = 280;
 const gap = 24;
 const step = cardWidth + gap; // 304px
-const totalWidth = items.length * step;
+const totalWidth = computed(() => props.items.length * step);
 const autoSpeed = 0.6; // 每帧自动滚动速度（px）
 
 function applyTransform() {
@@ -87,12 +43,13 @@ function applyTransform() {
 
 // 无限循环包裹
 function wrapOffset() {
+  const tw = totalWidth.value;
   // 从第二组中间开始（-totalWidth），保证左右都有内容
-  if (currentOffset <= -totalWidth * 2) {
-    currentOffset += totalWidth;
+  if (currentOffset <= -tw * 2) {
+    currentOffset += tw;
   }
   if (currentOffset >= 0) {
-    currentOffset -= totalWidth;
+    currentOffset -= tw;
   }
 }
 
@@ -153,13 +110,13 @@ function onCardMouseMove(e: MouseEvent) {
   onMouseMove(e);
 }
 
-function onCardClick(item: CardItem) {
+function onCardClick(item: CarouselItem) {
   if (!clickMoved) {
     openLightbox(item);
   }
 }
 
-function openLightbox(item: CardItem) {
+function openLightbox(item: CarouselItem) {
   selectedItem.value = item;
 }
 
@@ -175,7 +132,7 @@ onMounted(() => {
   window.addEventListener('keydown', onKeydown);
   window.addEventListener('mouseup', onGlobalMouseUp);
   // 初始偏移：从第二组开始，保证左右都有内容
-  currentOffset = -totalWidth;
+  currentOffset = -totalWidth.value;
   applyTransform();
   animationId = requestAnimationFrame(animate);
 });

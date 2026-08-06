@@ -1,8 +1,14 @@
 <script setup lang="ts">
+import type { CarouselItem } from '#/types/api';
+
 import { onMounted, onUnmounted, ref } from 'vue';
 
 import CardCarousel from '#/components/ui/CardCarousel.vue';
 import NeonButton from '#/components/ui/NeonButton.vue';
+
+defineProps<{
+  carouselItems?: CarouselItem[];
+}>();
 
 const videoARef = ref<HTMLVideoElement | null>(null);
 const videoBRef = ref<HTMLVideoElement | null>(null);
@@ -136,7 +142,7 @@ onUnmounted(() => {
         为企业提供门头店招、海报设计、宣传单DM制作一站式服务
       </h1>
       <p class="hero-subtitle animate-fade-in-up delay-200">
-        免费AI设计工具，高效获客
+        借助AI设计工具，降本增效
       </p>
       <div class="hero-cta animate-fade-in-up delay-400">
         <NeonButton to="/studio" variant="filled" size="lg">
@@ -149,7 +155,7 @@ onUnmounted(() => {
     </div>
 
     <div class="hero-carousel">
-      <CardCarousel />
+      <CardCarousel :items="carouselItems" />
     </div>
   </section>
 </template>

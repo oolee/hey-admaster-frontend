@@ -1,14 +1,27 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 import BentoGrid from '#/components/ui/BentoGrid.vue';
 import SectionTitle from '#/components/ui/SectionTitle.vue';
 import PortfolioCard from '#/features/portfolio/PortfolioCard.vue';
 import { usePortfolioStore } from '#/store/portfolioStore';
-import { SERVICE_CATEGORIES } from '#/utils/constants';
 
 const portfolioStore = usePortfolioStore();
 const activeCategory = ref<null | string>(null);
+
+/** 分类动态取自真实案例数据的 category 字段 */
+const categories = computed(() => {
+  const counts = new Map<string, number>();
+  for (const item of portfolioStore.items) {
+    if (!item.category) continue;
+    counts.set(item.category, (counts.get(item.category) ?? 0) + 1);
+  }
+  return [...counts.entries()].map(([label, count]) => ({
+    id: label,
+    label,
+    count,
+  }));
+});
 
 function setCategory(categoryId: null | string) {
   activeCategory.value = categoryId;
@@ -47,7 +60,7 @@ onMounted(() => {
             全部
           </button>
           <button
-            v-for="cat in SERVICE_CATEGORIES"
+            v-for="cat in categories"
             :key="cat.id"
             class="filter-btn"
             :class="{ active: isActive(cat.id) }"

@@ -4,7 +4,7 @@ const isDark = ref(true);
 
 const THEME_KEY = 'hey-public-theme';
 
-function initTheme() {
+export function initTheme() {
   const saved = localStorage.getItem(THEME_KEY);
   isDark.value = saved === null ? true : saved === 'dark';
   applyTheme();
