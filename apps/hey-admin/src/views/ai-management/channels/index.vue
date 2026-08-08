@@ -3,9 +3,9 @@ import type { VxeGridProps, VxeGridPropTypes } from '@abp/ui';
 
 import type { AiChannelDto } from '#/api/ai-design';
 
-import { defineAsyncComponent } from 'vue';
-
 import { useVbenModal } from '@vben/common-ui';
+
+import ChannelModalComponent from './ChannelModal.vue';
 
 import { useVbenVxeGrid } from '@abp/ui';
 import { Button, message, Modal, Switch, Tag } from 'ant-design-vue';
@@ -76,7 +76,7 @@ const gridOptions: VxeGridProps<AiChannelDto> = {
 const [Grid, gridApi] = useVbenVxeGrid({ gridOptions });
 
 const [ChannelModal, modalApi] = useVbenModal({
-  connectedComponent: defineAsyncComponent(() => import('./ChannelModal.vue')),
+  connectedComponent: ChannelModalComponent,
 });
 
 function onCreate() {
