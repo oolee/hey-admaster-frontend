@@ -9,6 +9,8 @@ import { nextTick, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import AppHeader from '#/components/layout/AppHeader.vue';
+import { useAiDesignGeneration } from '#/composables/useAiDesignGeneration';
+import { useAuth } from '#/composables/useAuth';
 import AiChatPanel from '#/features/ai-design/AiChatPanel.vue';
 import AiSidebar from '#/features/ai-design/AiSidebar.vue';
 import ImageLightbox from '#/features/ai-design/ImageLightbox.vue';
@@ -17,6 +19,8 @@ import { useAiDesignStore } from '#/store/aiDesignStore';
 
 const router = useRouter();
 const store = useAiDesignStore();
+const { generate: generateImages } = useAiDesignGeneration();
+const { isLoggedIn } = useAuth();
 
 // ── Sidebar state ──
 const sidebarCollapsed = ref(false);
@@ -64,6 +68,26 @@ function syncToSession(msg: ChatMessage, extra?: Partial<ChatMessage>) {
   }
 }
 
+function onProcessingChange(processing: boolean) {
+  isProcessing.value = processing;
+}
+
+function onReplaceLastMessage(content: string, extra?: Partial<ChatMessage>) {
+  if (chatMessages.value.length === 0) {
+    addMessage('assistant', content, extra);
+    return;
+  }
+  const lastIndex = chatMessages.value.length - 1;
+  const prev = chatMessages.value[lastIndex]!;
+  chatMessages.value[lastIndex] = {
+    ...prev,
+    content,
+    ...extra,
+    images: extra?.images ?? prev.images,
+  };
+  syncToSession(chatMessages.value[lastIndex], extra);
+}
+
 function loadActiveSession() {
   const s = store.activeSession;
   chatMessages.value = s ? [...s.messages] : [];
@@ -76,9 +100,9 @@ function newSession() {
   loadActiveSession();
 }
 
-function selectSession(id: string) {
+async function selectSession(id: string) {
   if (id === store.activeSessionId) return;
-  store.selectSession(id);
+  await store.selectSession(id);
   loadActiveSession();
 }
 
@@ -194,95 +218,105 @@ function openModify(img: AiGeneratedImage) {
 
 async function submitModify() {
   if (!modifyFeedback.value.trim()) return;
+  const feedback = modifyFeedback.value.trim();
   showModifyDialog.value = false;
+  modifyFeedback.value = '';
+  if (isProcessing.value) return;
   isProcessing.value = true;
-  addMessage('user', `修改：${modifyFeedback.value}`);
-  await new Promise((r) => setTimeout(r, 1500));
-  store.revisionCounter++;
-  const seed = 90 + store.revisionCounter;
-  const newImg: AiGeneratedImage = {
-    id: `img-${seed}`,
-    url: `https://picsum.photos/600/400?random=${seed}`,
-    title: `修改版 ${store.revisionCounter}`,
-  };
-  store.generatedImages = [newImg];
-  store.selectedImage = newImg.id;
-  store.revisionHistory.unshift({
-    Id: `dr-mod-${Date.now()}`,
-    DesignSessionId: 'ds-001',
-    RevisionNo: store.revisionCounter,
-    ImageUrl: newImg.url,
-    ThumbnailUrl: newImg.url.replace('600/400', '200/100'),
-    Prompt: null,
-    OptimizedPrompt: null,
-    UserFeedback: modifyFeedback.value,
-    Source: 'AI_GptImage2',
-    Status: 'Current',
-    Width: store.designWidth * 10,
-    Height: store.designHeight * 10,
-    FileSize: 260_000,
-    CreatedAt: new Date().toISOString(),
-  });
-  store.currentRevision = store.revisionCounter;
-  addMessage('assistant', '已按修改意见重绘：', { images: [newImg] });
-  isProcessing.value = false;
+  addMessage('user', `修改：${feedback}`);
+  addMessage('assistant', '正在按修改意见重绘...', {});
+  try {
+    const images = await generateImages(`修改上一版方案：${feedback}`, {
+      model: store.selectedModel,
+      count: 1,
+    });
+    const newImg = images[0] ?? {
+      id: `empty-${Date.now()}`,
+      url: '',
+      title: '未返回图片',
+    };
+    store.revisionCounter++;
+    store.generatedImages = [newImg];
+    store.selectedImage = newImg.id;
+    store.revisionHistory.unshift({
+      Id: `dr-mod-${Date.now()}`,
+      DesignSessionId: store.activeSession?.id ?? '',
+      RevisionNo: store.revisionCounter,
+      ImageUrl: newImg.url,
+      ThumbnailUrl: newImg.url,
+      Prompt: null,
+      OptimizedPrompt: null,
+      UserFeedback: feedback,
+      Source: 'AI_GptImage2',
+      Status: 'Current',
+      Width: store.designWidth * 10,
+      Height: store.designHeight * 10,
+      FileSize: 260_000,
+      CreatedAt: new Date().toISOString(),
+    });
+    store.currentRevision = store.revisionCounter;
+    onReplaceLastMessage('已按修改意见重绘：', { images: [newImg] });
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : '未知错误，请稍后重试';
+    onReplaceLastMessage(`重绘失败：${message}`, { isCheckResult: true });
+  } finally {
+    isProcessing.value = false;
+  }
 }
 
 // ── Regenerate ──
-function regenerate() {
-  isProcessing.value = true;
-  addMessage('user', '换一批方案');
-  setTimeout(() => {
-    const lastUserMsg = [...chatMessages.value]
-      .toReversed()
-      .find(
-        (m) =>
-          m.role === 'user' &&
-          !m.content.includes('换一批方案') &&
-          !m.content.includes('选中方案') &&
-          !m.content.includes('修改：'),
-      );
-    const styleName = store.styleKeyword;
-    const palName =
-      store.colorPalettes.find((p) => p.id === store.selectedPalette)?.name ||
-      '默认';
-    const sizeText =
-      store.designWidth && store.designHeight
-        ? `${store.designWidth}×${store.designHeight}cm`
-        : '未指定尺寸';
-    const modelLabel = store.currentModel?.shortLabel || 'GPT-image2';
-
-    addMessage(
-      'assistant',
-      `已分析需求：${styleName}风格，${sizeText}，${palName}配色\n\n正在生成 ${store.generateCount} 套方案... （模型：${modelLabel}）`,
-      {},
+async function regenerate() {
+  if (isProcessing.value) return;
+  const lastUserMsg = [...chatMessages.value]
+    .toReversed()
+    .find(
+      (m) =>
+        m.role === 'user' &&
+        !m.content.includes('换一批方案') &&
+        !m.content.includes('选中方案') &&
+        !m.content.includes('修改：'),
     );
-
-    setTimeout(() => {
-      store.revisionCounter++;
-      const count = store.generateCount;
-      const seeds = Array.from(
-        { length: count },
-        (_, i) => 85 + store.revisionCounter * 12 + i,
-      );
-      store.generatedImages = seeds.map((seed, i) => ({
-        id: `img-${seed}`,
-        url: `https://picsum.photos/600/400?random=${seed}`,
-        title: `方案 ${String.fromCodePoint(65 + i)}`,
-      }));
-
-      addMessage(
-        'assistant',
-        `已生成 ${count} 套方案（${modelLabel}），点击查看大图，或「重生成」换一批。`,
-        {
-          images: [...store.generatedImages],
-        },
-      );
-      isProcessing.value = false;
-    }, 1500);
-  }, 100);
+  const prompt = lastUserMsg?.content?.trim() || '换一批方案';
+  addMessage('user', '换一批方案');
+  isProcessing.value = true;
+  addMessage('assistant', '正在重新生成...', {});
+  try {
+    const images = await generateImages(prompt, {
+      model: store.selectedModel,
+      count: store.generateCount,
+    });
+    store.revisionCounter++;
+    store.generatedImages = images;
+    store.selectedImage = images[0]?.id ?? null;
+    store.revisionHistory.unshift({
+      Id: `dr-reg-${Date.now()}`,
+      DesignSessionId: store.activeSession?.id ?? '',
+      RevisionNo: store.revisionCounter,
+      ImageUrl: images[0]?.url ?? '',
+      ThumbnailUrl: images[0]?.url ?? '',
+      Prompt: prompt,
+      OptimizedPrompt: store.optimizedPrompt,
+      UserFeedback: null,
+      Source: 'AI_GptImage2',
+      Status: store.revisionCounter === 1 ? 'Current' : 'Archived',
+      Width: store.designWidth * 10,
+      Height: store.designHeight * 10,
+      FileSize: 250_000,
+      CreatedAt: new Date().toISOString(),
+    });
+    if (store.revisionCounter === 1) store.currentRevision = 1;
+    onReplaceLastMessage(`已重新生成 ${images.length} 套方案，点击查看大图。`, {
+      images,
+    });
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : '未知错误，请稍后重试';
+    onReplaceLastMessage(`生成失败：${message}`, { isCheckResult: true });
+  } finally {
+    isProcessing.value = false;
+  }
 }
-
 function runProductionCheck() {
   const allPass = store.revisionCounter >= 3;
   const text = allPass
@@ -304,16 +338,36 @@ function goBack() {
   router.push('/');
 }
 
+function redirectToLogin() {
+  router.push({ path: '/login', query: { redirect: '/ai-design' } });
+}
+
 function handleLightboxKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape' && showLightbox.value) closeLightbox();
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // AI 生成消耗 Token，必须登录后才能使用
+  if (!isLoggedIn.value) {
+    redirectToLogin();
+    return;
+  }
+
   window.addEventListener('keydown', handleLightboxKeydown);
+  window.addEventListener('ai-design:unauthorized', redirectToLogin);
+  // 初始化：拉取后端会话 / 模型选项 / 模板 / 钱包（后端不可用时回退本地缓存）
+  await store.initialize();
+  const activeId = store.activeSessionId;
+  if (activeId && !activeId.startsWith('local-')) {
+    await store.refreshSession(activeId);
+  }
   store.ensureSession();
   loadActiveSession();
 });
-onUnmounted(() => window.removeEventListener('keydown', handleLightboxKeydown));
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleLightboxKeydown);
+  window.removeEventListener('ai-design:unauthorized', redirectToLogin);
+});
 </script>
 
 <template>
@@ -350,6 +404,8 @@ onUnmounted(() => window.removeEventListener('keydown', handleLightboxKeydown));
           @update-ref-notes="updateRefImageNotes"
           @update-ref-tag="updateRefImageTag"
           @open-settings="showSettings = true"
+          @processing-change="onProcessingChange"
+          @replace-last-message="onReplaceLastMessage"
         />
       </div>
     </div>

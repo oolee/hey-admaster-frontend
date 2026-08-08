@@ -61,6 +61,36 @@ const routes: RouteRecordRaw[] = [
         name: 'PublicToolCompress',
         component: () => import('#/views/tools/Compress.vue'),
       },
+      {
+        path: 'tools/resize',
+        name: 'PublicToolResize',
+        component: () => import('#/views/tools/Resize.vue'),
+      },
+      {
+        path: 'tools/color-master',
+        name: 'PublicToolColorMaster',
+        component: () => import('#/views/tools/ColorMaster.vue'),
+      },
+      {
+        path: 'tools/json-format',
+        name: 'PublicToolJsonFormat',
+        component: () => import('#/views/tools/JsonFormat.vue'),
+      },
+      {
+        path: 'tools/qrcode',
+        name: 'PublicToolQrcode',
+        component: () => import('#/views/tools/QrcodeGen.vue'),
+      },
+      {
+        path: 'tools/watermark',
+        name: 'PublicToolWatermark',
+        component: () => import('#/views/tools/Watermark.vue'),
+      },
+      {
+        path: 'tools/base64',
+        name: 'PublicToolBase64',
+        component: () => import('#/views/tools/Base64.vue'),
+      },
     ],
   },
   // 认证页面（独立布局）
@@ -78,6 +108,12 @@ const routes: RouteRecordRaw[] = [
     path: '/profile',
     name: 'PublicProfile',
     component: () => import('#/views/auth/profile.vue'),
+  },
+  // 钱包充值中心（独立布局）
+  {
+    path: '/recharge',
+    name: 'PublicRecharge',
+    component: () => import('#/views/Recharge.vue'),
   },
   // AI 设计页面（独立布局，全屏体验）
   {

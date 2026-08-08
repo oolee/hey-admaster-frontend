@@ -1,6 +1,31 @@
+import type {
+  AiChatMessage,
+  AiDesignSession,
+  AiGenerationInput,
+  AiGenerationResult,
+  AiImageAsset,
+  AiModelOption,
+  AiTemplate,
+} from '#/api/ai-design';
+
 import { computed, ref, watch } from 'vue';
 
 import { defineStore } from 'pinia';
+
+import {
+  AiGenerationStatus,
+  aiImageUrl,
+  createAiSession,
+  deleteAiSession,
+  fetchAiModelOptions,
+  fetchAiSession,
+  fetchAiSessions,
+  fetchAiTemplates,
+  fetchMyWallet,
+  generateAiImage,
+  queryAiGenerationTask,
+  updateAiSession,
+} from '#/api/ai-design';
 
 export interface AiGeneratedImage {
   id: string;
@@ -93,6 +118,50 @@ function persistSessions(sessions: ChatSession[]) {
   } catch {
     // 忽略配额/序列化错误，仅影响本地历史
   }
+}
+
+// ── 后端同步（Hey.AdMaster.AiDesign 模块）──
+// 本地会话以 local- 开头；后端可达时创建/加载真实会话，否则保持纯本地模式。
+
+function mapAssetToGeneratedImage(asset: AiImageAsset): AiGeneratedImage {
+  return {
+    id: asset.id,
+    url: asset.url || aiImageUrl(asset.id),
+    title: asset.fileName || '生成方案',
+  };
+}
+
+function mapMessageDtoToChatMessage(
+  msg: AiChatMessage,
+  imageById: Map<string, AiImageAsset>,
+): ChatMessage {
+  const images = msg.generatedImageIds
+    .map((id) => imageById.get(id))
+    .filter((a): a is AiImageAsset => Boolean(a))
+    .map(mapAssetToGeneratedImage);
+
+  return {
+    id: msg.id,
+    role: msg.role === 0 ? 'user' : 'assistant',
+    content: msg.content ?? msg.prompt ?? '',
+    time: msg.creationTime,
+    modelUsed: msg.modelUsed ?? undefined,
+    isCheckResult: msg.messageType === 20,
+    images: images.length > 0 ? images : undefined,
+  };
+}
+
+function mapSessionDtoToChatSession(dto: AiDesignSession): ChatSession {
+  const imageById = new Map(dto.images.map((img) => [img.id, img]));
+  return {
+    id: dto.id,
+    title: dto.title || '新对话',
+    createdAt: dto.creationTime,
+    updatedAt: dto.lastModificationTime ?? dto.lastActivityTime,
+    messages: dto.messages.map((m) => mapMessageDtoToChatMessage(m, imageById)),
+    generatedImages: dto.images.map(mapAssetToGeneratedImage),
+    selectedImageId: null,
+  };
 }
 
 export const useAiDesignStore = defineStore('aiDesign', () => {
@@ -413,6 +482,16 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
   // ── Sessions（ChatGPT 风格对话列表）──
   const sessions = ref<ChatSession[]>(loadSessions());
   const activeSessionId = ref<null | string>(sessions.value[0]?.id ?? null);
+  const sessionSyncs = new Map<string, Promise<string>>(); // local 会话 id -> 后端创建结果
+  const apiMode = ref(false); // 后端是否可达
+
+  // ── 计费状态（登录后从后端加载）──
+  const walletBalance = ref<null | number>(null);
+  const walletUnitPrice = ref(0);
+  const lastChargedAmount = ref(0);
+  const templates = ref<AiTemplate[]>([]); // 后端模板（面板回退本地 AD_TEMPLATES）
+  const createClientRequestId = () =>
+    `req-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
   const activeSession = computed(
     () => sessions.value.find((s) => s.id === activeSessionId.value) ?? null,
@@ -439,7 +518,7 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
   function createSession(): ChatSession {
     const now = new Date().toISOString();
     const session: ChatSession = {
-      id: `chat-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+      id: `local-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
       title: '新对话',
       createdAt: now,
       updatedAt: now,
@@ -449,12 +528,48 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
     };
     sessions.value.unshift(session);
     activeSessionId.value = session.id;
+    syncCreateSession(session);
     return session;
   }
 
-  function selectSession(id: string) {
-    if (sessions.value.some((s) => s.id === id)) {
-      activeSessionId.value = id;
+  function syncCreateSession(localSession: ChatSession) {
+    const pending = createAiSession({
+      title: localSession.title === '新对话' ? undefined : localSession.title,
+    })
+      .then((dto) => {
+        const backend = mapSessionDtoToChatSession(dto);
+        const idx = sessions.value.findIndex((s) => s.id === localSession.id);
+        if (idx !== -1) {
+          // 保留同步期间用户已输入的消息 / 已生成图片
+          const prev = sessions.value[idx]!;
+          backend.messages =
+            prev.messages.length > 0 ? prev.messages : backend.messages;
+          backend.generatedImages =
+            prev.generatedImages.length > 0
+              ? prev.generatedImages
+              : backend.generatedImages;
+          backend.selectedImageId = prev.selectedImageId;
+          sessions.value[idx] = backend;
+        }
+        if (activeSessionId.value === localSession.id) {
+          activeSessionId.value = backend.id;
+        }
+        apiMode.value = true;
+        return backend.id;
+      })
+      .catch(() => {
+        apiMode.value = false;
+        return localSession.id;
+      });
+    sessionSyncs.set(localSession.id, pending);
+  }
+
+  async function selectSession(id: string) {
+    if (!sessions.value.some((s) => s.id === id)) return;
+    activeSessionId.value = id;
+    // 后端会话的列表 DTO 不含消息，切换到详情时异步拉取
+    if (!id.startsWith('local-')) {
+      await refreshSession(id);
     }
   }
 
@@ -464,6 +579,9 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
     sessions.value.splice(idx, 1);
     if (activeSessionId.value === id) {
       activeSessionId.value = sessions.value[0]?.id ?? null;
+    }
+    if (!id.startsWith('local-')) {
+      deleteAiSession(id).catch(() => {});
     }
   }
 
@@ -475,8 +593,179 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
     s.selectedImageId = null;
     s.title = '新对话';
     s.updatedAt = new Date().toISOString();
+    if (!s.id.startsWith('local-')) {
+      updateAiSession(s.id, { title: '新对话' }).catch(() => {});
+    }
   }
 
+  function renameSession(id: string, title: string) {
+    const s = sessions.value.find((item) => item.id === id);
+    if (!s) return;
+    s.title = title || '新对话';
+    s.updatedAt = new Date().toISOString();
+    if (!id.startsWith('local-')) {
+      updateAiSession(id, { title: s.title }).catch(() => {});
+    }
+  }
+
+  // ── 后端初始化 / 刷新 ──
+  async function initialize() {
+    await Promise.allSettled([
+      refreshSessions(),
+      refreshModelOptions(),
+      refreshTemplates(),
+      refreshWallet(),
+    ]);
+  }
+
+  /** 刷新我的钱包（余额/单价），未登录或后端不可用时静默保留现状 */
+  async function refreshWallet() {
+    try {
+      const wallet = await fetchMyWallet();
+      walletBalance.value = wallet.balance;
+      walletUnitPrice.value = wallet.unitPrice;
+    } catch {
+      // 未登录（401 已在请求层跳转）或后端不可用
+    }
+  }
+
+  async function refreshSessions() {
+    try {
+      const list = await fetchAiSessions();
+      apiMode.value = true;
+      if (list.length === 0) return;
+      const activeId = activeSessionId.value;
+      sessions.value = list.map(mapSessionDtoToChatSession);
+      if (activeId && sessions.value.some((s) => s.id === activeId)) {
+        activeSessionId.value = activeId;
+      } else {
+        activeSessionId.value = sessions.value[0]?.id ?? null;
+      }
+    } catch {
+      apiMode.value = false;
+    }
+  }
+
+  async function refreshModelOptions() {
+    try {
+      const options = await fetchAiModelOptions();
+      if (options.length === 0) return;
+      modelOptions.splice(
+        0,
+        modelOptions.length,
+        ...options.map(toModelOption),
+      );
+      if (!options.some((o) => o.name === selectedModel.value)) {
+        const def = options.find((o) => o.isDefault) ?? options[0];
+        if (def) selectedModel.value = def.name;
+      }
+    } catch {
+      // 后端不可用时保留本地默认模型列表
+    }
+  }
+
+  function toModelOption(option: AiModelOption): ModelOption {
+    return {
+      id: option.name,
+      label: option.displayName || option.name,
+      shortLabel: option.displayName || option.name,
+      recommended: option.isDefault || undefined,
+    };
+  }
+
+  async function refreshTemplates() {
+    try {
+      const list = await fetchAiTemplates();
+      templates.value = list.filter((t) => t.isActive);
+    } catch {
+      // 保留空模板列表，面板回退到本地 AD_TEMPLATES
+    }
+  }
+
+  /** 确保当前会话在后端存在，返回可用的 sessionId */
+  async function ensureBackendSession(): Promise<string> {
+    const s = activeSession.value;
+    if (!s) {
+      createSession();
+      return ensureBackendSession();
+    }
+    if (!s.id.startsWith('local-')) return s.id;
+    const pending = sessionSyncs.get(s.id);
+    if (pending) return pending;
+    return s.id; // 后端不可用，使用本地会话继续
+  }
+
+  /** 刷新单个会话详情（消息 + 图片） */
+  async function refreshSession(id: string) {
+    try {
+      const dto = await fetchAiSession(id);
+      const mapped = mapSessionDtoToChatSession(dto);
+      const idx = sessions.value.findIndex((s) => s.id === id);
+      if (idx === -1) {
+        sessions.value.unshift(mapped);
+      } else {
+        const prev = sessions.value[idx]!;
+        mapped.selectedImageId = prev.selectedImageId;
+        sessions.value[idx] = mapped;
+      }
+      if (activeSessionId.value === id) {
+        generatedImages.value = mapped.generatedImages;
+      }
+    } catch {
+      // 忽略详情刷新失败（保留本地缓存）
+    }
+  }
+
+  /** 调后端生图：同步返回图片或轮询异步任务，随后刷新会话 */
+  async function generateImages(
+    input: Omit<AiGenerationInput, 'sessionId'> & { sessionId?: null | string },
+  ): Promise<AiGeneratedImage[]> {
+    const sessionId = input.sessionId ?? (await ensureBackendSession());
+    const result = await generateAiImage({
+      ...input,
+      sessionId,
+      clientRequestId: input.clientRequestId ?? createClientRequestId(),
+    });
+    let final = result;
+    if (
+      result.status === AiGenerationStatus.Pending ||
+      result.status === AiGenerationStatus.Processing
+    ) {
+      final = await pollGenerationTask(result.taskId);
+    }
+    if (
+      final.status === AiGenerationStatus.Failed ||
+      final.status === AiGenerationStatus.Canceled
+    ) {
+      throw new Error(final.failReason || 'AI 生成失败，请稍后重试');
+    }
+    const images = final.images.map(mapAssetToGeneratedImage);
+    // 回写计费结果（余额/本次扣费）供界面展示
+    if (typeof final.walletBalance === 'number') {
+      walletBalance.value = final.walletBalance;
+    }
+    lastChargedAmount.value = final.chargedAmount ?? 0;
+    await refreshSession(sessionId);
+    return images;
+  }
+
+  async function pollGenerationTask(
+    taskId: string,
+    maxPolls = 30,
+  ): Promise<AiGenerationResult> {
+    let last = await queryAiGenerationTask(taskId);
+    for (
+      let i = 0;
+      i < maxPolls &&
+      (last.status === AiGenerationStatus.Pending ||
+        last.status === AiGenerationStatus.Processing);
+      i++
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      last = await queryAiGenerationTask(taskId);
+    }
+    return last;
+  }
   // ── Actions ──
   function resetGeneration() {
     generatedImages.value = [];
@@ -524,7 +813,23 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
     selectSession,
     removeSession,
     clearActiveSession,
+    renameSession,
     resetGeneration,
     addRevision,
+    // 计费
+    walletBalance,
+    walletUnitPrice,
+    lastChargedAmount,
+    refreshWallet,
+    // 后端 API
+    apiMode,
+    templates,
+    initialize,
+    refreshSessions,
+    refreshModelOptions,
+    refreshTemplates,
+    ensureBackendSession,
+    refreshSession,
+    generateImages,
   };
 });

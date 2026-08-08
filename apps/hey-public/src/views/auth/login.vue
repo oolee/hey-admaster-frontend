@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { RouterLink, useRouter } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 
 import { useAuth } from '#/composables/useAuth';
 
 const router = useRouter();
+const route = useRoute();
 const { login, loading } = useAuth();
 
 const form = ref({
-  username: '',
-  password: '',
+  username: 'admin',
+  password: '1q2w3E*',
   rememberMe: false,
 });
 const error = ref('');
@@ -24,7 +25,11 @@ async function handleLogin() {
 
   try {
     await login(form.value.username, form.value.password);
-    router.push('/');
+    const redirect = (route.query.redirect as string) || '/';
+    // 防止开放重定向：仅允许站内路径（以 / 开头且不是 //）
+    const safeRedirect =
+      redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : '/';
+    router.push(safeRedirect);
   } catch (error: any) {
     error.value = error.message || '登录失败，请稍后重试';
   }

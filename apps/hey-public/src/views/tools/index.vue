@@ -5,23 +5,59 @@ const tools = [
   {
     title: '一键抠图',
     description: 'AI智能识别主体，一键去除背景，支持批量处理',
-    icon: 'mdi:image-outline',
     to: '/tools/remove-bg',
     tag: '热门',
   },
   {
     title: '证件照制作',
     description: '一键生成标准证件照，支持多种尺寸和背景色',
-    icon: 'mdi:account-box-outline',
     to: '/tools/id-photo',
     tag: '实用',
   },
   {
     title: '图片压缩',
     description: '智能压缩图片体积，保持画质清晰，提升网页加载速度',
-    icon: 'mdi:file-image-outline',
     to: '/tools/compress',
     tag: '免费',
+  },
+  {
+    title: '图片尺寸调整',
+    description: '按像素/百分比/社交平台预设快速调整图片尺寸，锁定比例',
+    to: '/tools/resize',
+    tag: '新增',
+  },
+  {
+    title: '调色大师',
+    description:
+      'HEX / RGB / HSL / CMYK 实时互转，一键生成和谐色板与对比度检查',
+    to: '/tools/color-master',
+    tag: '新增',
+  },
+  {
+    title: 'JSON 工作台',
+    description: '格式化、压缩、转义、Base64 编码解码、键排序，纯本地极速处理',
+    to: '/tools/json-format',
+    tag: '新增',
+  },
+  {
+    title: '二维码生成器',
+    description: '网址 / Wi-Fi / 名片 / 邮件 7 种场景，PNG/SVG 矢量多格式导出',
+    to: '/tools/qrcode',
+    tag: '新增',
+  },
+  {
+    title: '水印大师',
+    description:
+      '文字 / 图片水印自由组合，九宫格定位或平铺铺满，样图防抄袭一把梭',
+    to: '/tools/watermark',
+    tag: '新增',
+  },
+  {
+    title: 'Base64 编解码',
+    description:
+      '文本编解码 / 图片转 Data URI / 一键生成 HTML、CSS、Markdown 嵌入代码',
+    to: '/tools/base64',
+    tag: '新增',
   },
 ];
 </script>
@@ -48,25 +84,7 @@ const tools = [
             >
               <span class="tool-tag">{{ tool.tag }}</span>
               <div class="tool-icon">
-                <svg
-                  viewBox="0 0 24 24"
-                  width="32"
-                  height="32"
-                  fill="currentColor"
-                >
-                  <path
-                    v-if="tool.title === '一键抠图'"
-                    d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"
-                  />
-                  <path
-                    v-else-if="tool.title === '证件照制作'"
-                    d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
-                  />
-                  <path
-                    v-else
-                    d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"
-                  />
-                </svg>
+                <span class="tool-initial">{{ tool.title.slice(0, 2) }}</span>
               </div>
               <h3 class="tool-name">{{ tool.title }}</h3>
               <p class="tool-desc">{{ tool.description }}</p>
@@ -115,6 +133,12 @@ const tools = [
   }
 }
 
+@media (min-width: 1200px) {
+  .tools-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
 .tool-card {
   position: relative;
   display: flex;
@@ -141,14 +165,37 @@ const tools = [
 }
 
 .tool-icon {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 64px;
   height: 64px;
+  overflow: hidden;
   color: var(--color-neon);
   background: var(--color-neon-glow);
   border-radius: 16px;
+}
+
+.tool-icon::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: '';
+  background: radial-gradient(
+    circle at 30% 20%,
+    color-mix(in srgb, var(--color-neon) 28%, transparent) 0%,
+    transparent 60%
+  );
+}
+
+.tool-initial {
+  position: relative;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--color-neon);
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 18px color-mix(in srgb, var(--color-neon) 42%, transparent);
 }
 
 .tool-name {

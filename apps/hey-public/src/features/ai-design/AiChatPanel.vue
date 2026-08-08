@@ -8,6 +8,8 @@ import type { AdTemplate } from '#/types/ai';
 
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
+import { useAiDesignGeneration } from '#/composables/useAiDesignGeneration';
+import { useAuth } from '#/composables/useAuth';
 import { useAiDesignStore } from '#/store/aiDesignStore';
 import { buildPrompt, getTemplatesByCategory } from '#/utils/templates';
 
@@ -27,8 +29,10 @@ const emit = defineEmits<{
   openLightbox: [img: AiGeneratedImage];
   openModify: [img: AiGeneratedImage];
   openSettings: [];
+  processingChange: [processing: boolean];
   regenerate: [];
   removeRefImage: [id: string];
+  replaceLastMessage: [content: string, extra?: Partial<ChatMessage>];
   runProductionCheck: [];
   triggerUpload: [tag?: string];
   updateRefNotes: [id: string, notes: string];
@@ -36,6 +40,25 @@ const emit = defineEmits<{
 }>();
 
 const store = useAiDesignStore();
+const { generate: generateImages } = useAiDesignGeneration();
+const { user } = useAuth();
+
+/** 用户头像：优先使用真实头像（有则显示），否则回退为昵称/用户名首字母 */
+const userAvatarUrl = computed(() => user.value?.avatar || '');
+/** 用户头像文字（昵称/用户名首字符） */
+const userAvatarText = computed(() =>
+  (user.value?.realName || user.value?.username || '用')
+    .slice(0, 1)
+    .toUpperCase(),
+);
+
+function formatPrice(value: null | number | undefined): string {
+  const n = Number(value ?? 0);
+  return n.toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
 
 const chatInput = ref('');
 const chatContainer = ref<HTMLDivElement>();
@@ -136,7 +159,26 @@ const checkResults = ref<any>(null);
 // Templates drawer
 const showTemplatesDrawer = ref(false);
 const templateHint = ref('');
-const templateCategories = computed(() => getTemplatesByCategory());
+const lastAppliedTemplateId = ref<null | string>(null);
+const backendTemplates = computed<AdTemplate[]>(() =>
+  store.templates.map((t) => ({
+    id: t.templateId,
+    name: t.name,
+    category: t.category,
+    icon: t.icon ?? 'mdi:apps',
+    description: t.description ?? '',
+    promptTemplate: t.promptTemplate,
+    promptHint: t.promptHint ?? '',
+    recommendedModel: t.recommendedModel ?? '',
+    defaultSize: t.defaultSize ?? '',
+    printSize: t.printSize ?? '',
+  })),
+);
+const templateCategories = computed(() =>
+  getTemplatesByCategory(
+    backendTemplates.value.length > 0 ? backendTemplates.value : undefined,
+  ),
+);
 
 // Resolution options
 const resolutionOptions = [
@@ -185,6 +227,7 @@ function applyTemplate(tpl: AdTemplate) {
     event: '展会名称',
   };
   chatInput.value = buildPrompt(tpl, inputs);
+  lastAppliedTemplateId.value = tpl.id;
   templateHint.value = `已填入「${tpl.name}」提示词，可继续编辑`;
   window.setTimeout(() => {
     templateHint.value = '';
@@ -222,6 +265,7 @@ function addMessage(
 async function analyzeAndGenerate() {
   const input = chatInput.value.trim();
   if (!input) return;
+  if (props.isProcessing) return; // 防止重复提交
 
   const styleName = store.styleKeyword;
   const palName =
@@ -243,9 +287,6 @@ async function analyzeAndGenerate() {
     refImages: props.refImages.length > 0 ? [...props.refImages] : undefined,
   });
 
-  // Simulate AI processing
-  await new Promise((r) => setTimeout(r, 800));
-
   const optimized = `${styleName}风格广告设计，${sizeText}，${palName}配色${input ? `，${input}` : ''}，专业印刷级质量。`;
   store.optimizedPrompt = optimized;
   addMessage(
@@ -254,52 +295,59 @@ async function analyzeAndGenerate() {
     {},
   );
 
-  await new Promise((r) => setTimeout(r, 1500));
-  store.revisionCounter++;
-  const count = store.generateCount;
-
-  const seeds = Array.from(
-    { length: count },
-    (_, i) => 85 + store.revisionCounter * 12 + i,
-  );
-  store.generatedImages = seeds.map((seed, i) => ({
-    id: `img-${seed}`,
-    url: `https://picsum.photos/600/400?random=${seed}`,
-    title: `方案 ${String.fromCodePoint(65 + i)}`,
-  }));
-
-  const firstImage = store.generatedImages.at(0);
-  store.revisionHistory.unshift({
-    Id: `dr-gen-${Date.now()}`,
-    DesignSessionId: 'ds-001',
-    RevisionNo: store.revisionCounter,
-    ImageUrl: firstImage?.url ?? '',
-    ThumbnailUrl: firstImage?.url.replace('600/400', '200/100') ?? '',
-    Prompt: input,
-    OptimizedPrompt: optimized,
-    UserFeedback: null,
-    Source: 'AI_GptImage2',
-    Status: store.revisionCounter === 1 ? 'Current' : 'Archived',
-    Width: store.designWidth * 10,
-    Height: store.designHeight * 10,
-    FileSize: 250_000,
-    CreatedAt: new Date().toISOString(),
-  });
-
-  if (store.revisionCounter === 1) store.currentRevision = 1;
-
-  addMessage(
-    'assistant',
-    `已生成 ${count} 套方案（${modelLabel}），点击查看大图，或「重生成」换一批。`,
-    {
-      images: [...store.generatedImages],
-    },
-  );
-
+  emit('processingChange', true);
   chatInput.value = '';
   showPlusMenu.value = false;
-}
 
+  try {
+    const images = await generateImages(input, {
+      model: currentModel.value?.id,
+      templateId: lastAppliedTemplateId.value,
+      count: store.generateCount,
+      referenceImages: props.refImages,
+    });
+
+    store.revisionCounter++;
+    store.generatedImages = images;
+    store.selectedImage = images[0]?.id ?? null;
+    store.revisionHistory.unshift({
+      Id: `dr-gen-${Date.now()}`,
+      DesignSessionId: store.activeSession?.id ?? '',
+      RevisionNo: store.revisionCounter,
+      ImageUrl: images[0]?.url ?? '',
+      ThumbnailUrl: images[0]?.url ?? '',
+      Prompt: input,
+      OptimizedPrompt: optimized,
+      UserFeedback: null,
+      Source: 'AI_GptImage2',
+      Status: store.revisionCounter === 1 ? 'Current' : 'Archived',
+      Width: store.designWidth * 10,
+      Height: store.designHeight * 10,
+      FileSize: 250_000,
+      CreatedAt: new Date().toISOString(),
+    });
+    if (store.revisionCounter === 1) store.currentRevision = 1;
+
+    const costText =
+      store.lastChargedAmount > 0
+        ? `，本次消耗 ¥${formatPrice(store.lastChargedAmount)}`
+        : '';
+    const summary =
+      images.length > 0
+        ? `已生成 ${images.length} 套方案（${modelLabel}）${costText}，点击查看大图，或「重生成」换一批。`
+        : '生成完成，但没有返回图片，请稍后重试。';
+    emit('replaceLastMessage', summary, { images });
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : '未知错误，请稍后重试';
+    emit('replaceLastMessage', `生成失败：${message}`, {
+      isCheckResult: true,
+    });
+  } finally {
+    lastAppliedTemplateId.value = null;
+    emit('processingChange', false);
+  }
+}
 // ── Prompt optimization ──
 async function optimizePrompt() {
   if (!chatInput.value.trim()) return;
@@ -538,6 +586,13 @@ onUnmounted(() => {
         <!-- User message -->
         <div v-if="msg.role === 'user'" class="msg-row msg-user">
           <div class="msg-bubble msg-bubble-user">
+            <!-- Uploaded reference images: top of bubble -->
+            <div v-if="msg.refImages && msg.refImages.length" class="msg-refs">
+              <div v-for="ref in msg.refImages" :key="ref.id" class="msg-ref">
+                <img :src="ref.dataUrl" class="msg-ref-img" />
+                <span class="msg-ref-tag">{{ getTagInfo(ref.tag).label }}</span>
+              </div>
+            </div>
             <!-- Multi-line content: collapsible text block with hover-to-expand -->
             <div
               v-if="msg.content.split('\n').length > 3"
@@ -551,14 +606,19 @@ onUnmounted(() => {
               >
             </div>
             <div v-else class="msg-content">{{ msg.content }}</div>
-            <div v-if="msg.refImages && msg.refImages.length" class="msg-refs">
-              <div v-for="ref in msg.refImages" :key="ref.id" class="msg-ref">
-                <img :src="ref.dataUrl" class="msg-ref-img" />
-                <span class="msg-ref-tag">{{ getTagInfo(ref.tag).label }}</span>
-              </div>
-            </div>
           </div>
-          <div class="msg-time">{{ msg.time }}</div>
+          <div class="msg-user-meta">
+            <div class="msg-avatar msg-avatar-user">
+              <img
+                v-if="userAvatarUrl"
+                :src="userAvatarUrl"
+                class="msg-avatar-img"
+                alt=""
+              />
+              <template v-else>{{ userAvatarText }}</template>
+            </div>
+            <div class="msg-time">{{ msg.time }}</div>
+          </div>
         </div>
 
         <!-- AI message -->
@@ -933,6 +993,22 @@ onUnmounted(() => {
 
           <!-- Bottom toolbar -->
           <div class="input-toolbar">
+            <!-- Wallet badge -->
+            <div
+              v-if="store.walletBalance !== null"
+              class="wallet-badge"
+              :title="`当前模型单价 ¥${formatPrice(store.walletUnitPrice)}/张`"
+            >
+              <span class="wallet-dot"></span>
+              <span>余额 ¥{{ formatPrice(store.walletBalance) }}</span>
+              <span v-if="store.walletUnitPrice > 0" class="wallet-unit">
+                ¥{{ formatPrice(store.walletUnitPrice) }}/张
+              </span>
+            </div>
+            <div
+              class="toolbar-divider"
+              v-if="store.walletBalance !== null"
+            ></div>
             <!-- Model -->
             <div class="model-menu-area">
               <button
@@ -1487,6 +1563,8 @@ onUnmounted(() => {
 
 /* Message rows */
 .msg-row {
+  display: flex;
+  width: 100%;
   margin-bottom: 28px;
   animation: msg-in 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
@@ -1508,12 +1586,6 @@ onUnmounted(() => {
     filter: blur(0);
     transform: translateY(0) scale(1);
   }
-}
-
-.msg-user {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
 }
 
 .msg-ai {
@@ -1549,6 +1621,9 @@ onUnmounted(() => {
 .msg-bubble {
   position: relative;
   z-index: 1;
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 100%;
   padding: 16px 20px;
   line-height: 1.65;
   border-radius: 20px;
@@ -1568,7 +1643,7 @@ onUnmounted(() => {
 }
 
 .msg-bubble-user {
-  max-width: 78%;
+  max-width: 66%;
   color: var(--color-bg-primary);
   background: linear-gradient(
     135deg,
@@ -1642,8 +1717,46 @@ onUnmounted(() => {
 }
 
 .msg-user .msg-time {
-  margin-right: 4px;
-  text-align: right;
+  margin-top: 4px;
+  text-align: center;
+}
+
+/* 用户头像（右侧） */
+.msg-user {
+  flex-direction: row;
+  gap: 10px;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.msg-user-meta {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.msg-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.msg-avatar-user {
+  overflow: hidden;
+  color: rgb(255 255 255 / 92%);
+  background: linear-gradient(135deg, rgb(80 100 255), rgb(140 90 240));
+  border-radius: 50%;
+  box-shadow: 0 6px 16px rgb(80 100 255 / 30%);
+}
+
+.msg-user {
+  flex-direction: row;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .msg-ai .msg-time {
@@ -1656,7 +1769,7 @@ onUnmounted(() => {
   flex-wrap: wrap;
   gap: 6px;
   justify-content: flex-end;
-  margin-top: 8px;
+  margin-bottom: 10px;
 }
 
 .msg-ref {
@@ -2309,6 +2422,36 @@ onUnmounted(() => {
   scrollbar-width: thin;
 }
 
+/* Wallet badge */
+.wallet-badge {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  height: 30px;
+  padding: 0 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: default;
+  user-select: none;
+  background: rgb(255 255 255 / 6%);
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 8px;
+}
+
+.wallet-dot {
+  width: 7px;
+  height: 7px;
+  background: var(--color-neon, #b4ff39);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--color-neon-glow, #b4ff39);
+}
+
+.wallet-badge .wallet-unit {
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
 /* Toolbar */
 .input-toolbar {
   position: absolute;
@@ -2382,23 +2525,56 @@ onUnmounted(() => {
   background: var(--color-border);
 }
 
-/* Dropdowns */
+/* Dropdowns — ensure containment context */
+.model-menu-area,
+.count-menu-area,
+.ratio-menu-area {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+}
+
+.input-plus-area {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  z-index: 3;
+}
+
 .toolbar-dropdown {
   position: absolute;
-  bottom: calc(100% + 10px);
-  left: 0;
-  z-index: 60;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  z-index: 9999;
   min-width: 140px;
   padding: 8px;
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
   border-radius: 14px;
   box-shadow:
-    0 12px 40px rgb(0 0 0 / 18%),
-    0 0 0 1px rgb(255 255 255 / 4%) inset;
-  backdrop-filter: blur(20px) saturate(140%);
-  transform-origin: bottom left;
+    0 12px 40px rgb(0 0 0 / 22%),
+    0 0 0 1px rgb(255 255 255 / 6%) inset;
+  backdrop-filter: blur(24px) saturate(160%);
+  transform: translateX(-50%);
+  transform-origin: bottom center;
   animation: dropdown-in 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Align model-dropdown to left edge since it's wider */
+.model-dropdown {
+  left: 0;
+  min-width: 220px;
+  transform: none;
+  transform-origin: bottom left;
+}
+
+.count-dropdown {
+  min-width: 130px;
+}
+
+/* Fix the ratio dropdown same treatment */
+.ratio-dropdown {
+  min-width: 140px;
 }
 
 @keyframes dropdown-in {
@@ -2537,17 +2713,17 @@ onUnmounted(() => {
 
 .plus-dropdown {
   position: absolute;
-  bottom: calc(100% + 10px);
+  bottom: calc(100% + 12px);
   left: 0;
-  z-index: 60;
+  z-index: 9999;
   width: 240px;
   padding: 10px;
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
   border-radius: 16px;
   box-shadow:
-    0 24px 64px rgb(0 0 0 / 18%),
-    0 0 0 1px rgb(255 255 255 / 5%) inset;
+    0 24px 64px rgb(0 0 0 / 22%),
+    0 0 0 1px rgb(255 255 255 / 6%) inset;
   backdrop-filter: blur(28px) saturate(160%);
   transform-origin: bottom left;
   animation: plus-pop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);

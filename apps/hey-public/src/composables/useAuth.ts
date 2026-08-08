@@ -21,7 +21,13 @@ const loading = ref(false);
 function loadUser(): AuthUser | null {
   try {
     const raw = localStorage.getItem(USER_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const u = JSON.parse(raw) as AuthUser;
+    // blob: URL 在页面刷新后失效，重新登录/拉取前视为无头像
+    if (u.avatar && u.avatar.startsWith('blob:')) {
+      u.avatar = '';
+    }
+    return u;
   } catch {
     return null;
   }

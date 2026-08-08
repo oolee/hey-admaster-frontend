@@ -1,0 +1,244 @@
+<script setup lang="ts">
+import type { UpdateAiDesignSettingsInput } from '#/api/ai-design';
+
+import { onMounted, ref } from 'vue';
+
+import { useVbenForm } from '@vben/common-ui';
+
+import { Button, Card, message } from 'ant-design-vue';
+
+import { useAiDesignApi } from '#/api/ai-design';
+
+defineOptions({ name: 'AiDesignSettings' });
+
+const { getSettings, updateSettings } = useAiDesignApi();
+const saving = ref(false);
+const loaded = ref(false);
+
+// ── 分组1：数据保留策略 ──
+const [RetentionForm, retentionFormApi] = useVbenForm({
+  commonConfig: { colon: true, controlClass: 'w-full' },
+  schema: [
+    {
+      component: 'InputNumber',
+      componentProps: { min: 1, max: 3650 },
+      fieldName: 'defaultRetentionDays',
+      label: '默认保留天数（登录用户）',
+      rules: 'required',
+    },
+    {
+      component: 'InputNumber',
+      componentProps: { min: 1, max: 3650 },
+      fieldName: 'guestRetentionDays',
+      label: '访客保留天数（未登录）',
+    },
+    {
+      component: 'InputTextArea',
+      componentProps: {
+        placeholder:
+          '{"Standard":30,"Pro":180} 按订阅版本名设置保留天数，留空则使用默认值',
+        rows: 2,
+      },
+      fieldName: 'editionRetentionDays',
+      label: '订阅版本保留天数（JSON）',
+    },
+  ],
+  showDefaultActions: false,
+});
+
+// ── 分组2：生成与计费 ──
+const [GenerationForm, generationFormApi] = useVbenForm({
+  commonConfig: { colon: true, controlClass: 'w-full' },
+  schema: [
+    {
+      component: 'InputNumber',
+      componentProps: { min: 1, max: 8 },
+      fieldName: 'maxImagesPerRequest',
+      label: '单次请求最多生成张数',
+    },
+    {
+      component: 'Input',
+      fieldName: 'defaultModel',
+      label: '默认模型',
+      componentProps: {
+        placeholder: '如：gpt-image-2，渠道未配置时回退到此模型',
+      },
+    },
+    {
+      component: 'InputNumber',
+      componentProps: { min: 0, precision: 4, step: 0.01 },
+      fieldName: 'defaultPricePerImage',
+      label: '默认单价（元/张）',
+    },
+    {
+      component: 'Switch',
+      controlClass: 'w-auto',
+      fieldName: 'enableMockProvider',
+      label: '启用 Mock Provider（演示/测试）',
+    },
+  ],
+  showDefaultActions: false,
+});
+
+// ── 分组3：存储与清理 ──
+const [StorageForm, storageFormApi] = useVbenForm({
+  commonConfig: { colon: true, controlClass: 'w-full' },
+  schema: [
+    {
+      component: 'Input',
+      fieldName: 'containerName',
+      label: 'BLOB 容器名',
+      componentProps: {
+        placeholder: '留空使用模块默认容器',
+      },
+    },
+    {
+      component: 'InputNumber',
+      componentProps: { min: 5, step: 5 },
+      fieldName: 'cleanupPeriodMinutes',
+      label: '过期数据清理周期（分钟）',
+    },
+    {
+      component: 'InputNumber',
+      componentProps: { min: 10, step: 10 },
+      fieldName: 'cleanupBatchSize',
+      label: '清理批次大小',
+    },
+  ],
+  showDefaultActions: false,
+});
+
+const allFormApis = [retentionFormApi, generationFormApi, storageFormApi];
+
+function setAllValues(values: Record<string, any>) {
+  allFormApis.forEach((api) => api.setValues(values));
+}
+
+async function collectAllValues(): Promise<Record<string, any>> {
+  const [a, b, c] = await Promise.all(
+    allFormApis.map((api) => api.submitForm()),
+  );
+  return { ...a, ...b, ...c };
+}
+
+onMounted(async () => {
+  try {
+    const settings = await getSettings();
+    setAllValues(settings);
+    loaded.value = true;
+  } catch (error: any) {
+    message.error(error?.message || '加载设置失败');
+  }
+});
+
+async function onSave() {
+  saving.value = true;
+  try {
+    // Validate all forms first
+    for (const api of allFormApis) {
+      await api.validateForm();
+    }
+    const values = await collectAllValues();
+    const input: UpdateAiDesignSettingsInput = {
+      cleanupBatchSize: values.cleanupBatchSize,
+      cleanupPeriodMinutes: values.cleanupPeriodMinutes,
+      containerName: values.containerName || null,
+      defaultModel: values.defaultModel || null,
+      defaultPricePerImage: values.defaultPricePerImage,
+      defaultRetentionDays: values.defaultRetentionDays,
+      editionRetentionDays: values.editionRetentionDays || null,
+      enableMockProvider: values.enableMockProvider ?? false,
+      guestRetentionDays: values.guestRetentionDays,
+      maxImagesPerRequest: values.maxImagesPerRequest,
+    };
+    const result = await updateSettings(input);
+    setAllValues(result);
+    message.success('设置已保存');
+  } catch (error: any) {
+    if (error?.message) {
+      message.error(error.message);
+    }
+  } finally {
+    saving.value = false;
+  }
+}
+</script>
+
+<template>
+  <div class="mx-auto max-w-5xl">
+    <!-- Header -->
+    <div class="mb-5">
+      <div class="text-xl font-semibold tracking-tight">AI 设计模块设置</div>
+      <div class="mt-1 text-sm text-gray-500">
+        全局保留策略、生成计费参数与存储清理配置。修改保存后即时生效。
+      </div>
+    </div>
+
+    <!-- Cards grid -->
+    <div class="grid gap-4 lg:grid-cols-2">
+      <!-- Card 1: 数据保留策略 -->
+      <Card class="shadow-sm" :bordered="true">
+        <template #title>
+          <div class="flex items-center gap-2">
+            <span
+              class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-green-100 text-green-700 text-sm font-bold dark:bg-green-900/30 dark:text-green-400"
+            >
+              R
+            </span>
+            <span class="font-semibold">数据保留策略</span>
+          </div>
+        </template>
+        <RetentionForm />
+      </Card>
+
+      <!-- Card 2: 生成与计费 -->
+      <Card class="shadow-sm" :bordered="true">
+        <template #title>
+          <div class="flex items-center gap-2">
+            <span
+              class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 text-blue-700 text-sm font-bold dark:bg-blue-900/30 dark:text-blue-400"
+            >
+              G
+            </span>
+            <span class="font-semibold">生成与计费</span>
+          </div>
+        </template>
+        <GenerationForm />
+      </Card>
+
+      <!-- Card 3: 存储与清理 -->
+      <Card class="shadow-sm lg:col-span-2" :bordered="true">
+        <template #title>
+          <div class="flex items-center gap-2">
+            <span
+              class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-purple-100 text-purple-700 text-sm font-bold dark:bg-purple-900/30 dark:text-purple-400"
+            >
+              S
+            </span>
+            <span class="font-semibold">存储与清理</span>
+          </div>
+        </template>
+        <div class="grid gap-x-8 gap-y-1 md:grid-cols-3">
+          <StorageForm />
+        </div>
+      </Card>
+    </div>
+
+    <!-- Actions -->
+    <div class="mt-6 flex items-center justify-between">
+      <div
+        class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300"
+      >
+        <div class="font-semibold">保留策略说明</div>
+        <ul class="mt-1 list-inside list-disc space-y-0.5 text-xs opacity-90">
+          <li>访客会话：按「访客保留天数」自动清理（默认 1 天）</li>
+          <li>登录用户：优先按订阅版本（JSON）匹配，未匹配则使用默认</li>
+          <li>清理任务周期性扫描，批量删除过期消息与 BLOB 图片</li>
+        </ul>
+      </div>
+      <Button type="primary" size="large" :loading="saving" @click="onSave">
+        保存设置
+      </Button>
+    </div>
+  </div>
+</template>

@@ -204,9 +204,11 @@ export function buildPrompt(
 /**
  * 按分类获取模板列表
  */
-export function getTemplatesByCategory(): Record<string, AdTemplate[]> {
+export function getTemplatesByCategory(
+  templates: AdTemplate[] = AD_TEMPLATES,
+): Record<string, AdTemplate[]> {
   const categories: Record<string, AdTemplate[]> = {};
-  for (const tpl of AD_TEMPLATES) {
+  for (const tpl of templates) {
     if (!categories[tpl.category]) {
       categories[tpl.category] = [];
     }
