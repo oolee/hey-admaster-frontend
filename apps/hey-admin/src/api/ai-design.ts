@@ -153,6 +153,12 @@ export interface AiDesignSettingsDto {
   containerName?: null | string;
   cleanupPeriodMinutes: number;
   cleanupBatchSize: number;
+  gatewayBaseUrl?: null | string;
+  gatewayApiKey?: null | string;
+  gatewayApiKeyConfigured?: boolean;
+  gatewayTimeoutSeconds: number;
+  gatewayEnableSse: boolean;
+  gatewayExternalBaseUrl?: null | string;
 }
 
 export interface UpdateAiDesignSettingsInput {
@@ -166,6 +172,11 @@ export interface UpdateAiDesignSettingsInput {
   containerName?: null | string;
   cleanupPeriodMinutes?: null | number;
   cleanupBatchSize?: null | number;
+  gatewayBaseUrl?: null | string;
+  gatewayApiKey?: null | string;
+  gatewayTimeoutSeconds?: null | number;
+  gatewayEnableSse?: boolean | null;
+  gatewayExternalBaseUrl?: null | string;
 }
 
 export interface PagedInput {
