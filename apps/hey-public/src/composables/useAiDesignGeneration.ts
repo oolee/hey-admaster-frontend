@@ -72,6 +72,68 @@ function extractPromptSize(prompt: string): ExtractedSize | null {
 export function useAiDesignGeneration() {
   const store = useAiDesignStore();
 
+  /** gpt-image-2 30 档常见尺寸（对齐 apiyi gpt-image-2-vip：10 比例 × 3 分辨率档） */
+  export const GPT_IMAGE_TIER_SIZES: {
+    sizes: { name: string; ratio: string; size: string }[];
+    tier: '1k' | '2k' | '4k';
+    tierLabel: string;
+  }[] = [
+    {
+      tier: '1k',
+      tierLabel: '1K Fast',
+      sizes: [
+        { ratio: '1:1', name: 'Square', size: '1280x1280' },
+        { ratio: '2:3', name: 'Portrait', size: '848x1280' },
+        { ratio: '3:2', name: 'Photo', size: '1280x848' },
+        { ratio: '3:4', name: 'Portrait', size: '960x1280' },
+        { ratio: '4:3', name: 'Standard', size: '1280x960' },
+        { ratio: '4:5', name: 'Social', size: '1024x1280' },
+        { ratio: '5:4', name: 'Large', size: '1280x1024' },
+        { ratio: '9:16', name: 'Story', size: '720x1280' },
+        { ratio: '16:9', name: 'Wide', size: '1280x720' },
+        { ratio: '21:9', name: 'Cinema', size: '1280x544' },
+      ],
+    },
+    {
+      tier: '2k',
+      tierLabel: '2K Recommended',
+      sizes: [
+        { ratio: '1:1', name: 'Square', size: '2048x2048' },
+        { ratio: '2:3', name: 'Portrait', size: '1360x2048' },
+        { ratio: '3:2', name: 'Photo', size: '2048x1360' },
+        { ratio: '3:4', name: 'Portrait', size: '1536x2048' },
+        { ratio: '4:3', name: 'Standard', size: '2048x1536' },
+        { ratio: '4:5', name: 'Social', size: '1632x2048' },
+        { ratio: '5:4', name: 'Large', size: '2048x1632' },
+        { ratio: '9:16', name: 'Story', size: '1152x2048' },
+        { ratio: '16:9', name: 'Wide', size: '2048x1152' },
+        { ratio: '21:9', name: 'Cinema', size: '2048x864' },
+      ],
+    },
+    {
+      tier: '4k',
+      tierLabel: '4K Detail',
+      sizes: [
+        { ratio: '1:1', name: 'Square', size: '2880x2880' },
+        { ratio: '2:3', name: 'Portrait', size: '2336x3520' },
+        { ratio: '3:2', name: 'Photo', size: '3520x2336' },
+        { ratio: '3:4', name: 'Portrait', size: '2480x3312' },
+        { ratio: '4:3', name: 'Standard', size: '3312x2480' },
+        { ratio: '4:5', name: 'Social', size: '2560x3216' },
+        { ratio: '5:4', name: 'Large', size: '3216x2560' },
+        { ratio: '9:16', name: 'Story', size: '2160x3840' },
+        { ratio: '16:9', name: 'Wide', size: '3840x2160' },
+        { ratio: '21:9', name: 'Cinema', size: '3840x1632' },
+      ],
+    },
+  ];
+
+  /** 各档位「最大分辨率」兜底（未选比例时默认选中） */
+  export const GPT_IMAGE_TIER_MAX: Record<'1k' | '2k' | '4k', string> = {
+    '1k': '1280x1280',
+    '2k': '2048x2048',
+    '4k': '3840x2160',
+  };
   /** 模型未声明 supportedSizes 时的兜底固定尺寸集（OpenAI 兼容 /images/generations 常见值） */
   const DEFAULT_SIZES = ['1024x1024', '1536x1024', '1024x1536'];
 
@@ -111,6 +173,27 @@ export function useAiDesignGeneration() {
    * - 其余模型：固定标准尺寸集中选最接近比例的尺寸
    * - 物理尺寸（cm/m）仅作为构图提示与生产放样（physicalWidth/Height/dpi），不用于指定模型输出像素
    */
+  /**
+   * 按分辨率档位（模糊选择 1K/2K/4K）解析尺寸：
+   * - 已选比例：在对应档位的 10 个尺寸中按比例最接近匹配
+   * - 未选比例/自动：取该档位最大分辨率（GPT_IMAGE_TIER_MAX）
+   */
+  function resolveTierSize(target: number, tier: '1k' | '2k' | '4k'): string {
+    const group = GPT_IMAGE_TIER_SIZES.find((g) => g.tier === tier);
+    if (!group) return GPT_IMAGE_TIER_MAX[tier];
+    const parsed = group.sizes.map((s) => {
+      const [rwStr, rhStr] = s.ratio.split(':') as [string, string];
+      return {
+        ...s,
+        ratio: Number.parseFloat(rwStr) / Number.parseFloat(rhStr),
+      };
+    });
+    const best = [...parsed].toSorted(
+      (a, b) => Math.abs(a.ratio - target) - Math.abs(b.ratio - target),
+    )[0];
+    return best?.size ?? GPT_IMAGE_TIER_MAX[tier];
+  }
+
   function buildSize(prompt = ''): string {
     const supported = store.currentModel?.supportedSizes?.length
       ? store.currentModel.supportedSizes
@@ -122,6 +205,25 @@ export function useAiDesignGeneration() {
     if (isAuto) {
       const extracted = extractPromptSize(prompt);
       if (extracted) target = extracted.ratio;
+    }
+    // 分辨率档位（模糊选择 1K/2K/4K）：档位优先于 supportedSizes 就近匹配
+    const tier = store.resolutionTier;
+    if (tier !== 'auto') {
+      const tierSize = resolveTierSize(target, tier);
+      if (tierSize) {
+        if (!supported || supported.includes(tierSize)) return tierSize;
+        // 模型声明了 supportedSizes 但不含该精确尺寸：选比例最接近的支持尺寸
+        const parsed = supported.map((s) => {
+          const [wStr, hStr] = s.split('x') as [string, string];
+          const w = Number.parseInt(wStr, 10);
+          const h = Number.parseInt(hStr, 10);
+          return { size: s, w, h, ratio: w / h };
+        });
+        const best = [...parsed].toSorted(
+          (a, b) => Math.abs(a.ratio - target) - Math.abs(b.ratio - target),
+        )[0];
+        return best?.size ?? parsed[0]?.size ?? tierSize;
+      }
     }
     if (supported?.length) {
       const parsed = supported.map((s) => {

@@ -51,6 +51,38 @@ export interface ChatMessage {
   optimizedPrompt?: string;
   /** 生成失败后可重试：保存原提示词与张数 */
   retry?: { count: number; prompt: string };
+  /** 关联后端生成任务 Id（用于查看调用留痕/重新落库） */
+  taskId?: string;
+  /** 上游已返回图片但首次落库失败（可点击「重新加载落库」） */
+  persistFailed?: boolean;
+  /** 调用留痕（发送内容/提示词/完整API参数/返回内容/临时图片URL），懒加载缓存 */
+  trace?: AiTaskTrace | null;
+  /** 留痕面板是否展开 */
+  traceOpen?: boolean;
+}
+
+/**
+ * 单条消息对应的后端生成任务留痕（对话历史追踪/故障排查用）。
+ * 与后端 AiGenerationResultDto 对齐；requestPayloadJson/responsePayloadJson 为完整原始 JSON。
+ */
+export interface AiTaskTrace {
+  taskId: string;
+  status: number;
+  model: string;
+  failReason?: null | string;
+  prompt?: null | string;
+  optimizedPrompt?: null | string;
+  /** 最终调用上游 API 的完整请求参数（JSON） */
+  requestPayloadJson?: null | string;
+  /** 上游返回的完整响应体（JSON） */
+  responsePayloadJson?: null | string;
+  /** 上游返回的临时图片 URL（落库失败时用于重新加载落库） */
+  externalImageUrls: string[];
+  /** 文本对话结果 */
+  text?: null | string;
+  totalTokens?: null | number;
+  chargedAmount?: number;
+  pricingUnit?: number;
 }
 
 export interface RefImage {
@@ -94,6 +126,8 @@ export interface ModelOption {
   capabilities?: number;
   /** 计价单位：0 元/张、1 元/次、2 元/1M tokens */
   pricingUnit?: number;
+  /** 模型单价（与 pricingUnit 配套，模型选择器小字显示） */
+  price?: number;
   /** 模型支持的尺寸列表（如 ["1024x1024","1536x1024","1024x1536"]，空则用默认值） */
   supportedSizes?: string[];
 }
@@ -170,6 +204,7 @@ function mapMessageDtoToChatMessage(
     isCheckResult: msg.messageType === 20,
     prompt: msg.prompt ?? undefined,
     optimizedPrompt: msg.optimizedPrompt ?? undefined,
+    taskId: msg.taskId ?? undefined,
     images: images.length > 0 ? images : undefined,
   };
 }
@@ -334,6 +369,8 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
   const selectedDesignType = ref(''); // '' = 无（提示词不附加尺寸，默认不附加任何物理尺寸）
   const designHeight = ref(0);
   const selectedAspectRatio = ref('auto'); // 默认自动：未选择比例/设计类型时提示词不附加尺寸
+  /** 分辨率档位（模糊选择）：auto=自动 / 1k / 2k / 4k。选档位时取该档最大分辨率或按比例匹配 30 档尺寸 */
+  const resolutionTier = ref<'1k' | '2k' | '4k' | 'auto'>('auto');
 
   // ── Style presets (expanded with real case preview images) ──
   const stylePresets = [
@@ -778,6 +815,7 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
       modelType: option.modelType ?? 0,
       capabilities: option.capabilities ?? 0,
       pricingUnit: option.pricingUnit ?? 0,
+      price: option.price ?? 0,
       supportedSizes: option.supportedSizes ?? [],
     };
   }
@@ -857,7 +895,14 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
         final.status === AiGenerationStatus.Failed ||
         final.status === AiGenerationStatus.Canceled
       ) {
-        throw new Error(final.failReason || 'AI 生成失败，请稍后重试');
+        const err: Error & {
+          externalImageUrls?: string[];
+          taskId?: string;
+        } = new Error(final.failReason || 'AI 生成失败，请稍后重试');
+        // 上游已返回图片但落库失败：记录任务与临时图片 URL，供「重新加载落库」补偿
+        err.taskId = final.taskId;
+        err.externalImageUrls = final.externalImageUrls ?? [];
+        throw err;
       }
       const images = final.images.map((asset) =>
         mapAssetToGeneratedImage(asset),
@@ -948,6 +993,7 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
     optimizedPrompt,
     selectedDesignType,
     selectedAspectRatio,
+    resolutionTier,
     stylePresets,
     colorPalettes,
     tagOptions,

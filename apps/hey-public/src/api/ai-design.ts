@@ -200,6 +200,16 @@ export interface AiGenerationResult {
   chargedAmount: number;
   /** 扣费后钱包余额（元） */
   walletBalance?: null | number;
+  /** 原始提示词 */
+  prompt?: null | string;
+  /** 优化/加工后的完整提示词（最终发给上游的内容） */
+  optimizedPrompt?: null | string;
+  /** 最终调用上游 API 的完整请求参数（JSON，留痕/追踪/排查问题） */
+  requestPayloadJson?: null | string;
+  /** 上游返回的完整响应体（JSON，留痕/追踪/排查问题） */
+  responsePayloadJson?: null | string;
+  /** 上游返回的临时图片 URL（落库失败时用于重新加载落库） */
+  externalImageUrls: string[];
   images: AiImageAsset[];
 }
 
@@ -250,6 +260,8 @@ export interface AiModelOption {
   capabilities: number;
   /** 计价单位（元/张、元/次、元/1M tokens） */
   pricingUnit: number;
+  /** 模型单价（与 pricingUnit 配套） */
+  price: number;
 }
 
 export interface AiTemplate {
@@ -296,6 +308,19 @@ export function cancelAiGenerationTask(
   return aiDesignApi<AiGenerationResult>(`/generation/tasks/${taskId}/cancel`, {
     method: 'POST',
   });
+}
+
+/**
+ * 重新落库：从任务留痕的上游临时图片 URL 重新下载并落库。
+ * 用于「上游已返回图片但首次落库失败」的补偿场景（成功后按成功结算扣费）。
+ */
+export function retryPersistAiImages(
+  taskId: string,
+): Promise<AiGenerationResult> {
+  return aiDesignApi<AiGenerationResult>(
+    `/generation/tasks/${taskId}/retry-persist-images`,
+    { method: 'POST' },
+  );
 }
 
 // ── 会话 ──

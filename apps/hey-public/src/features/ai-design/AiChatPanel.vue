@@ -13,6 +13,8 @@ import {
   AiModelType,
   AiPricingUnitLabels,
   optimizeAiPrompt,
+  queryAiGenerationTask,
+  retryPersistAiImages,
 } from '#/api/ai-design';
 import { useAiDesignGeneration } from '#/composables/useAiDesignGeneration';
 import { useAuth } from '#/composables/useAuth';
@@ -41,6 +43,7 @@ const emit = defineEmits<{
   removeRefImage: [id: string];
   replaceLastMessage: [content: string, extra?: Partial<ChatMessage>];
   retry: [msg: ChatMessage];
+  retryPersist: [msg: ChatMessage];
   runProductionCheck: [];
   stopGeneration: [];
   triggerUpload: [tag?: string];
@@ -199,13 +202,17 @@ const isTextModel = computed(() => {
   return m.modelType === AiModelType.Text;
 });
 
-/** 计价单位文案（元/张、元/次、元/1M tokens） */
-const priceUnitLabel = computed(() => {
-  const unit = store.currentModel?.pricingUnit;
+/** 模型计价单位文案（按模型自身 pricingUnit） */
+function modelUnitLabel(unit: number | undefined): string {
   return unit !== undefined && unit in AiPricingUnitLabels
     ? AiPricingUnitLabels[unit]
     : '元/张';
-});
+}
+
+/** 计价单位文案（元/张、元/次、元/1M tokens） */
+const priceUnitLabel = computed(() =>
+  modelUnitLabel(store.currentModel?.pricingUnit),
+);
 
 const chatInput = ref('');
 const chatContainer = ref<HTMLDivElement>();
@@ -219,6 +226,14 @@ const showRatioMenu = ref(false);
 const showQualityMenu = ref(false);
 
 // Quick ratio presets for the toolbar dropdown
+/** 分辨率档位（模糊选择）：auto=自动 / 1k / 2k / 4k，选档位默认取该档最大分辨率 */
+const resolutionTierOptions = [
+  { value: 'auto', label: '自动' },
+  { value: '1k', label: '1K' },
+  { value: '2k', label: '2K' },
+  { value: '4k', label: '4K' },
+];
+
 const quickRatioOptions = [
   { value: 'auto', label: '自动' },
   { value: '2:1', label: '2:1' },
@@ -513,12 +528,21 @@ async function analyzeAndGenerate() {
     }
     const message =
       error instanceof Error ? error.message : '未知错误，请稍后重试';
+    const taskErr = error as {
+      externalImageUrls?: string[];
+      taskId?: string;
+    };
     emit(
       'replaceLastMessage',
       `生成失败：${message}（耗时 ${formatDuration(Date.now() - startTime)}）`,
       {
         isCheckResult: true,
         retry: { prompt: input, count: store.generateCount },
+        taskId: taskErr.taskId,
+        // 上游已返回图片但首次落库失败：标记「可重新加载落库」
+        persistFailed:
+          Boolean(taskErr.taskId) &&
+          (taskErr.externalImageUrls?.length ?? 0) > 0,
       },
     );
   } finally {
@@ -768,6 +792,72 @@ function openSettingsFromPlus() {
   nextTick(() => emit('openSettings'));
 }
 
+// ── 调用留痕查看 / 图片重新落库 ──
+/** JSON 美化输出（供留痕面板展示完整请求/响应参数，便于追踪问题） */
+function prettyJson(value: null | string): string {
+  if (!value) return '';
+  try {
+    return JSON.stringify(JSON.parse(value), null, 2);
+  } catch {
+    return value;
+  }
+}
+
+const traceLoading = ref<string>('');
+
+/** 展开/收起某条消息的「调用详情」（发送内容/提示词/完整API参数/返回内容/临时图片URL） */
+async function toggleTrace(msg: ChatMessage) {
+  if (!msg.taskId) return;
+  if (msg.traceOpen) {
+    msg.traceOpen = false;
+    return;
+  }
+  if (msg.trace) {
+    msg.traceOpen = true;
+    return;
+  }
+  traceLoading.value = msg.taskId;
+  try {
+    const result = await queryAiGenerationTask(msg.taskId);
+    msg.trace = {
+      taskId: result.taskId,
+      status: result.status,
+      model: result.model,
+      failReason: result.failReason ?? null,
+      prompt: result.prompt ?? null,
+      optimizedPrompt: result.optimizedPrompt ?? null,
+      requestPayloadJson: result.requestPayloadJson ?? null,
+      responsePayloadJson: result.responsePayloadJson ?? null,
+      externalImageUrls: result.externalImageUrls ?? [],
+      text: result.text ?? null,
+      totalTokens: result.totalTokens ?? null,
+      chargedAmount: result.chargedAmount ?? 0,
+      pricingUnit: result.pricingUnit ?? 0,
+    };
+    msg.traceOpen = true;
+  } catch {
+    msg.trace = null;
+  } finally {
+    traceLoading.value = '';
+  }
+}
+
+const persistLoading = ref(false);
+
+/** 图片重新落库：从任务留痕的上游临时 URL 重新下载并入库（成功后通知父级刷新会话） */
+async function onRetryPersist(msg: ChatMessage) {
+  if (!msg.taskId || persistLoading.value) return;
+  persistLoading.value = true;
+  try {
+    await retryPersistAiImages(msg.taskId);
+    emit('retryPersist', msg);
+  } catch (error: unknown) {
+    alert(error instanceof Error ? error.message : '重新落库失败，请稍后重试');
+  } finally {
+    persistLoading.value = false;
+  }
+}
+
 onMounted(() => {
   window.addEventListener('click', onWindowClick);
   scrollToBottom();
@@ -910,6 +1000,130 @@ onUnmounted(() => {
                     </svg>
                     重试
                   </button>
+                </div>
+
+                <!-- 调用留痕：发送内容/提示词/完整API参数/返回内容/临时图片URL -->
+                <div v-if="msg.taskId" class="msg-trace">
+                  <button class="msg-trace-toggle" @click="toggleTrace(msg)">
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="13"
+                      height="13"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path
+                        d="M8 3H5a2 2 0 00-2 2v14a2 2 0 002 2h3m8-16h3a2 2 0 012 2v14a2 2 0 01-2 2h-3m-5-18v18m-3-8h6"
+                      />
+                    </svg>
+                    {{ msg.traceOpen ? '收起调用详情' : '调用详情' }}
+                    <span
+                      v-if="traceLoading === msg.taskId"
+                      class="trace-loading"
+                      >…</span
+                    >
+                  </button>
+                  <button
+                    v-if="msg.persistFailed && !isProcessing"
+                    class="msg-retry-btn msg-persist-btn"
+                    :disabled="persistLoading"
+                    @click="onRetryPersist(msg)"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="13"
+                      height="13"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M21 12a9 9 0 11-2.64-6.36M21 3v6h-6" />
+                    </svg>
+                    {{ persistLoading ? '落库中...' : '重新加载落库' }}
+                  </button>
+                </div>
+
+                <!-- 留痕详情面板（懒加载，仅展开时请求后端任务留痕） -->
+                <div v-if="msg.traceOpen && msg.trace" class="msg-trace-panel">
+                  <div class="trace-row">
+                    <span class="trace-label">模型</span>
+                    <span class="trace-value">{{ msg.trace.model }}</span>
+                  </div>
+                  <div
+                    v-if="msg.trace.status === 20 || msg.trace.status === 30"
+                    class="trace-row"
+                  >
+                    <span class="trace-label">状态</span>
+                    <span
+                      class="trace-value"
+                      :class="
+                        msg.trace.status === 20 ? 'trace-ok' : 'trace-err'
+                      "
+                    >
+                      {{ msg.trace.status === 20 ? '成功' : '失败' }}
+                    </span>
+                  </div>
+                  <div v-if="msg.trace.failReason" class="trace-row">
+                    <span class="trace-label">失败原因</span>
+                    <span class="trace-value">{{ msg.trace.failReason }}</span>
+                  </div>
+                  <div v-if="msg.trace.prompt" class="trace-row">
+                    <span class="trace-label">发送内容</span>
+                    <span class="trace-value trace-pre">{{
+                      msg.trace.prompt
+                    }}</span>
+                  </div>
+                  <div v-if="msg.trace.optimizedPrompt" class="trace-row">
+                    <span class="trace-label">加工后提示词</span>
+                    <span class="trace-value trace-pre">{{
+                      msg.trace.optimizedPrompt
+                    }}</span>
+                  </div>
+                  <div v-if="msg.trace.text" class="trace-row">
+                    <span class="trace-label">返回文本</span>
+                    <span class="trace-value trace-pre">{{
+                      msg.trace.text
+                    }}</span>
+                  </div>
+                  <div v-if="msg.trace.requestPayloadJson" class="trace-row">
+                    <span class="trace-label">请求参数</span>
+                    <pre class="trace-json">{{
+                      prettyJson(msg.trace.requestPayloadJson)
+                    }}</pre>
+                  </div>
+                  <div v-if="msg.trace.responsePayloadJson" class="trace-row">
+                    <span class="trace-label">返回内容</span>
+                    <pre class="trace-json">{{
+                      prettyJson(msg.trace.responsePayloadJson)
+                    }}</pre>
+                  </div>
+                  <div
+                    v-if="
+                      msg.trace.externalImageUrls &&
+                      msg.trace.externalImageUrls.length
+                    "
+                    class="trace-row"
+                  >
+                    <span class="trace-label">临时图片URL</span>
+                    <ul class="trace-urls">
+                      <li
+                        v-for="(u, i) in msg.trace.externalImageUrls"
+                        :key="i"
+                      >
+                        <a
+                          :href="u"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          >{{ u }}</a
+                        >
+                      </li>
+                    </ul>
+                  </div>
                 </div>
 
                 <!-- Generated images -->
@@ -1381,33 +1595,44 @@ onUnmounted(() => {
                       showModelMenu = false;
                     "
                   >
-                    <span class="dropdown-item-label">{{ m.label }}</span>
-                    <span
-                      v-if="m.modelType === 1"
-                      class="dropdown-type-tag"
-                      title="非多模态：仅文本对话，不能生成图片"
-                      >非多模态</span
-                    >
-                    <span
-                      v-else
-                      class="dropdown-type-tag dropdown-type-tag-image"
-                      title="多模态：支持图片生成"
-                      >多模态</span
-                    >
-                    <span v-if="m.recommended" class="dropdown-recommend"
-                      >推荐</span
-                    >
-                    <svg
-                      v-if="store.selectedModel === m.id"
-                      viewBox="0 0 24 24"
-                      width="16"
-                      height="16"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2.5"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
+                    <span class="model-item-main">
+                      <span class="dropdown-item-label">{{ m.label }}</span>
+                      <span
+                        v-if="(m.price ?? 0) > 0"
+                        class="dropdown-model-price"
+                        title="模型单价"
+                        >¥{{ formatPrice(m.price)
+                        }}{{ modelUnitLabel(m.pricingUnit) }}</span
+                      >
+                    </span>
+                    <span class="model-item-side">
+                      <span
+                        v-if="m.modelType === 1"
+                        class="dropdown-type-tag"
+                        title="非多模态：仅文本对话，不能生成图片"
+                        >非多模态</span
+                      >
+                      <span
+                        v-else
+                        class="dropdown-type-tag dropdown-type-tag-image"
+                        title="多模态：支持图片生成"
+                        >多模态</span
+                      >
+                      <span v-if="m.recommended" class="dropdown-recommend"
+                        >推荐</span
+                      >
+                      <svg
+                        v-if="store.selectedModel === m.id"
+                        viewBox="0 0 24 24"
+                        width="16"
+                        height="16"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </span>
                   </button>
                 </template>
                 <div v-if="modelGroups.length === 0" class="dropdown-empty">
@@ -1558,13 +1783,17 @@ onUnmounted(() => {
                   <rect x="3" y="6" width="18" height="12" rx="1.5" />
                   <path d="M9 6v12M15 6v12" stroke-dasharray="2 2" />
                 </svg>
-                <span>{{
-                  store.selectedAspectRatio === 'auto'
-                    ? '自动'
-                    : store.selectedAspectRatio === 'custom'
-                      ? '自定义'
-                      : store.selectedAspectRatio
-                }}</span>
+                <span
+                  >{{
+                    store.selectedAspectRatio === 'auto'
+                      ? '自动'
+                      : store.selectedAspectRatio === 'custom'
+                        ? '自定义'
+                        : store.selectedAspectRatio
+                  }}<template v-if="store.resolutionTier !== 'auto'">
+                    · {{ store.resolutionTier.toUpperCase() }}</template
+                  ></span
+                >
                 <svg
                   viewBox="0 0 24 24"
                   width="12"
@@ -1588,6 +1817,29 @@ onUnmounted(() => {
                   <span>{{ r.label }}</span>
                   <svg
                     v-if="store.selectedAspectRatio === r.value"
+                    viewBox="0 0 24 24"
+                    width="16"
+                    height="16"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </button>
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-title">分辨率档位（模糊选择）</div>
+                <button
+                  v-for="t in resolutionTierOptions"
+                  :key="t.value"
+                  class="dropdown-item"
+                  :class="[{ active: store.resolutionTier === t.value }]"
+                  title="选 1K/2K/4K 时默认取该档最大分辨率；不选则自动匹配"
+                  @click="store.resolutionTier = t.value"
+                >
+                  <span>{{ t.label }}</span>
+                  <svg
+                    v-if="store.resolutionTier === t.value"
                     viewBox="0 0 24 24"
                     width="16"
                     height="16"
@@ -2129,6 +2381,124 @@ onUnmounted(() => {
   background: var(--color-neon);
   box-shadow: 0 6px 18px var(--color-neon-glow);
   transform: translateY(-1px);
+}
+
+/* 调用留痕 / 图片重新落库 */
+.msg-trace {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.msg-trace-toggle {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  transition: all 0.18s ease;
+}
+
+.msg-trace-toggle:hover {
+  color: var(--color-neon);
+  border-color: var(--color-neon-dim);
+}
+
+.trace-loading {
+  color: var(--color-neon);
+}
+
+.msg-persist-btn {
+  padding: 4px 10px;
+  margin: 0;
+  font-size: 0.75rem;
+}
+
+.msg-persist-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
+}
+
+.msg-trace-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  padding: 12px;
+  margin-top: 10px;
+  overflow-y: auto;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+
+.trace-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.trace-label {
+  flex: none;
+  width: 84px;
+  color: var(--color-text-secondary);
+}
+
+.trace-value {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.trace-pre {
+  white-space: pre-wrap;
+}
+
+.trace-ok {
+  color: #52c41a;
+}
+
+.trace-err {
+  color: #ff4d4f;
+}
+
+.trace-json {
+  flex: 1;
+  max-height: 180px;
+  padding: 8px;
+  margin: 0;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  white-space: pre;
+  background: rgb(0 0 0 / 25%);
+  border-radius: 6px;
+}
+
+.trace-urls {
+  flex: 1;
+  min-width: 0;
+  padding-left: 16px;
+  margin: 0;
+  list-style: disc;
+}
+
+.trace-urls a {
+  color: var(--color-neon);
+  overflow-wrap: anywhere;
 }
 
 /* Multi-line collapsible text block — shows preview, expands on hover via title */
@@ -3034,13 +3404,38 @@ onUnmounted(() => {
 /* Align model-dropdown to left edge since it's wider */
 .model-dropdown {
   left: 0;
-  min-width: 220px;
+  min-width: 240px;
   max-width: 320px;
   max-height: 320px;
+
+  /* 去掉顶部 padding：sticky 分组标题紧贴滚动容器顶部，避免出现缝隙 */
+  padding: 0 0 6px;
   overflow: hidden auto;
   transform: none;
   transform-origin: bottom left;
   animation: dropdown-in-left 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.model-item-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.model-item-side {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+  align-items: center;
+}
+
+.dropdown-model-price {
+  font-size: 0.66rem;
+  line-height: 1.2;
+  color: var(--color-text-muted);
+  white-space: nowrap;
 }
 
 .count-dropdown {
@@ -3087,6 +3482,12 @@ onUnmounted(() => {
 
 .count-dropdown {
   min-width: 130px;
+}
+
+.dropdown-divider {
+  height: 1px;
+  margin: 4px 10px;
+  background: var(--color-border, rgb(229 231 235 / 60%));
 }
 
 .dropdown-title {

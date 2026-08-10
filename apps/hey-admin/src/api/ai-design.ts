@@ -109,8 +109,36 @@ export const AiRequestParamLabels: Record<number, string> = {
   [AiRequestParam.InputFidelity]: '输入保真度',
 };
 
+/** 各请求参数用途说明（管理端 tooltip 展示） */
+export const AiRequestParamDescriptions: Record<number, string> = {
+  [AiRequestParam.Size]:
+    '生成尺寸（比例/分辨率），如 1024x1024、1536x1024，渠道不支持任意尺寸时需禁用',
+  [AiRequestParam.Quality]:
+    '画质档位（low/medium/high/auto），影响清晰度与计费单价',
+  [AiRequestParam.Count]:
+    '单次生成张数 n，部分渠道（如 apiyi）不支持多张需禁用',
+  [AiRequestParam.ResponseFormat]:
+    '返回格式（url / b64_json），部分渠道固定返回 url 可禁用',
+  [AiRequestParam.Background]:
+    '背景设置（透明/纯色），gpt-image-1 系列专用参数',
+  [AiRequestParam.Moderation]:
+    '内容审核级别（low/medium/high），影响审核严格度',
+  [AiRequestParam.OutputFormat]: '输出图片格式（png/jpeg/webp）',
+  [AiRequestParam.OutputCompression]: '输出压缩比（图片体积 vs 画质权衡）',
+  [AiRequestParam.PartialImages]: '流式返回部分图片（gpt-image-2 实验特性）',
+  [AiRequestParam.Style]: '风格参数（vivid/natural 等），影响画面风格倾向',
+  [AiRequestParam.User]: '用户标识 user 参数（透传用于审计/风控）',
+  [AiRequestParam.Stream]: '流式响应（SSE），禁用后走一次性完整返回',
+  [AiRequestParam.InputFidelity]:
+    '输入保真度（local/remote），控制参考图与蒙版上传方式',
+};
+
 export const AiRequestParamOptions = Object.entries(AiRequestParamLabels).map(
-  ([value, label]) => ({ value: Number(value), label }),
+  ([value, label]) => ({
+    value: Number(value),
+    label,
+    description: AiRequestParamDescriptions[Number(value)] ?? '',
+  }),
 );
 export enum AiModelType {
   Image = 0,

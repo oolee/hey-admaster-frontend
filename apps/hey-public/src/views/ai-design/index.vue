@@ -392,6 +392,20 @@ async function regenerate() {
     isProcessing.value = false;
   }
 }
+// ── 图片重新落库（上游已返回图片但首次落库失败）──
+async function onRetryPersist(msg: ChatMessage) {
+  if (isProcessing.value) return;
+  if (!msg.taskId) return;
+  isProcessing.value = true;
+  try {
+    // 后端已重新下载并落库，刷新会话后消息与图片自动更新
+    await store.refreshSessions();
+    loadActiveSession();
+  } finally {
+    isProcessing.value = false;
+  }
+}
+
 // ── Retry（生成失败后重试）──
 async function onRetry(msg: ChatMessage) {
   if (isProcessing.value) return;
@@ -567,6 +581,7 @@ onUnmounted(() => {
           @stop-generation="onStopGeneration"
           @replace-last-message="onReplaceLastMessage"
           @retry="onRetry"
+          @retry-persist="onRetryPersist"
         />
       </div>
     </div>

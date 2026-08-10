@@ -9,6 +9,7 @@ import { computed, ref } from 'vue';
 
 import { useVbenForm, useVbenModal } from '@vben/common-ui';
 
+import { InfoCircleOutlined } from '@ant-design/icons-vue';
 import {
   Modal as AntModal,
   Button,
@@ -21,6 +22,7 @@ import {
   Space,
   Switch,
   Tag,
+  Tooltip,
 } from 'ant-design-vue';
 
 import {
@@ -382,6 +384,92 @@ function addSizeTag() {
     sizeEditorList.value.push(normalized);
   }
   sizeEditorInput.value = '';
+}
+
+/** gpt-image-2 30 档常见尺寸（对齐 apiyi gpt-image-2-vip：10 比例 × 3 分辨率档） */
+const COMMON_SIZE_TIERS = [
+  {
+    tier: '1k',
+    label: '1K Fast · 草稿/低成本试稿',
+    sizes: [
+      '1280x1280',
+      '848x1280',
+      '1280x848',
+      '960x1280',
+      '1280x960',
+      '1024x1280',
+      '1280x1024',
+      '720x1280',
+      '1280x720',
+      '1280x544',
+    ],
+  },
+  {
+    tier: '2k',
+    label: '2K Recommended · 默认推荐档',
+    sizes: [
+      '2048x2048',
+      '1360x2048',
+      '2048x1360',
+      '1536x2048',
+      '2048x1536',
+      '1632x2048',
+      '2048x1632',
+      '1152x2048',
+      '2048x1152',
+      '2048x864',
+    ],
+  },
+  {
+    tier: '4k',
+    label: '4K Detail · 大尺寸交付物',
+    sizes: [
+      '2880x2880',
+      '2336x3520',
+      '3520x2336',
+      '2480x3312',
+      '3312x2480',
+      '2560x3216',
+      '3216x2560',
+      '2160x3840',
+      '3840x2160',
+      '3840x1632',
+    ],
+  },
+];
+
+function isCommonSizeSelected(size: string): boolean {
+  return sizeEditorList.value.includes(size);
+}
+
+function toggleCommonSize(size: string) {
+  const idx = sizeEditorList.value.indexOf(size);
+  if (idx === -1) {
+    sizeEditorList.value.push(size);
+  } else {
+    sizeEditorList.value.splice(idx, 1);
+  }
+}
+
+function isTierAllSelected(tierIdx: number): boolean {
+  const sizes = COMMON_SIZE_TIERS[tierIdx]?.sizes ?? [];
+  return (
+    sizes.length > 0 && sizes.every((s) => sizeEditorList.value.includes(s))
+  );
+}
+
+/** 全选/取消全选某一档位（1K/2K/4K） */
+function toggleSizeTier(tierIdx: number) {
+  const sizes = COMMON_SIZE_TIERS[tierIdx]?.sizes ?? [];
+  if (isTierAllSelected(tierIdx)) {
+    sizeEditorList.value = sizeEditorList.value.filter(
+      (s) => !sizes.includes(s),
+    );
+  } else {
+    for (const s of sizes) {
+      if (!sizeEditorList.value.includes(s)) sizeEditorList.value.push(s);
+    }
+  }
 }
 
 function removeSizeTag(idx: number) {
@@ -783,6 +871,14 @@ async function onSubmit(values: Record<string, any>) {
                     :key="param.value"
                     class="flex cursor-pointer items-center gap-1 text-xs"
                   >
+                    <Tooltip
+                      :title="param.description || param.label"
+                      placement="top"
+                    >
+                      <InfoCircleOutlined
+                        class="cursor-help text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      />
+                    </Tooltip>
                     <Checkbox
                       :checked="
                         Boolean(
@@ -855,7 +951,7 @@ async function onSubmit(values: Record<string, any>) {
       v-model:open="sizeEditorVisible"
       title="编辑支持尺寸"
       :footer="null"
-      :width="480"
+      :width="640"
       @ok="saveSizeEditor"
       @cancel="sizeEditorVisible = false"
     >
@@ -872,24 +968,73 @@ async function onSubmit(values: Record<string, any>) {
           支持格式：宽x高（小写 x），例如 1024x1536
         </div>
       </div>
-      <div
-        class="flex min-h-[140px] flex-wrap content-start gap-2 rounded-md border border-gray-200 bg-gray-50/60 p-3 dark:border-gray-700 dark:bg-gray-800/40"
-      >
-        <Tag
-          v-for="(t, i) in sizeEditorList"
-          :key="i"
-          closable
-          color="cyan"
-          @close="removeSizeTag(i)"
+
+      <!-- 30 档常见尺寸快速勾选（按 1K/2K/4K 分组） -->
+      <div class="mt-4">
+        <div class="mb-2 flex items-center justify-between">
+          <span class="text-xs font-medium text-gray-500 dark:text-gray-400">
+            常见尺寸（gpt-image-2 30 档，点击快速勾选）
+          </span>
+        </div>
+        <div class="space-y-3">
+          <div
+            v-for="(tier, ti) in COMMON_SIZE_TIERS"
+            :key="tier.tier"
+            class="rounded-md border border-gray-200 p-3 dark:border-gray-700"
+          >
+            <div class="mb-2 flex items-center justify-between">
+              <span
+                class="text-xs font-semibold text-gray-700 dark:text-gray-300"
+              >
+                {{ tier.label }}
+              </span>
+              <Checkbox
+                :checked="isTierAllSelected(ti)"
+                @change="toggleSizeTier(ti)"
+              >
+                <span class="text-xs">全选本组</span>
+              </Checkbox>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              <Tag
+                v-for="size in tier.sizes"
+                :key="size"
+                :color="isCommonSizeSelected(size) ? 'blue' : 'default'"
+                class="m-0 cursor-pointer select-none"
+                @click="toggleCommonSize(size)"
+              >
+                {{ size }}
+              </Tag>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <div
+          class="mb-1.5 text-xs font-medium text-gray-500 dark:text-gray-400"
         >
-          {{ t }}
-        </Tag>
-        <span
-          v-if="sizeEditorList.length === 0"
-          class="self-center text-xs text-gray-400"
+          已选尺寸
+        </div>
+        <div
+          class="flex min-h-[80px] flex-wrap content-start gap-2 rounded-md border border-gray-200 bg-gray-50/60 p-3 dark:border-gray-700 dark:bg-gray-800/40"
         >
-          还没有添加尺寸
-        </span>
+          <Tag
+            v-for="(t, i) in sizeEditorList"
+            :key="i"
+            closable
+            color="cyan"
+            @close="removeSizeTag(i)"
+          >
+            {{ t }}
+          </Tag>
+          <span
+            v-if="sizeEditorList.length === 0"
+            class="self-center text-xs text-gray-400"
+          >
+            还没有添加尺寸
+          </span>
+        </div>
       </div>
       <div class="mt-4 flex justify-end gap-2">
         <Button @click="sizeEditorVisible = false">取消</Button>
