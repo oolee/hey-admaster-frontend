@@ -515,6 +515,14 @@ function scrollToBottom() {
   });
 }
 
+const showBackToBottom = ref(false);
+const BACK_TO_BOTTOM_THRESHOLD = 320;
+
+function onWindowScroll() {
+  const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+  showBackToBottom.value = window.scrollY + BACK_TO_BOTTOM_THRESHOLD < maxScroll;
+}
+
 function addMessage(
   role: 'assistant' | 'user',
   content: string,
@@ -988,11 +996,13 @@ async function onRetryPersist(msg: ChatMessage) {
 
 onMounted(() => {
   window.addEventListener('click', onWindowClick);
+  window.addEventListener('scroll', onWindowScroll, { passive: true });
   scrollToBottom();
 });
 
 onUnmounted(() => {
   window.removeEventListener('click', onWindowClick);
+  window.removeEventListener('scroll', onWindowScroll);
   stopElapsedTimer();
 });
 </script>
@@ -1000,6 +1010,26 @@ onUnmounted(() => {
 <template>
   <div class="ai-chat">
     <!-- Chat messages area -->
+  <button
+    v-if="showBackToBottom"
+    class="back-to-bottom-btn"
+    title="回到底部"
+    @click="scrollToBottom"
+  >
+    <svg
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <path d="M12 5v14M5 12l7 7 7-7" />
+    </svg>
+  </button>
+
     <div ref="chatContainer" class="chat-messages">
       <!-- Welcome -->
       <div v-if="chatMessages.length === 0" class="chat-welcome">
@@ -4997,4 +5027,42 @@ onUnmounted(() => {
 .drawer-fade-leave-to .tpl-drawer {
   transform: translateX(100%);
 }
+/* Back-to-bottom floating button */
+.back-to-bottom-btn {
+  position: fixed;
+  right: 24px;
+  bottom: 148px;
+  z-index: 60;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--color-neon) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-neon) 45%, transparent);
+  color: var(--color-neon);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
+  animation: back-to-bottom-in 0.25s ease;
+}
+.back-to-bottom-btn:hover {
+  transform: translateY(-3px) scale(1.06);
+  background: color-mix(in srgb, var(--color-neon) 28%, transparent);
+}
+@keyframes back-to-bottom-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 </style>

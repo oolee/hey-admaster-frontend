@@ -24,6 +24,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('#/views/ai-management/session/index.vue'),
       },
       {
+        meta: { title: '模板管理' },
+        name: 'AiDesignTemplates',
+        path: '/ai-management/templates',
+        component: () => import('#/views/ai-management/templates/index.vue'),
+      },
+      {
         meta: { title: '钱包管理' },
         name: 'AiDesignWallets',
         path: '/ai-management/wallets',
@@ -40,6 +46,13 @@ const routes: RouteRecordRaw[] = [
         name: 'AiDesignSettings',
         path: '/ai-management/settings',
         component: () => import('#/views/ai-management/settings/index.vue'),
+      },
+      {
+        meta: { title: '容器策略' },
+        name: 'AiDesignBlobPolicies',
+        path: '/ai-management/blob-policy',
+        component: () =>
+          import('#/views/ai-management/blob-policy/index.vue'),
       },
     ],
   },

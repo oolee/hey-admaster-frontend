@@ -338,8 +338,10 @@ export function useAiDesignGeneration() {
     } = {},
   ): Promise<AiGeneratedImage[]> {
     // 文本模型：不传尺寸（后端忽略）、单次请求
-    const modelName = options.model ?? store.selectedModel;
-    const current = store.modelOptions.find((m) => m.id === modelName);
+    const requested = options.model ?? store.selectedModel;
+    const current = store.modelOptions.find((m) => m.id === requested);
+    // id 为「渠道Id:模型名」唯一键时提取真实模型名；本地兜底模型（无渠道）直接用原值
+    const modelName = current?.modelName ?? (current ? current.id : requested);
     const caps = current?.capabilities ?? 0;
     const isText =
       caps === 0
@@ -352,6 +354,7 @@ export function useAiDesignGeneration() {
       prompt,
       optimizedPrompt: store.optimizedPrompt || null,
       model: modelName,
+      channelId: current?.channelId ?? null,
       size: isText ? null : buildSize(prompt),
       count: isText ? 1 : (options.count ?? store.generateCount),
       // 生成质量：auto / low / medium / high（对应模型 quality 参数，默认 auto 由模型自动选择）

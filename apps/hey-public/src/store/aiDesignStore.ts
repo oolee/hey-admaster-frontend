@@ -112,6 +112,8 @@ export interface DesignRevision {
 
 export interface ModelOption {
   id: string;
+  /** 后端真实模型名（id 为「渠道Id:模型名」唯一键时用于发送） */
+  modelName?: string;
   label: string;
   shortLabel: string;
   recommended?: boolean;
@@ -792,14 +794,22 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
     try {
       const options = await fetchAiModelOptions();
       if (options.length === 0) return;
-      modelOptions.splice(
-        0,
-        modelOptions.length,
-        ...options.map((option) => toModelOption(option)),
-      );
-      if (!options.some((o) => o.name === selectedModel.value)) {
+      // 同名模型跨渠道重名时，label 追加（渠道名）以便区分；id 恒唯一（渠道Id:模型名）
+      const nameCounts = new Map<string, number>();
+      for (const o of options) {
+        nameCounts.set(o.name, (nameCounts.get(o.name) ?? 0) + 1);
+      }
+      const mapped = options.map((option) => {
+        const base = toModelOption(option);
+        if ((nameCounts.get(option.name) ?? 0) > 1 && option.channelName) {
+          base.label = `${base.label}（${option.channelName}）`;
+        }
+        return base;
+      });
+      modelOptions.splice(0, modelOptions.length, ...mapped);
+      if (!mapped.some((m) => m.id === selectedModel.value)) {
         const def = options.find((o) => o.isDefault) ?? options[0];
-        if (def) selectedModel.value = def.name;
+        if (def) selectedModel.value = toModelOption(def).id;
       }
     } catch {
       // 后端不可用时保留本地默认模型列表
@@ -808,7 +818,8 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
 
   function toModelOption(option: AiModelOption): ModelOption {
     return {
-      id: option.name,
+      id: option.channelId ? `${option.channelId}:${option.name}` : option.name,
+      modelName: option.name,
       label: option.displayName || option.name,
       shortLabel: option.displayName || option.name,
       recommended: option.isDefault || undefined,

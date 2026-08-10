@@ -205,6 +205,7 @@ function onGet() {
       ...record,
     });
     models.value = (record.models || []).map((item) => ({
+      displayName: item.displayName ?? null,
       enabled: item.enabled,
       maxImagesPerRequest: item.maxImagesPerRequest,
       modelName: item.modelName,
@@ -234,6 +235,7 @@ function onGet() {
 
 function addModel() {
   models.value.push({
+    displayName: '',
     enabled: true,
     maxImagesPerRequest: 1,
     modelName: '',
@@ -536,6 +538,7 @@ async function autoFetchModels() {
       const name = typeof m === 'string' ? m : m.id || m.name || m.model;
       if (!name || existing.has(String(name).trim())) return;
       models.value.push({
+        displayName: '',
         enabled: true,
         maxImagesPerRequest: 1,
         modelName: String(name).trim(),
@@ -662,6 +665,12 @@ async function onSubmit(values: Record<string, any>) {
                 模型名
               </th>
               <th
+                class="min-w-[160px] px-3 py-2 text-left font-medium"
+                title="前台模型选择器对外显示的别名；留空则显示模型名"
+              >
+                显示别名
+              </th>
+              <th
                 class="w-28 px-3 py-2 text-left font-medium"
                 title="模型能力类型：图片生成或文本对话，决定可配置属性与计费方式"
               >
@@ -727,6 +736,17 @@ async function onSubmit(values: Record<string, any>) {
                   size="small"
                   @update:value="
                     (value: string) => updateModel(index, { modelName: value })
+                  "
+                />
+              </td>
+              <td class="px-3 py-2">
+                <Input
+                  :value="model.displayName ?? ''"
+                  placeholder="如 文生图旗舰（留空=用模型名）"
+                  size="small"
+                  @update:value="
+                    (value: string) =>
+                      updateModel(index, { displayName: value.trim() || null })
                   "
                 />
               </td>

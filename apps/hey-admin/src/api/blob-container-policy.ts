@@ -5,11 +5,11 @@ import { useRequest } from '@abp/request';
 export interface BlobContainerPolicyDto {
   id: string;
   name: string;
-  provider?: string | null;
+  provider?: null | string;
   /** 单文件大小上限（MB）；null=回退系统设置 */
-  maxFileSizeMb?: number | null;
+  maxFileSizeMb?: null | number;
   /** 允许的文件扩展名（逗号分隔）；null=回退系统设置 */
-  allowedExtensions?: string | null;
+  allowedExtensions?: null | string;
   /** 是否已配置任意容器策略项 */
   hasPolicy: boolean;
   concurrencyStamp: string;
@@ -17,9 +17,9 @@ export interface BlobContainerPolicyDto {
 
 export interface UpdateBlobContainerPolicyInput {
   /** 单文件大小上限（MB），null/0 = 清除并回退系统设置 */
-  maxFileSizeMb?: number | null;
+  maxFileSizeMb?: null | number;
   /** 允许的文件扩展名（逗号分隔），null/空 = 清除并回退系统设置 */
-  allowedExtensions?: string | null;
+  allowedExtensions?: null | string;
   /** 并发戳（乐观并发控制） */
   concurrencyStamp: string;
 }

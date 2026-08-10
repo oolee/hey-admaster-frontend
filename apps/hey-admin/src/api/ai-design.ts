@@ -27,9 +27,9 @@ export const AiDesignPermissions = {
 
 export enum AiChannelProviderType {
   OpenAiCompatible = 0,
-  DashScope = 1,
-  NanoBanana = 2,
-  Jimeng = 3,
+  DashScope = 10,
+  NanoBanana = 20,
+  Jimeng = 30,
   Mock = 100,
 }
 
@@ -165,6 +165,8 @@ export const AiPricingUnitLabels: Record<number, string> = {
 export interface AiChannelModelDto {
   id: string;
   modelName: string;
+  /** 对外显示别名（null/空 时前台回退显示 ModelName） */
+  displayName?: null | string;
   enabled: boolean;
   priority: number;
   weight: number;
@@ -201,6 +203,8 @@ export interface AiChannelDto {
 export interface CreateUpdateAiChannelModelDto {
   id?: string;
   modelName: string;
+  /** 对外显示别名（null/空 时前台回退显示 ModelName） */
+  displayName?: null | string;
   enabled: boolean;
   priority: number;
   weight: number;
@@ -240,6 +244,100 @@ export interface AiDesignSessionAdminDto {
   lastActivityTime: string;
   retentionDays?: null | number;
   totalImageCount: number;
+  creationTime: string;
+  lastModificationTime?: null | string;
+}
+
+/** 会话消息（管理端详情：含生成任务留痕） */
+export interface AiChatMessageAdminDto {
+  id: string;
+  role: number;
+  messageType: number;
+  content?: null | string;
+  prompt?: null | string;
+  optimizedPrompt?: null | string;
+  modelUsed?: null | string;
+  taskId?: null | string;
+  errorMessage?: null | string;
+  creationTime: string;
+  generatedImageIds: string[];
+  taskStatus?: null | number;
+  durationMs?: null | number;
+  totalTokens?: null | number;
+  textResult?: null | string;
+  chargedAmount?: null | number;
+  requestPayloadJson?: null | string;
+  responsePayloadJson?: null | string;
+  externalImageUrls: string[];
+  generatedImageUrls: string[];
+}
+
+/** 会话详情（管理端：含完整对话记录） */
+export interface AiDesignSessionDetailDto extends AiDesignSessionAdminDto {
+  messages: AiChatMessageAdminDto[];
+}
+
+/** 生成图片资源（管理端展示） */
+export interface AiImageAssetDto {
+  id: string;
+  sessionId: string;
+  taskId?: null | string;
+  messageId?: null | string;
+  fileName: string;
+  contentType?: null | string;
+  width?: null | number;
+  height?: null | number;
+  fileSize: number;
+  status: number;
+  url: string;
+  creationTime: string;
+}
+
+/** 生成结果（重新落库等操作返回） */
+export interface AiGenerationResultDto {
+  taskId: string;
+  sessionId: string;
+  messageId?: null | string;
+  status: number;
+  model: string;
+  isMock: boolean;
+  failReason?: null | string;
+  text?: null | string;
+  totalTokens?: null | number;
+  chargedAmount: number;
+  unitPrice: number;
+  pricingUnit: number;
+  walletBalance?: null | number;
+  prompt?: null | string;
+  optimizedPrompt?: null | string;
+  requestPayloadJson?: null | string;
+  responsePayloadJson?: null | string;
+  externalImageUrls: string[];
+  images: AiImageAssetDto[];
+}
+
+/** 模板（管理端：含用户共享模板与共享者） */
+export interface AiTemplateDto {
+  id: string;
+  templateId: string;
+  name: string;
+  category: string;
+  icon?: null | string;
+  description?: null | string;
+  promptTemplate: string;
+  promptHint?: null | string;
+  recommendedModel?: null | string;
+  defaultSize?: null | string;
+  printSize?: null | string;
+  isActive: boolean;
+  sortOrder: number;
+  /** 0=内置 1=用户共享 */
+  source: number;
+  ownerUserId?: null | string;
+  ownerUserName?: null | string;
+  coverImageId?: null | string;
+  coverImageUrl?: null | string;
+  usageCount: number;
   creationTime: string;
   lastModificationTime?: null | string;
 }
@@ -381,6 +479,34 @@ export function useAiDesignApi() {
   const deleteSession = (id: string) =>
     request(`${BASE_URL}/sessions/${id}`, { method: 'DELETE' });
 
+  /** 管理端：会话详情（含完整对话记录与生成任务留痕） */
+  const getSessionDetail = (id: string) =>
+    request<AiDesignSessionDetailDto>(`${BASE_URL}/sessions/${id}/admin-detail`, {
+      method: 'GET',
+    });
+
+  /** 管理端：重新落库指定任务的图片（补偿首次落库失败） */
+  const adminRetryPersistImages = (taskId: string) =>
+    request<AiGenerationResultDto>(
+      `${BASE_URL}/generation/tasks/${taskId}/admin-retry-persist`,
+      { method: 'POST' },
+    );
+
+  // ---------- 模板（管理端） ----------
+  const getTemplatesAdmin = () =>
+    request<AiTemplateDto[]>(`${BASE_URL}/templates/admin`, {
+      method: 'GET',
+    });
+
+  /** 管理端：将用户共享模板提升为系统内置模板 */
+  const adminSetSystemTemplate = (id: string) =>
+    request<AiTemplateDto>(`${BASE_URL}/templates/${id}/promote-system`, {
+      method: 'POST',
+    });
+
+  const deleteTemplate = (id: string) =>
+    request(`${BASE_URL}/templates/${id}`, { method: 'DELETE' });
+
   // ---------- 钱包 / 计费（管理端） ----------
   const getWallets = (input: PagedInput) =>
     request<PagedResultDto<AiWalletDto>>(`${BASE_URL}/billing/wallets`, {
@@ -425,6 +551,11 @@ export function useAiDesignApi() {
     fetchChannelModels,
     getSessions,
     deleteSession,
+    getSessionDetail,
+    adminRetryPersistImages,
+    getTemplatesAdmin,
+    adminSetSystemTemplate,
+    deleteTemplate,
     getWallets,
     rechargeWallet,
     getUsageRecords,

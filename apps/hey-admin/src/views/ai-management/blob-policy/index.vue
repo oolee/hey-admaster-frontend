@@ -1,27 +1,22 @@
-<script lang="ts" setup>
+<script setup lang="ts">
 import type { BlobContainerPolicyDto } from '#/api/blob-container-policy';
 
 import { onMounted, reactive, ref } from 'vue';
 
-import { Page } from '@vben/common-ui';
-
-import { BlobContainerTable } from '@abp/blob-management';
 import {
   Button,
   Form,
   Input,
   InputNumber,
-  message,
   Modal,
   Table,
   Tag,
+  message,
 } from 'ant-design-vue';
 
 import { useBlobContainerPolicyApi } from '#/api/blob-container-policy';
 
-defineOptions({
-  name: 'Vben5BlobContainers',
-});
+defineOptions({ name: 'AiDesignBlobContainerPolicy' });
 
 const { clear, getList, update } = useBlobContainerPolicyApi();
 
@@ -45,9 +40,9 @@ const editVisible = ref(false);
 const saving = ref(false);
 const editingId = ref('');
 const editForm = reactive<{
-  allowedExtensions?: null | string;
+  maxFileSizeMb?: number | null;
+  allowedExtensions?: string | null;
   concurrencyStamp: string;
-  maxFileSizeMb?: null | number;
 }>({
   maxFileSizeMb: null,
   allowedExtensions: null,
@@ -100,13 +95,13 @@ const columns = [
     title: '单文件上限 (MB)',
     dataIndex: 'maxFileSizeMb',
     key: 'maxFileSizeMb',
-    width: 160,
+    width: 170,
   },
   {
     title: '允许扩展名',
     dataIndex: 'allowedExtensions',
     key: 'allowedExtensions',
-    width: 260,
+    width: 280,
   },
   { title: '已配置', dataIndex: 'hasPolicy', key: 'hasPolicy', width: 90 },
   { title: '操作', key: 'action', width: 160 },
@@ -114,72 +109,62 @@ const columns = [
 </script>
 
 <template>
-  <Page>
-    <BlobContainerTable />
-
-    <div
-      class="mt-4 rounded-lg border border-gray-200 p-4 dark:border-gray-700"
-    >
-      <div class="mb-3 flex items-center justify-between">
-        <div>
-          <div class="text-base font-semibold">容器策略</div>
-          <div class="mt-0.5 text-sm text-gray-500">
-            按容器覆盖「对象存储设置」默认值（当前系统默认
-            5MB）；未配置的项自动回退系统默认，无需复制系统配置。
-          </div>
+  <div>
+    <div class="mb-3 flex items-center justify-between">
+      <div>
+        <div class="text-xl font-semibold">容器策略</div>
+        <div class="mt-0.5 text-sm text-gray-500">
+          按容器覆盖「系统设置 → 对象存储设置」默认值（当前系统默认 5MB）；未配置的项自动回退系统默认。
+          AI 生图容器（ai-design-images / ai-template-covers）已预置 20MB 策略，高清图片可正常落库。
         </div>
-        <Button type="primary" @click="loadList">刷新</Button>
       </div>
-
-      <Table
-        :columns="columns"
-        :data-source="containers"
-        :loading="loading"
-        :pagination="false"
-        row-key="id"
-        size="middle"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'maxFileSizeMb'">
-            <span v-if="record.maxFileSizeMb != null">
-              {{ record.maxFileSizeMb }} MB
-            </span>
-            <span v-else class="text-gray-400">系统默认 (5MB)</span>
-          </template>
-          <template v-else-if="column.key === 'allowedExtensions'">
-            <span v-if="record.allowedExtensions">
-              {{ record.allowedExtensions }}
-            </span>
-            <span v-else class="text-gray-400">系统默认</span>
-          </template>
-          <template v-else-if="column.key === 'hasPolicy'">
-            <Tag :color="record.hasPolicy ? 'green' : 'default'">
-              {{ record.hasPolicy ? '已配置' : '未配置' }}
-            </Tag>
-          </template>
-          <template v-else-if="column.key === 'action'">
-            <div class="flex flex-row gap-2">
-              <Button
-                type="link"
-                size="small"
-                @click="openEdit(record as BlobContainerPolicyDto)"
-              >
-                编辑
-              </Button>
-              <Button
-                v-if="record.hasPolicy"
-                danger
-                type="link"
-                size="small"
-                @click="clearPolicy(record as BlobContainerPolicyDto)"
-              >
-                清除
-              </Button>
-            </div>
-          </template>
-        </template>
-      </Table>
+      <Button type="primary" @click="loadList">刷新</Button>
     </div>
+
+    <Table
+      :columns="columns"
+      :data-source="containers"
+      :loading="loading"
+      :pagination="false"
+      row-key="id"
+      size="middle"
+    >
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'maxFileSizeMb'">
+          <span v-if="record.maxFileSizeMb != null">
+            {{ record.maxFileSizeMb }} MB
+          </span>
+          <span v-else class="text-gray-400">系统默认 (5MB)</span>
+        </template>
+        <template v-else-if="column.key === 'allowedExtensions'">
+          <span v-if="record.allowedExtensions">
+            {{ record.allowedExtensions }}
+          </span>
+          <span v-else class="text-gray-400">系统默认</span>
+        </template>
+        <template v-else-if="column.key === 'hasPolicy'">
+          <Tag :color="record.hasPolicy ? 'green' : 'default'">
+            {{ record.hasPolicy ? '已配置' : '未配置' }}
+          </Tag>
+        </template>
+        <template v-else-if="column.key === 'action'">
+          <div class="flex flex-row gap-2">
+            <Button type="link" size="small" @click="openEdit(record as BlobContainerPolicyDto)">
+              编辑
+            </Button>
+            <Button
+              v-if="record.hasPolicy"
+              danger
+              type="link"
+              size="small"
+              @click="clearPolicy(record as BlobContainerPolicyDto)"
+            >
+              清除
+            </Button>
+          </div>
+        </template>
+      </template>
+    </Table>
 
     <Modal
       v-model:open="editVisible"
@@ -210,5 +195,5 @@ const columns = [
         </Form.Item>
       </Form>
     </Modal>
-  </Page>
+  </div>
 </template>

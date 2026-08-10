@@ -159,6 +159,8 @@ export interface AiGenerationInput {
   optimizedPrompt?: null | string;
   /** 模型名称（缺省用系统默认模型） */
   model?: null | string;
+  /** 用户指定的渠道 Id（缺省由后端按模型名自动选路；指定后优先走该渠道） */
+  channelId?: null | string;
   /** 尺寸，如 1024x1024 */
   size?: null | string;
   /** 物理尺寸（宽，cm）——用于生产制作时等比例放样 */
