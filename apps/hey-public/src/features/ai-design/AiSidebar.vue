@@ -10,6 +10,7 @@ defineProps<{
 const emit = defineEmits<{
   deleteSession: [id: string];
   newSession: [];
+  renameSession: [id: string, title: string];
   selectSession: [id: string];
   toggle: [];
 }>();
@@ -43,6 +44,45 @@ function timeLabel(iso: string): string {
 function selectAndClose(id: string) {
   emit('selectSession', id);
   showRecentPopover.value = false;
+}
+
+// ── 会话重命名 / 删除确认 ──
+const editingId = ref<null | string>(null);
+const editingTitle = ref('');
+const confirmDeleteId = ref<null | string>(null);
+
+function startRename(s: { id: string; title: string }) {
+  editingId.value = s.id;
+  editingTitle.value = s.title;
+  confirmDeleteId.value = null;
+}
+
+function saveRename() {
+  if (editingId.value) {
+    const title = editingTitle.value.trim();
+    if (title) emit('renameSession', editingId.value, title);
+  }
+  editingId.value = null;
+  editingTitle.value = '';
+}
+
+function cancelRename() {
+  editingId.value = null;
+  editingTitle.value = '';
+}
+
+function askDelete(id: string) {
+  confirmDeleteId.value = id;
+  editingId.value = null;
+}
+
+function confirmDelete(id: string) {
+  confirmDeleteId.value = null;
+  emit('deleteSession', id);
+}
+
+function cancelDelete() {
+  confirmDeleteId.value = null;
 }
 </script>
 
@@ -223,7 +263,7 @@ function selectAndClose(id: string) {
           <div v-else-if="store.sessions.length === 0" class="sessions-empty">
             暂无对话，点击「新对话」开始创作
           </div>
-          <button
+          <div
             v-for="s in filteredSessions"
             :key="s.id"
             class="session-item"
@@ -246,27 +286,75 @@ function selectAndClose(id: string) {
               />
             </svg>
             <span class="session-meta">
-              <span class="session-title">{{ s.title }}</span>
-              <span class="session-time">{{ timeLabel(s.updatedAt) }}</span>
+              <template v-if="editingId === s.id">
+                <input
+                  v-model="editingTitle"
+                  class="session-rename-input"
+                  placeholder="对话名称"
+                  @click.stop
+                  @keydown.enter.stop="saveRename"
+                  @keydown.esc.stop="cancelRename"
+                  @blur="saveRename"
+                />
+              </template>
+              <template v-else>
+                <span class="session-title" :title="s.title">{{
+                  s.title
+                }}</span>
+                <span class="session-time">{{ timeLabel(s.updatedAt) }}</span>
+              </template>
             </span>
-            <span
-              class="session-delete"
-              title="删除对话"
-              @click.stop="emit('deleteSession', s.id)"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                width="13"
-                height="13"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-              >
-                <path d="M6 18L18 6M6 6l12 12" />
-              </svg>
+            <span v-if="editingId !== s.id" class="session-actions">
+              <template v-if="confirmDeleteId === s.id">
+                <button
+                  class="session-confirm"
+                  @click.stop="confirmDelete(s.id)"
+                >
+                  确认
+                </button>
+                <button class="session-cancel" @click.stop="cancelDelete()">
+                  取消
+                </button>
+              </template>
+              <template v-else>
+                <button
+                  class="session-rename"
+                  title="重命名对话"
+                  @click.stop="startRename(s)"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="13"
+                    height="13"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                    />
+                  </svg>
+                </button>
+                <button
+                  class="session-delete"
+                  title="删除对话"
+                  @click.stop="askDelete(s.id)"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="13"
+                    height="13"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                  >
+                    <path d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </template>
             </span>
-          </button>
+          </div>
         </div>
       </div>
     </div>
@@ -723,6 +811,21 @@ function selectAndClose(id: string) {
   color: var(--color-text-muted);
 }
 
+.session-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.session-item:hover .session-actions,
+.session-item.active .session-actions {
+  opacity: 1;
+}
+
+.session-rename,
 .session-delete {
   display: flex;
   flex-shrink: 0;
@@ -731,18 +834,52 @@ function selectAndClose(id: string) {
   width: 22px;
   height: 22px;
   color: var(--color-text-muted);
+  cursor: pointer;
+  background: none;
+  border: none;
   border-radius: 6px;
-  opacity: 0;
   transition: all 0.15s;
 }
 
-.session-item:hover .session-delete,
-.session-item.active .session-delete {
-  opacity: 1;
+.session-rename:hover {
+  color: var(--color-neon);
+  background: var(--color-neon-glow);
 }
 
 .session-delete:hover {
   color: #f55;
   background: rgb(255 85 85 / 10%);
+}
+
+.session-confirm {
+  padding: 3px 8px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  background: #e5484d;
+  border: none;
+  border-radius: 6px;
+}
+
+.session-cancel {
+  padding: 3px 8px;
+  font-size: 0.66rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: rgb(255 255 255 / 8%);
+  border: none;
+  border-radius: 6px;
+}
+
+.session-rename-input {
+  width: 100%;
+  padding: 4px 6px;
+  font-size: 0.76rem;
+  color: var(--color-text-primary);
+  outline: none;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-neon);
+  border-radius: 6px;
 }
 </style>

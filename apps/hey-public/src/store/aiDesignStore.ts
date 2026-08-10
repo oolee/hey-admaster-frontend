@@ -15,6 +15,7 @@ import { defineStore } from 'pinia';
 import {
   AiGenerationStatus,
   aiImageUrl,
+  cancelAiGenerationTask,
   createAiSession,
   deleteAiSession,
   fetchAiModelOptions,
@@ -42,6 +43,14 @@ export interface ChatMessage {
   refImages?: RefImage[];
   isCheckResult?: boolean;
   modelUsed?: string;
+  /** 本次对话消耗金额（元），显示在消息时间旁 */
+  cost?: number;
+  /** 原始提示词（后端失败消息持久化，刷新后用于恢复重试匹配） */
+  prompt?: string;
+  /** 系统加工后的完整提示词（用户消息下方灰色小字展示） */
+  optimizedPrompt?: string;
+  /** 生成失败后可重试：保存原提示词与张数 */
+  retry?: { count: number; prompt: string };
 }
 
 export interface RefImage {
@@ -75,6 +84,18 @@ export interface ModelOption {
   shortLabel: string;
   recommended?: boolean;
   disabled?: boolean;
+  /** 所属渠道 Id（模型选择器按渠道分组展示） */
+  channelId?: string;
+  /** 所属渠道名称 */
+  channelName?: string;
+  /** 模型能力类型：0 图片生成、1 文本对话（前端据此动态显示菜单与返回格式） */
+  modelType?: number;
+  /** 模型能力位（Flags）：Chat/ImageGeneration/ImageEditing/Vision 等 */
+  capabilities?: number;
+  /** 计价单位：0 元/张、1 元/次、2 元/1M tokens */
+  pricingUnit?: number;
+  /** 模型支持的尺寸列表（如 ["1024x1024","1536x1024","1024x1536"]，空则用默认值） */
+  supportedSizes?: string[];
 }
 
 export interface SizePreset {
@@ -126,7 +147,7 @@ function persistSessions(sessions: ChatSession[]) {
 function mapAssetToGeneratedImage(asset: AiImageAsset): AiGeneratedImage {
   return {
     id: asset.id,
-    url: asset.url || aiImageUrl(asset.id),
+    url: asset.url || aiImageUrl(asset.id), // asset.url 为后端签发的短时签名地址
     title: asset.fileName || '生成方案',
   };
 }
@@ -138,7 +159,7 @@ function mapMessageDtoToChatMessage(
   const images = msg.generatedImageIds
     .map((id) => imageById.get(id))
     .filter((a): a is AiImageAsset => Boolean(a))
-    .map(mapAssetToGeneratedImage);
+    .map((asset) => mapAssetToGeneratedImage(asset));
 
   return {
     id: msg.id,
@@ -147,6 +168,8 @@ function mapMessageDtoToChatMessage(
     time: msg.creationTime,
     modelUsed: msg.modelUsed ?? undefined,
     isCheckResult: msg.messageType === 20,
+    prompt: msg.prompt ?? undefined,
+    optimizedPrompt: msg.optimizedPrompt ?? undefined,
     images: images.length > 0 ? images : undefined,
   };
 }
@@ -159,9 +182,65 @@ function mapSessionDtoToChatSession(dto: AiDesignSession): ChatSession {
     createdAt: dto.creationTime,
     updatedAt: dto.lastModificationTime ?? dto.lastActivityTime,
     messages: dto.messages.map((m) => mapMessageDtoToChatMessage(m, imageById)),
-    generatedImages: dto.images.map(mapAssetToGeneratedImage),
+    generatedImages: dto.images.map((asset) => mapAssetToGeneratedImage(asset)),
     selectedImageId: null,
   };
+}
+
+/** 提取失败消息中的原因文本（兼容「生成失败：」「重绘失败：」「图片生成失败：」前缀） */
+function extractFailReason(content: string): null | string {
+  const matched = content.match(
+    /^(?:图片)?(?:生成|重绘)失败[:：]\s*([\s\S]+)$/,
+  );
+  return matched ? (matched[1] ?? null) : null;
+}
+
+/**
+ * 刷新会话后，把本地缓存中失败消息的 retry 信息合并回后端消息：
+ * 后端失败消息持久化了原始提示词（prompt），本地失败消息保存了 retry，优先按 prompt 匹配，
+ * prompt 缺失时回退到按失败原因文本匹配，保证刷新后失败对话仍可继续重试。
+ */
+function mergeRetryFromLocal(
+  backend: ChatSession,
+  local?: ChatSession,
+): ChatSession {
+  if (!local || local.messages.length === 0) return backend;
+
+  const retryByPrompt = new Map<string, NonNullable<ChatMessage['retry']>>();
+  const retryByReason = new Map<string, NonNullable<ChatMessage['retry']>>();
+  for (const msg of local.messages) {
+    if (!msg.retry) continue;
+    if (msg.prompt) retryByPrompt.set(msg.prompt, msg.retry);
+    const reason = extractFailReason(msg.content);
+    if (reason) retryByReason.set(reason, msg.retry);
+  }
+  if (retryByPrompt.size === 0 && retryByReason.size === 0) return backend;
+
+  for (const msg of backend.messages) {
+    if (msg.retry) continue;
+    const reason = extractFailReason(msg.content);
+    const retry =
+      (msg.prompt && retryByPrompt.get(msg.prompt)) ||
+      (reason ? retryByReason.get(reason) : undefined);
+    if (retry) msg.retry = retry;
+  }
+  return backend;
+}
+
+// ── 生成取消（停止按钮）──
+let activeAbort: AbortController | null = null;
+let activeTaskId: null | string = null;
+
+function isAbortError(error: unknown): boolean {
+  if (error instanceof Error && error.name === 'AbortError') return true;
+  const cause = (error as { cause?: unknown }).cause;
+  return cause instanceof Error && cause.name === 'AbortError';
+}
+
+function createAbortError(): Error {
+  const err = new Error('生成已停止');
+  err.name = 'AbortError';
+  return err;
 }
 
 export const useAiDesignStore = defineStore('aiDesign', () => {
@@ -187,6 +266,13 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
   // ── Generation count ──
   const generateCount = ref<number>(1);
   const countOptions = [1, 2, 4, 6, 8];
+  // ── Quality options（生成质量，替换原 1K/2K/4K 分辨率档位：分辨率属于 size/比例维度，质量才是 auto/low/medium/high） ──
+  const qualityOptions = [
+    { value: 'auto', label: '自动', desc: '模型自动选择最优质量（推荐）' },
+    { value: 'low', label: '快速', desc: '低质量·生成快·更省' },
+    { value: 'medium', label: '标准', desc: '中等质量·速度与细节均衡' },
+    { value: 'high', label: '精细', desc: '高质量·细节丰富·更贵' },
+  ];
 
   // ── Size presets ──
   const sizePresets: SizePreset[] = [
@@ -229,14 +315,25 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
   ];
 
   // ── Design params ──
-  const designWidth = ref(300);
-  const designHeight = ref(150);
-  const selectedStyle = ref('flat');
-  const selectedPalette = ref('pal-3');
+  // 默认不携带任何物理尺寸：仅当用户显式选择设计类型/比例/自定义尺寸后才生效（提示词不附加尺寸）
+  const designWidth = ref(0);
+  /**
+   * 尺寸来源：'none' | 'designType' | 'ratio' | 'custom'。
+   * 决定提示词附加尺寸的优先级与去重：
+   * - designType：尺寸由设计类型隐含（提示词已含类型名时不再附加）
+   * - ratio/custom：用户显式选择的尺寸，以选择的尺寸为准（始终附加，除非提示词已含尺寸描述）
+   */
+  const sizeSource = ref<'custom' | 'designType' | 'none' | 'ratio'>('none');
+
+  /** 发送前自动优化提示词（后台 DeepSeek 等文本模型精简，消耗 token，默认关闭） */
+  const autoOptimizePrompt = ref(false);
+  const selectedStyle = ref(''); // ' = 无（不指定风格）
+  const selectedPalette = ref(''); // ' = 无（不指定配色）
   const optimizedPrompt = ref('');
-  const resolution = ref('1k');
-  const selectedDesignType = ref('门头');
-  const selectedAspectRatio = ref('2:1');
+  const quality = ref('auto'); // 生成质量：auto / low / medium / high（对应 GPT 图像模型 quality 参数）
+  const selectedDesignType = ref(''); // '' = 无（提示词不附加尺寸，默认不附加任何物理尺寸）
+  const designHeight = ref(0);
+  const selectedAspectRatio = ref('auto'); // 默认自动：未选择比例/设计类型时提示词不附加尺寸
 
   // ── Style presets (expanded with real case preview images) ──
   const stylePresets = [
@@ -485,10 +582,14 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
   const sessionSyncs = new Map<string, Promise<string>>(); // local 会话 id -> 后端创建结果
   const apiMode = ref(false); // 后端是否可达
 
+  // ── 文本对话结果（文本模型生成后返回，图片模型为空）──
+  const lastGenerationText = ref<string>('');
+
   // ── 计费状态（登录后从后端加载）──
   const walletBalance = ref<null | number>(null);
   const walletUnitPrice = ref(0);
   const lastChargedAmount = ref(0);
+  const lastPricingUnit = ref(0);
   const templates = ref<AiTemplate[]>([]); // 后端模板（面板回退本地 AD_TEMPLATES）
   const createClientRequestId = () =>
     `req-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -504,8 +605,7 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
   // 风格关键词（去掉尾部「风格/风」，用于拼入模板 prompt 的 {style}风格 占位）
   const styleKeyword = computed(() => {
     const name =
-      stylePresets.find((s) => s.id === selectedStyle.value)?.name ||
-      '现代简约';
+      stylePresets.find((s) => s.id === selectedStyle.value)?.name || '';
     return name.replace(/(风格|风)$/, '');
   });
 
@@ -541,11 +641,11 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
         const idx = sessions.value.findIndex((s) => s.id === localSession.id);
         if (idx !== -1) {
           // 保留同步期间用户已输入的消息 / 已生成图片
-          const prev = sessions.value[idx]!;
+          const prev = sessions.value[idx];
           backend.messages =
-            prev.messages.length > 0 ? prev.messages : backend.messages;
+            prev && prev.messages.length > 0 ? prev.messages : backend.messages;
           backend.generatedImages =
-            prev.generatedImages.length > 0
+            prev && prev.generatedImages.length > 0
               ? prev.generatedImages
               : backend.generatedImages;
           backend.selectedImageId = prev.selectedImageId;
@@ -635,12 +735,15 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
       apiMode.value = true;
       if (list.length === 0) return;
       const activeId = activeSessionId.value;
-      sessions.value = list.map(mapSessionDtoToChatSession);
-      if (activeId && sessions.value.some((s) => s.id === activeId)) {
-        activeSessionId.value = activeId;
-      } else {
-        activeSessionId.value = sessions.value[0]?.id ?? null;
-      }
+      const prevById = new Map(sessions.value.map((s) => [s.id, s]));
+      sessions.value = list.map((dto) => {
+        const mapped = mapSessionDtoToChatSession(dto);
+        return mergeRetryFromLocal(mapped, prevById.get(mapped.id));
+      });
+      activeSessionId.value =
+        activeId && sessions.value.some((s) => s.id === activeId)
+          ? activeId
+          : (sessions.value[0]?.id ?? null);
     } catch {
       apiMode.value = false;
     }
@@ -653,7 +756,7 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
       modelOptions.splice(
         0,
         modelOptions.length,
-        ...options.map(toModelOption),
+        ...options.map((option) => toModelOption(option)),
       );
       if (!options.some((o) => o.name === selectedModel.value)) {
         const def = options.find((o) => o.isDefault) ?? options[0];
@@ -670,6 +773,12 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
       label: option.displayName || option.name,
       shortLabel: option.displayName || option.name,
       recommended: option.isDefault || undefined,
+      channelId: option.channelId,
+      channelName: option.channelName,
+      modelType: option.modelType ?? 0,
+      capabilities: option.capabilities ?? 0,
+      pricingUnit: option.pricingUnit ?? 0,
+      supportedSizes: option.supportedSizes ?? [],
     };
   }
 
@@ -704,9 +813,13 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
       if (idx === -1) {
         sessions.value.unshift(mapped);
       } else {
-        const prev = sessions.value[idx]!;
-        mapped.selectedImageId = prev.selectedImageId;
-        sessions.value[idx] = mapped;
+        const prev = sessions.value[idx];
+        if (prev) {
+          mapped.selectedImageId = prev.selectedImageId;
+          sessions.value[idx] = mergeRetryFromLocal(mapped, prev);
+        } else {
+          sessions.value[idx] = mapped;
+        }
       }
       if (activeSessionId.value === id) {
         generatedImages.value = mapped.generatedImages;
@@ -716,44 +829,68 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
     }
   }
 
-  /** 调后端生图：同步返回图片或轮询异步任务，随后刷新会话 */
+  /** 调后端生图：同步返回图片或轮询异步任务，随后刷新会话；支持 AbortSignal 中止 */
   async function generateImages(
     input: Omit<AiGenerationInput, 'sessionId'> & { sessionId?: null | string },
   ): Promise<AiGeneratedImage[]> {
     const sessionId = input.sessionId ?? (await ensureBackendSession());
-    const result = await generateAiImage({
-      ...input,
-      sessionId,
-      clientRequestId: input.clientRequestId ?? createClientRequestId(),
-    });
-    let final = result;
-    if (
-      result.status === AiGenerationStatus.Pending ||
-      result.status === AiGenerationStatus.Processing
-    ) {
-      final = await pollGenerationTask(result.taskId);
+    const controller = new AbortController();
+    activeAbort = controller;
+    try {
+      const result = await generateAiImage(
+        {
+          ...input,
+          sessionId,
+          clientRequestId: input.clientRequestId ?? createClientRequestId(),
+        },
+        controller.signal,
+      );
+      activeTaskId = result.taskId;
+      let final = result;
+      if (
+        result.status === AiGenerationStatus.Pending ||
+        result.status === AiGenerationStatus.Processing
+      ) {
+        final = await pollGenerationTask(result.taskId, controller.signal);
+      }
+      if (
+        final.status === AiGenerationStatus.Failed ||
+        final.status === AiGenerationStatus.Canceled
+      ) {
+        throw new Error(final.failReason || 'AI 生成失败，请稍后重试');
+      }
+      const images = final.images.map((asset) =>
+        mapAssetToGeneratedImage(asset),
+      );
+      // 文本模型：返回文本结果供界面直接渲染（图片模型为空）
+      lastGenerationText.value = final.text ?? '';
+      // 回写计费结果（余额/本次扣费）供界面展示
+      if (typeof final.walletBalance === 'number') {
+        walletBalance.value = final.walletBalance;
+      }
+      lastChargedAmount.value = final.chargedAmount ?? 0;
+      lastPricingUnit.value = final.pricingUnit ?? 0;
+      await refreshSession(sessionId);
+      return images;
+    } catch (error) {
+      if (controller.signal.aborted || isAbortError(error)) {
+        throw createAbortError();
+      }
+      throw error;
+    } finally {
+      activeTaskId = null;
+      if (activeAbort === controller) {
+        activeAbort = null;
+      }
     }
-    if (
-      final.status === AiGenerationStatus.Failed ||
-      final.status === AiGenerationStatus.Canceled
-    ) {
-      throw new Error(final.failReason || 'AI 生成失败，请稍后重试');
-    }
-    const images = final.images.map(mapAssetToGeneratedImage);
-    // 回写计费结果（余额/本次扣费）供界面展示
-    if (typeof final.walletBalance === 'number') {
-      walletBalance.value = final.walletBalance;
-    }
-    lastChargedAmount.value = final.chargedAmount ?? 0;
-    await refreshSession(sessionId);
-    return images;
   }
 
   async function pollGenerationTask(
     taskId: string,
+    signal?: AbortSignal,
     maxPolls = 30,
   ): Promise<AiGenerationResult> {
-    let last = await queryAiGenerationTask(taskId);
+    let last = await queryAiGenerationTask(taskId, signal);
     for (
       let i = 0;
       i < maxPolls &&
@@ -762,15 +899,28 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
       i++
     ) {
       await new Promise((resolve) => setTimeout(resolve, 2000));
-      last = await queryAiGenerationTask(taskId);
+      if (signal?.aborted) {
+        throw createAbortError();
+      }
+      last = await queryAiGenerationTask(taskId, signal);
     }
     return last;
+  }
+
+  /** 用户点击「停止」：中止进行中请求 + 通知后端取消任务（幂等，未生成成功不扣费） */
+  function stopGeneration() {
+    activeAbort?.abort();
+    const taskId = activeTaskId;
+    if (taskId) {
+      cancelAiGenerationTask(taskId).catch(() => undefined);
+    }
   }
   // ── Actions ──
   function resetGeneration() {
     generatedImages.value = [];
     selectedImage.value = null;
     optimizedPrompt.value = '';
+    lastGenerationText.value = '';
   }
 
   function addRevision(rev: DesignRevision) {
@@ -784,14 +934,17 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
     selectedModel,
     generateCount,
     countOptions,
+    qualityOptions,
     sizePresets,
     designTypeRatios,
     aspectRatioOptions,
     designWidth,
     designHeight,
+    sizeSource,
+    autoOptimizePrompt,
     selectedStyle,
     selectedPalette,
-    resolution,
+    quality,
     optimizedPrompt,
     selectedDesignType,
     selectedAspectRatio,
@@ -816,10 +969,13 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
     renameSession,
     resetGeneration,
     addRevision,
+    // 文本对话结果
+    lastGenerationText,
     // 计费
     walletBalance,
     walletUnitPrice,
     lastChargedAmount,
+    lastPricingUnit,
     refreshWallet,
     // 后端 API
     apiMode,
@@ -831,5 +987,6 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
     ensureBackendSession,
     refreshSession,
     generateImages,
+    stopGeneration,
   };
 });

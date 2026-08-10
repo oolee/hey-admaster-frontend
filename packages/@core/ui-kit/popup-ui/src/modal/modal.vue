@@ -31,6 +31,8 @@ import { ELEMENT_ID_MAIN_CONTENT } from '@vben-core/shared/constants';
 import { globalShareState } from '@vben-core/shared/global-state';
 import { cn } from '@vben-core/shared/utils';
 
+import { unrefElement } from '@vueuse/core';
+
 import { useModalDraggable } from './use-modal-draggable';
 
 interface Props extends ModalProps {
@@ -130,15 +132,25 @@ watch(
     if (v) {
       isClosed.value = false;
       if (!firstOpened.value) firstOpened.value = true;
-      await nextTick();
-      if (!contentRef.value) return;
-      const innerContentRef = contentRef.value.getContentRef();
-      dialogRef.value = innerContentRef.$el;
-      // reopen modal reassign value
-      const { offsetX, offsetY } = transform;
-      dialogRef.value.style.transform = shouldCentered.value
-        ? `translate(${offsetX}px, calc(-50% + ${offsetY}px))`
-        : `translate(${offsetX}px, ${offsetY}px)`;
+      // reka-ui 的 Presence 可能延迟一帧才挂载内容，
+      // 这里带有限重试地获取真实 DOM 元素，避免 dialogRef 为 undefined 时崩溃
+      for (let retry = 0; retry < 3; retry++) {
+        const contentEl = unrefElement(contentRef.value?.getContentRef());
+        // unrefElement 在 DOM 未挂载时可能返回组件实例（truthy 但无 style），必须校验真实 DOM 元素
+        if (contentEl && contentEl.nodeType === 1) {
+          dialogRef.value = contentEl;
+          // reopen modal reassign value
+          const { offsetX, offsetY } = transform;
+          contentEl.style.transform = shouldCentered.value
+            ? `translate(${offsetX}px, calc(-50% + ${offsetY}px))`
+            : `translate(${offsetX}px, ${offsetY}px)`;
+          return;
+        }
+        await nextTick();
+        await new Promise<void>((resolve) =>
+          requestAnimationFrame(() => resolve()),
+        );
+      }
     }
   },
   { immediate: true },

@@ -206,6 +206,16 @@ async function loadRechargeRecords(reset = false) {
 const usageRecords = ref<any[]>([]);
 const usageLoading = ref(false);
 
+/** 消费记录数量文案：按计价单位显示（张/次/1M tokens） */
+function usageQuantityLabel(r: {
+  pricingUnit?: number;
+  quantity: number;
+}): string {
+  const unit = r.pricingUnit ?? 0;
+  if (unit === 1) return `${r.quantity} 次`;
+  if (unit === 2) return `${r.quantity} 次调用`;
+  return `${r.quantity} 张`;
+}
 async function loadUsageRecords() {
   if (!isLoggedIn.value) return;
   usageLoading.value = true;
@@ -222,6 +232,11 @@ async function loadUsageRecords() {
 function fmtMoney(n: null | number | undefined) {
   if (n === null || n === undefined || Number.isNaN(n)) return '0.00';
   return Number(n).toFixed(2);
+}
+/** 积分换算：1 积分 = 0.01 元（1 元 = 100 积分） */
+function fmtPoints(n: null | number | undefined) {
+  const points = Math.round(Number(n ?? 0) * 100);
+  return points.toLocaleString('zh-CN');
 }
 function fmtDate(t?: null | string) {
   if (!t) return '—';
@@ -265,90 +280,6 @@ watch(activeTab, (t) => {
   }
 });
 </script>
-
-<script lang="ts">
-// 伪二维码 dot 生成：基于 seed 生成可重现的 0/1 点阵
-import { defineComponent, h } from 'vue';
-function hashStr(s: string): number {
-  let h = 2_166_136_261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.codePointAt(i);
-    h = Math.imul(h, 16_777_619) >>> 0;
-  }
-  return h >>> 0;
-}
-function mulberry32(a: number) {
-  return function () {
-    a |= 0;
-    a = (a + 0x6d_2b_79_f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
-  };
-}
-const PseudoQrDots = defineComponent({
-  name: 'PseudoQrDots',
-  props: { seed: { type: String, required: true } },
-  setup(props) {
-    return () => {
-      const cells: any[] = [];
-      // 可绘制区域：x/y 从 72 到 148 排除中心 40 像素方块；外围 0~64 也可画（排除三个角 0~64 范围）
-      const size = 10;
-      const step = 8;
-      const rand = mulberry32(hashStr(props.seed));
-      for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-          const px = 72 + x * step;
-          const py = 72 + y * step;
-          // 排除中心 24x24
-          if (px >= 98 && px <= 122 && py >= 98 && py <= 122) continue;
-          if (rand() > 0.45) {
-            cells.push(
-              h('rect', {
-                x: px,
-                y: py,
-                width: 6,
-                height: 6,
-                fill: '#111',
-                rx: 1,
-              }),
-            );
-          }
-        }
-      }
-      // 外围额外随机散点
-      for (let y = 0; y < 18; y++) {
-        for (let x = 0; x < 18; x++) {
-          const px = 12 + x * 11;
-          const py = 12 + y * 11;
-          // 跳过三个角
-          if (
-            (px < 72 && py < 72) ||
-            (px > 148 && py < 72) ||
-            (px < 72 && py > 148)
-          )
-            continue;
-          if (rand() > 0.55) {
-            cells.push(
-              h('rect', {
-                x: px,
-                y: py,
-                width: 7,
-                height: 7,
-                fill: '#111',
-                rx: 1,
-              }),
-            );
-          }
-        }
-      }
-      return h('g', cells);
-    };
-  },
-});
-export default { components: { PseudoQrDots } };
-</script>
-
 <template>
   <div class="recharge-page">
     <!-- Header -->
@@ -379,6 +310,9 @@ export default { components: { PseudoQrDots } };
           </div>
           <div class="wallet-sub">
             <span
+              >≈ <b>{{ fmtPoints(wallet?.balance) }}</b> 积分</span
+            >
+            <span
               >累计消费 ¥<b>{{ fmtMoney(wallet?.totalCharged) }}</b></span
             >
             <span
@@ -397,13 +331,15 @@ export default { components: { PseudoQrDots } };
       <!-- Tab nav -->
       <nav class="tab-nav">
         <button
-          class="tab-btn" :class="[activeTab === 'recharge' && 'active']"
+          class="tab-btn"
+          :class="[activeTab === 'recharge' && 'active']"
           @click="activeTab = 'recharge'"
         >
           立即充值
         </button>
         <button
-          class="tab-btn" :class="[activeTab === 'records' && 'active']"
+          class="tab-btn"
+          :class="[activeTab === 'records' && 'active']"
           @click="activeTab = 'records'"
         >
           充值明细
@@ -412,7 +348,8 @@ export default { components: { PseudoQrDots } };
           }}</span>
         </button>
         <button
-          class="tab-btn" :class="[activeTab === 'usage' && 'active']"
+          class="tab-btn"
+          :class="[activeTab === 'usage' && 'active']"
           @click="activeTab = 'usage'"
         >
           消费记录
@@ -423,22 +360,22 @@ export default { components: { PseudoQrDots } };
       <section v-if="activeTab === 'recharge'" class="panel glass-card">
         <div class="panel-title">
           <h2>选择充值金额</h2>
-          <span class="panel-hint">1 元 ≈ 可生成 1 张图，具体以单价为准</span>
+          <span class="panel-hint">1 元 = 100 积分，按模型单价消耗积分</span>
         </div>
 
         <div class="amount-grid">
           <button
             v-for="a in presetAmounts"
             :key="a"
-            class="amount-card" :class="[
-              !customMode && selectedAmount === a && 'selected',
-            ]"
+            class="amount-card"
+            :class="[!customMode && selectedAmount === a && 'selected']"
             @click="selectPreset(a)"
           >
             <span class="amount-num">¥{{ a }}</span>
           </button>
           <button
-            class="amount-card" :class="[customMode && 'selected']"
+            class="amount-card"
+            :class="[customMode && 'selected']"
             @click="activateCustom()"
           >
             <input
@@ -460,11 +397,10 @@ export default { components: { PseudoQrDots } };
           <span class="amount-hint">
             <template v-if="finalAmount >= 1">
               实付金额：<b>¥ {{ fmtMoney(finalAmount) }}</b
-              >，到账余额：<b>¥ {{ fmtMoney(finalAmount) }}</b>
+              >，到账余额：<b>¥ {{ fmtMoney(finalAmount) }}</b
+              >（{{ fmtPoints(finalAmount) }} 积分）
             </template>
-            <template v-else class="text-warn">
-              请选择或输入不低于 1 元的金额
-            </template>
+            <template v-else> 请选择或输入不低于 1 元的金额 </template>
           </span>
         </div>
 
@@ -473,7 +409,8 @@ export default { components: { PseudoQrDots } };
         </div>
         <div class="payment-row">
           <button
-            class="pay-card" :class="[paymentMethod === 1 && 'selected']"
+            class="pay-card"
+            :class="[paymentMethod === 1 && 'selected']"
             @click="paymentMethod = 1"
           >
             <div class="pay-icon wechat-icon">
@@ -496,7 +433,8 @@ export default { components: { PseudoQrDots } };
           </button>
 
           <button
-            class="pay-card" :class="[paymentMethod === 2 && 'selected']"
+            class="pay-card"
+            :class="[paymentMethod === 2 && 'selected']"
             @click="paymentMethod = 2"
           >
             <div class="pay-icon alipay-icon">
@@ -590,7 +528,10 @@ export default { components: { PseudoQrDots } };
               </div>
             </div>
             <div class="record-right">
-              <div class="record-amount" :class="[r.status === 10 && 'success']">
+              <div
+                class="record-amount"
+                :class="[r.status === 10 && 'success']"
+              >
                 +¥{{ fmtMoney(r.creditedAmount) }}
               </div>
               <div class="record-amount-sub">
@@ -661,7 +602,9 @@ export default { components: { PseudoQrDots } };
             <div class="record-right">
               <div class="record-amount deduct">-¥{{ fmtMoney(r.amount) }}</div>
               <div class="record-amount-sub">
-                单价 ¥{{ fmtMoney(r.unitPrice) }}
+                -{{ fmtPoints(r.amount) }} 积分 · 单价 ¥{{
+                  fmtMoney(r.unitPrice)
+                }}{{ AiPricingUnitLabels[r.pricingUnit ?? 0] ?? '元/张' }}
               </div>
             </div>
           </div>
@@ -743,9 +686,8 @@ export default { components: { PseudoQrDots } };
 
               <!-- 中心 logo -->
               <div
-                class="qr-logo" :class="[
-                  paymentMethod === 1 ? 'wechat-logo' : 'alipay-logo',
-                ]"
+                class="qr-logo"
+                :class="[paymentMethod === 1 ? 'wechat-logo' : 'alipay-logo']"
               >
                 <span v-if="paymentMethod === 1">微</span>
                 <span v-else>支</span>

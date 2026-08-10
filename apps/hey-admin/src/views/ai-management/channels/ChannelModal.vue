@@ -5,29 +5,39 @@ import type {
   CreateUpdateAiChannelModelDto,
 } from '#/api/ai-design';
 
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import { useVbenForm, useVbenModal } from '@vben/common-ui';
 
 import {
+  Modal as AntModal,
   Button,
+  Checkbox,
   Input,
   InputNumber,
   message,
-  Modal,
+  Popconfirm,
+  Select,
   Space,
   Switch,
   Tag,
 } from 'ant-design-vue';
 
-import { AiChannelProviderLabels, useAiDesignApi } from '#/api/ai-design';
+import {
+  AiChannelProviderLabels,
+  AiModelCapability,
+  AiModelCapabilityLabels,
+  AiModelType,
+  AiModelTypeLabels,
+  AiPricingUnit,
+  AiPricingUnitLabels,
+  AiRequestParamOptions,
+  capabilitiesToModelType,
+  useAiDesignApi,
+} from '#/api/ai-design';
 
 const emit = defineEmits<{ (event: 'change'): void }>();
-const {
-  createChannel,
-  updateChannel,
-  fetchChannelModels: _fetch,
-} = useAiDesignApi();
+const { createChannel, updateChannel, fetchChannelModels } = useAiDesignApi();
 
 const [Form, formApi] = useVbenForm({
   commonConfig: { colon: true, controlClass: 'w-full' },
@@ -68,7 +78,7 @@ const [Form, formApi] = useVbenForm({
     {
       component: 'InputPassword',
       componentProps: {
-        placeholder: '新增时必填；编辑时留空表示保持不变',
+        placeholder: '新增时必填；编辑时不修改则保留原 Key',
       },
       fieldName: 'apiKey',
       label: 'API Key',
@@ -127,6 +137,43 @@ const [Form, formApi] = useVbenForm({
 
 const models = ref<CreateUpdateAiChannelModelDto[]>([]);
 const fetching = ref(false);
+// 批量操作：按行号选中
+const selectedIndexes = ref<Set<number>>(new Set());
+const isAllSelected = computed(
+  () =>
+    models.value.length > 0 &&
+    selectedIndexes.value.size === models.value.length,
+);
+const isPartialSelected = computed(
+  () =>
+    selectedIndexes.value.size > 0 &&
+    selectedIndexes.value.size < models.value.length,
+);
+
+function toggleSelect(index: number) {
+  const next = new Set(selectedIndexes.value);
+  if (next.has(index)) {
+    next.delete(index);
+  } else {
+    next.add(index);
+  }
+  selectedIndexes.value = next;
+}
+
+function toggleSelectAll() {
+  selectedIndexes.value =
+    selectedIndexes.value.size === models.value.length
+      ? new Set()
+      : new Set(models.value.map((_, i) => i));
+}
+
+function batchRemoveModels() {
+  const count = selectedIndexes.value.size;
+  if (count === 0) return;
+  models.value = models.value.filter((_, i) => !selectedIndexes.value.has(i));
+  selectedIndexes.value = new Set();
+  message.success(`已删除 ${count} 个模型配置`);
+}
 // 尺寸编辑：弹窗中编辑每个模型的尺寸列表
 const sizeEditorVisible = ref(false);
 const sizeEditorIndex = ref<null | number>(null);
@@ -134,7 +181,6 @@ const sizeEditorInput = ref('');
 const sizeEditorList = ref<string[]>([]);
 
 const [Modal, modalApi] = useVbenModal({
-  width: 880,
   async onConfirm() {
     await formApi.validateAndSubmitForm();
   },
@@ -153,16 +199,20 @@ function onGet() {
   if (record) {
     currentFormValues.value = { ...record };
     formApi.setValues({
-      apiKey: '',
+      apiKey: record.apiKeyMasked || '',
       ...record,
     });
     models.value = (record.models || []).map((item) => ({
       enabled: item.enabled,
       maxImagesPerRequest: item.maxImagesPerRequest,
       modelName: item.modelName,
+      modelType: item.modelType ?? AiModelType.Image,
+      capabilities: item.capabilities ?? 0,
       pricePerImage: item.pricePerImage,
+      pricingUnit: item.pricingUnit ?? AiPricingUnit.PerImage,
       priority: item.priority,
       supportedSizes: item.supportedSizes ?? null,
+      disabledRequestParams: item.disabledRequestParams ?? 0,
       weight: item.weight,
     }));
   } else {
@@ -185,9 +235,13 @@ function addModel() {
     enabled: true,
     maxImagesPerRequest: 1,
     modelName: '',
+    modelType: AiModelType.Image,
+    capabilities: 0,
     pricePerImage: 0,
+    pricingUnit: AiPricingUnit.PerImage,
     priority: 100,
     supportedSizes: null,
+    disabledRequestParams: 0,
     weight: 1,
   });
 }
@@ -205,6 +259,97 @@ function updateModel(
     Object.assign(target, patch);
   }
 }
+
+/** 切换某模型「禁用的请求参数」位（如 apiyi gpt-image-2-vip 禁用 n/quality） */
+function toggleDisabledParam(index: number, param: number, checked: boolean) {
+  const target = models.value[index];
+  if (!target) return;
+  let value = Number(target.disabledRequestParams ?? 0);
+  value = checked ? value | param : value & ~param;
+  updateModel(index, { disabledRequestParams: value });
+}
+
+const modelTypeOptions = Object.entries(AiModelTypeLabels).map(
+  ([value, label]) => ({ label, value: Number(value) }),
+);
+
+function pricingUnitOptions(modelType: number) {
+  if (modelType === AiModelType.Text) {
+    return [
+      {
+        label: AiPricingUnitLabels[AiPricingUnit.PerRequest],
+        value: AiPricingUnit.PerRequest,
+      },
+      {
+        label: AiPricingUnitLabels[AiPricingUnit.Per1MTokens],
+        value: AiPricingUnit.Per1MTokens,
+      },
+    ];
+  }
+  return [
+    {
+      label: AiPricingUnitLabels[AiPricingUnit.PerImage],
+      value: AiPricingUnit.PerImage,
+    },
+  ];
+}
+
+// 切换模型类型：文本模型强制单次请求、无尺寸、不可按张计费
+function changeModelType(index: number, modelType: number) {
+  const target = models.value[index];
+  if (!target) return;
+  const patch: Partial<CreateUpdateAiChannelModelDto> = { modelType };
+  // 切换类型时同步默认能力位（文本=对话|文本生成，多模态=文生图|图生图）
+  patch.capabilities =
+    modelType === AiModelType.Text
+      ? AiModelCapability.Chat | AiModelCapability.TextGeneration
+      : AiModelCapability.ImageGeneration | AiModelCapability.ImageEditing;
+  if (modelType === AiModelType.Text) {
+    patch.maxImagesPerRequest = 1;
+    patch.supportedSizes = null;
+    if (target.pricingUnit === AiPricingUnit.PerImage) {
+      patch.pricingUnit = AiPricingUnit.PerRequest;
+    }
+  } else {
+    patch.pricingUnit = AiPricingUnit.PerImage;
+  }
+  updateModel(index, patch);
+}
+
+// 能力位勾选：以能力位为准，自动同步兼容视图 modelType 与相关属性
+function changeCapabilities(
+  index: number,
+  capability: number,
+  checked: boolean,
+) {
+  const target = models.value[index];
+  if (!target) return;
+  let caps = Number(target.capabilities ?? 0);
+  caps = checked ? caps | capability : caps & ~capability;
+  const patch: Partial<CreateUpdateAiChannelModelDto> = { capabilities: caps };
+  const mt = capabilitiesToModelType(caps);
+  if (mt !== target.modelType) {
+    patch.modelType = mt;
+    if (mt === AiModelType.Text) {
+      patch.maxImagesPerRequest = 1;
+      patch.supportedSizes = null;
+      if (target.pricingUnit === AiPricingUnit.PerImage) {
+        patch.pricingUnit = AiPricingUnit.PerRequest;
+      }
+    } else if (target.pricingUnit !== AiPricingUnit.PerImage) {
+      patch.pricingUnit = AiPricingUnit.PerImage;
+    }
+  }
+  updateModel(index, patch);
+}
+
+/** 能力位展示清单（勾选组合） */
+const capabilityOptions = [
+  AiModelCapability.Chat,
+  AiModelCapability.ImageGeneration,
+  AiModelCapability.ImageEditing,
+  AiModelCapability.Vision,
+];
 
 // --- 尺寸编辑：友好的标签式输入 ---
 function openSizeEditor(index: number) {
@@ -269,77 +414,56 @@ function parseSizeTags(supportedSizes: null | string | undefined): string[] {
 
 // --- 自动获取模型 ---
 async function autoFetchModels() {
-  const values = await formApi.submitForm();
+  const { valid } = await formApi.validate();
+  if (!valid) return;
+  const values = await formApi.getValues();
   if (!values.baseUrl && values.providerType === 0) {
     message.warning('请先填写 Base URL 后再自动获取');
     return;
   }
-  // 编辑时保留原 apiKey；如果未填写则使用当前已保存的（不提交明文）
+  // 编辑模式：输入框初始为脱敏 Key，未重新填写真实 Key 时不能调用上游
   const useKey = values.apiKey;
-  if (!useKey && currentFormValues.value.id) {
+  const isMaskedKey =
+    !!currentFormValues.value.id &&
+    !!useKey &&
+    useKey === currentFormValues.value.apiKeyMasked;
+  if ((!useKey || isMaskedKey) && currentFormValues.value.id) {
     // 提示用户需要重新填入 apiKey 才能自动抓取
     message.warning('编辑模式下请重新填入 API Key 以调用接口获取模型');
     return;
   }
   fetching.value = true;
   try {
-    // 调用后端接口：根据 providerType/baseUrl/apiKey 获取模型列表
-    if (typeof _fetch === 'function') {
-      const result = await _fetch({
-        providerType: values.providerType,
-        baseUrl: values.baseUrl || undefined,
-        apiKey: useKey || undefined,
+    // 调用后端：直连上游 OpenAI 兼容端点 GET {baseUrl}/v1/models 拉取真实模型列表
+    const result = await fetchChannelModels({
+      providerType: values.providerType,
+      baseUrl: values.baseUrl || undefined,
+      apiKey: useKey || undefined,
+    });
+    const existing = new Set(
+      models.value.map((m) => m.modelName?.trim()).filter(Boolean),
+    );
+    let added = 0;
+    ((result as any[]) || []).forEach((m: any) => {
+      const name = typeof m === 'string' ? m : m.id || m.name || m.model;
+      if (!name || existing.has(String(name).trim())) return;
+      models.value.push({
+        enabled: true,
+        maxImagesPerRequest: 1,
+        modelName: String(name).trim(),
+        modelType: AiModelType.Image,
+        capabilities: 0,
+        pricePerImage: values.defaultPricePerImage ?? 0,
+        pricingUnit: AiPricingUnit.PerImage,
+        priority: 100,
+        supportedSizes: null,
+        disabledRequestParams: 0,
+        weight: 1,
       });
-      const existing = new Set(
-        models.value.map((m) => m.modelName?.trim()).filter(Boolean),
-      );
-      let added = 0;
-      ((result as any[]) || []).forEach((m: any) => {
-        const name = typeof m === 'string' ? m : m.id || m.name || m.model;
-        if (!name || existing.has(String(name).trim())) return;
-        models.value.push({
-          enabled: true,
-          maxImagesPerRequest: 1,
-          modelName: String(name).trim(),
-          pricePerImage: values.defaultPricePerImage ?? 0,
-          priority: 100,
-          supportedSizes: null,
-          weight: 1,
-        });
-        existing.add(String(name).trim());
-        added++;
-      });
-      message.success(
-        added > 0 ? `已自动添加 ${added} 个模型` : '未发现新模型',
-      );
-    } else {
-      // 无后端接口时回退：添加常用默认模型
-      const defaults = [
-        'gpt-image-1',
-        'gpt-image-2',
-        'dall-e-3',
-        'qwen-image-v1',
-        'jimeng-v1',
-      ];
-      const existing = new Set(
-        models.value.map((m) => m.modelName?.trim()).filter(Boolean),
-      );
-      let added = 0;
-      defaults.forEach((name) => {
-        if (existing.has(name)) return;
-        models.value.push({
-          enabled: true,
-          maxImagesPerRequest: 1,
-          modelName: name,
-          pricePerImage: 0,
-          priority: 100,
-          supportedSizes: null,
-          weight: 1,
-        });
-        added++;
-      });
-      message.success(`已添加常用默认模型 ${added} 个（后端接口未接入）`);
-    }
+      existing.add(String(name).trim());
+      added++;
+    });
+    message.success(added > 0 ? `已自动添加 ${added} 个模型` : '未发现新模型');
   } catch (error: any) {
     message.error(error?.message || '获取模型失败，请检查 Base URL 与 API Key');
   } finally {
@@ -349,7 +473,11 @@ async function autoFetchModels() {
 
 async function onSubmit(values: Record<string, any>) {
   const payload: CreateUpdateAiChannelDto = {
-    apiKey: values.apiKey || null,
+    apiKey:
+      values.apiKey &&
+      values.apiKey === (currentFormValues.value.apiKeyMasked || '')
+        ? null
+        : values.apiKey || null,
     baseUrl: values.baseUrl || null,
     description: values.description || null,
     enabled: values.enabled ?? true,
@@ -368,11 +496,9 @@ async function onSubmit(values: Record<string, any>) {
     weight: values.weight ?? 1,
   };
   try {
-    if (values.id) {
-      await updateChannel(values.id, payload);
-    } else {
-      await createChannel(payload);
-    }
+    values.id
+      ? await updateChannel(values.id, payload)
+      : await createChannel(payload);
     message.success('保存成功');
     emit('change');
     modalApi.close();
@@ -383,7 +509,7 @@ async function onSubmit(values: Record<string, any>) {
 </script>
 
 <template>
-  <Modal title="模型渠道配置" :width="880">
+  <Modal title="模型渠道配置" :width="1760">
     <!-- 渠道基础信息：两列布局 -->
     <div class="grid grid-cols-1 gap-x-6 gap-y-1 md:grid-cols-2">
       <Form />
@@ -397,7 +523,8 @@ async function onSubmit(values: Record<string, any>) {
         <div>
           <div class="text-sm font-semibold">模型与计费单价</div>
           <div class="text-xs text-gray-400">
-            配置对外服务的模型、单价、单次最多张数与支持尺寸
+            按模型类型（图片/文本）配置单价、计价单位（元/张、元/次、元/1M
+            tokens）、单次张数与支持尺寸，支持批量删除
           </div>
         </div>
         <Space>
@@ -409,6 +536,17 @@ async function onSubmit(values: Record<string, any>) {
           >
             自动获取模型
           </Button>
+          <Popconfirm
+            v-if="selectedIndexes.size > 0"
+            title="确认删除选中的模型配置？"
+            ok-text="删除"
+            cancel-text="取消"
+            @confirm="batchRemoveModels"
+          >
+            <Button danger size="small">
+              批量删除 ({{ selectedIndexes.size }})
+            </Button>
+          </Popconfirm>
           <Button size="small" type="primary" ghost @click="addModel">
             + 添加模型
           </Button>
@@ -419,15 +557,64 @@ async function onSubmit(values: Record<string, any>) {
         v-if="models.length"
         class="channel-models-table-wrapper max-h-[420px] overflow-y-auto overflow-x-auto rounded-md border border-gray-200 dark:border-gray-700"
       >
-        <table class="w-full min-w-[760px] text-sm">
+        <table class="w-full min-w-[1240px] text-sm">
           <thead class="sticky top-0 z-10">
             <tr class="bg-gray-50 dark:bg-gray-800">
-              <th class="px-3 py-2 text-left font-medium">模型名</th>
-              <th class="w-28 px-3 py-2 text-left font-medium">
-                单价/张（元）
+              <th class="w-10 px-2 py-2 text-center font-medium">
+                <Checkbox
+                  :checked="isAllSelected"
+                  :indeterminate="isPartialSelected"
+                  @change="toggleSelectAll"
+                />
               </th>
-              <th class="w-24 px-3 py-2 text-left font-medium">最多张数</th>
-              <th class="w-80 px-3 py-2 text-left font-medium">支持尺寸</th>
+              <th
+                class="min-w-[200px] px-3 py-2 text-left font-medium"
+                title="对外暴露给用户的模型名称，如 gpt-image-2 / deepseek-v4-flash"
+              >
+                模型名
+              </th>
+              <th
+                class="w-28 px-3 py-2 text-left font-medium"
+                title="模型能力类型：图片生成或文本对话，决定可配置属性与计费方式"
+              >
+                模型类型
+              </th>
+              <th
+                class="min-w-[220px] px-3 py-2 text-left font-medium"
+                title="能力位（Flags）：对话/文生图/图生图/视觉理解，决定路由与前端可配置项"
+              >
+                能力
+              </th>
+              <th
+                class="w-36 px-3 py-2 text-left font-medium"
+                title="单价，按计价单位计费：图片按张、文本按次或按 1M tokens"
+              >
+                单价（元）
+              </th>
+              <th
+                class="w-32 px-3 py-2 text-left font-medium"
+                title="计价单位：图片固定元/张，文本可选元/次、元/1M tokens"
+              >
+                计价单位
+              </th>
+              <th
+                class="w-24 px-3 py-2 text-left font-medium"
+                title="单次请求最多生成的图片张数（仅图片模型）"
+              >
+                最多张数
+              </th>
+              <th
+                class="min-w-[240px] px-3 py-2 text-left font-medium"
+                title="模型支持的输出尺寸，如 1024x1024（仅图片模型）"
+              >
+                支持尺寸
+              </th>
+              <th
+                class="min-w-[300px] px-3 py-2 text-left font-medium"
+                title="渠道不支持的请求参数（如 apiyi gpt-image-2-vip 不接受 n/quality），勾选后请求时跳过该参数"
+              >
+                禁用请求参数
+              </th>
               <th class="w-16 px-3 py-2 text-center font-medium">启用</th>
               <th class="w-14 px-3 py-2 text-center font-medium">操作</th>
             </tr>
@@ -437,16 +624,62 @@ async function onSubmit(values: Record<string, any>) {
               v-for="(model, index) in models"
               :key="index"
               class="border-t border-gray-100 align-top transition-colors hover:bg-gray-50/50 dark:border-gray-700 dark:hover:bg-gray-800/40"
+              :class="selectedIndexes.has(index) ? 'bg-primary/5' : ''"
             >
+              <td class="px-2 py-2 text-center">
+                <Checkbox
+                  :checked="selectedIndexes.has(index)"
+                  @change="toggleSelect(index)"
+                />
+              </td>
               <td class="px-3 py-2">
                 <Input
                   :value="model.modelName"
-                  placeholder="如 gpt-image-2"
+                  placeholder="如 gpt-image-2 / deepseek-v4-flash"
                   size="small"
                   @update:value="
                     (value: string) => updateModel(index, { modelName: value })
                   "
                 />
+              </td>
+              <td class="px-3 py-2">
+                <Select
+                  :value="model.modelType"
+                  size="small"
+                  class="w-full"
+                  :options="modelTypeOptions"
+                  @update:value="
+                    (value: any) => changeModelType(index, Number(value))
+                  "
+                />
+              </td>
+              <td class="px-3 py-2">
+                <div
+                  class="flex min-h-[32px] flex-wrap items-center gap-x-2 gap-y-1"
+                >
+                  <label
+                    v-for="cap in capabilityOptions"
+                    :key="cap"
+                    class="flex cursor-pointer items-center gap-1 text-xs"
+                  >
+                    <Checkbox
+                      :checked="Boolean(Number(model.capabilities ?? 0) & cap)"
+                      @change="
+                        (e: any) =>
+                          changeCapabilities(
+                            index,
+                            cap,
+                            Boolean(e.target.checked),
+                          )
+                      "
+                    />
+                    <span
+                      class="select-none whitespace-nowrap text-gray-600 dark:text-gray-300"
+                    >
+                      {{ AiModelCapabilityLabels[cap] }}
+                    </span>
+                  </label>
+                </div>
               </td>
               <td class="px-3 py-2">
                 <InputNumber
@@ -456,6 +689,10 @@ async function onSubmit(values: Record<string, any>) {
                   :value="model.pricePerImage"
                   size="small"
                   class="w-full"
+                  :formatter="
+                    (v: any) => (v === '' || v == null ? '' : `¥ ${v}`)
+                  "
+                  :parser="(v: any) => String(v).replace(/[^0-9.]/g, '')"
                   @update:value="
                     (value: any) =>
                       updateModel(index, { pricePerImage: Number(value ?? 0) })
@@ -463,7 +700,27 @@ async function onSubmit(values: Record<string, any>) {
                 />
               </td>
               <td class="px-3 py-2">
+                <Select
+                  :value="model.pricingUnit"
+                  size="small"
+                  class="w-full"
+                  :disabled="model.modelType === AiModelType.Image"
+                  :options="pricingUnitOptions(model.modelType)"
+                  @update:value="
+                    (value: any) =>
+                      updateModel(index, { pricingUnit: Number(value) })
+                  "
+                />
+              </td>
+              <td class="px-3 py-2">
+                <div
+                  v-if="model.modelType === AiModelType.Text"
+                  class="pt-1 text-center text-gray-400"
+                >
+                  —
+                </div>
                 <InputNumber
+                  v-else
                   :min="1"
                   :max="8"
                   :value="model.maxImagesPerRequest"
@@ -479,6 +736,13 @@ async function onSubmit(values: Record<string, any>) {
               </td>
               <td class="px-3 py-2">
                 <div
+                  v-if="model.modelType === AiModelType.Text"
+                  class="pt-1 text-center text-gray-400"
+                >
+                  —
+                </div>
+                <div
+                  v-else
                   class="flex min-h-[32px] flex-wrap items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 dark:border-gray-600 dark:bg-gray-900"
                 >
                   <Tag
@@ -503,6 +767,46 @@ async function onSubmit(values: Record<string, any>) {
                   </Button>
                 </div>
               </td>
+              <td class="px-3 py-2">
+                <div
+                  v-if="model.modelType === AiModelType.Text"
+                  class="pt-1 text-center text-gray-400"
+                >
+                  —
+                </div>
+                <div
+                  v-else
+                  class="flex min-h-[32px] flex-wrap items-center gap-x-2 gap-y-1"
+                >
+                  <label
+                    v-for="param in AiRequestParamOptions"
+                    :key="param.value"
+                    class="flex cursor-pointer items-center gap-1 text-xs"
+                  >
+                    <Checkbox
+                      :checked="
+                        Boolean(
+                          Number(model.disabledRequestParams ?? 0) &
+                          param.value,
+                        )
+                      "
+                      @change="
+                        (e: any) =>
+                          toggleDisabledParam(
+                            index,
+                            param.value,
+                            Boolean(e.target.checked),
+                          )
+                      "
+                    />
+                    <span
+                      class="select-none whitespace-nowrap text-gray-600 dark:text-gray-300"
+                    >
+                      {{ param.label }}
+                    </span>
+                  </label>
+                </div>
+              </td>
               <td class="px-3 py-2 pt-3 text-center">
                 <Switch
                   :checked="model.enabled"
@@ -513,14 +817,14 @@ async function onSubmit(values: Record<string, any>) {
                 />
               </td>
               <td class="px-3 py-2 pt-3 text-center">
-                <Button
-                  danger
-                  size="small"
-                  type="text"
-                  @click="removeModel(index)"
+                <Popconfirm
+                  title="确认删除该模型？"
+                  ok-text="删除"
+                  cancel-text="取消"
+                  @confirm="removeModel(index)"
                 >
-                  删除
-                </Button>
+                  <Button danger size="small" type="text"> 删除 </Button>
+                </Popconfirm>
               </td>
             </tr>
           </tbody>
@@ -532,13 +836,22 @@ async function onSubmit(values: Record<string, any>) {
       >
         <div class="mb-1">暂无模型</div>
         <div class="text-xs opacity-80">
-          点击右上角「自动获取模型」或「添加模型」开始配置
+          点击「自动获取模型」或手动添加模型开始配置
         </div>
+        <Button
+          size="small"
+          type="primary"
+          ghost
+          class="mt-3"
+          @click="addModel"
+        >
+          + 添加模型
+        </Button>
       </div>
     </div>
 
     <!-- 尺寸编辑弹窗 -->
-    <Modal
+    <AntModal
       v-model:open="sizeEditorVisible"
       title="编辑支持尺寸"
       :footer="null"
@@ -582,7 +895,7 @@ async function onSubmit(values: Record<string, any>) {
         <Button @click="sizeEditorVisible = false">取消</Button>
         <Button type="primary" @click="saveSizeEditor">确定</Button>
       </div>
-    </Modal>
+    </AntModal>
   </Modal>
 </template>
 

@@ -13,16 +13,18 @@ const emit = defineEmits<{
 
 const store = useAiDesignStore();
 
-const resolutionOptions = [
-  { value: '1k', label: '1K', desc: '1024×1024' },
-  { value: '2k', label: '2K', desc: '2048×2048' },
-  { value: '4k', label: '4K', desc: '4096×4096' },
+// 生成质量选项（替换原 1K/2K/4K 分辨率档位：分辨率属于 size/比例维度，质量才是 auto/low/medium/high）
+const qualityOptions = [
+  { value: 'auto', label: '自动', desc: '模型自动选择最优质量（推荐）' },
+  { value: 'low', label: '快速', desc: '低质量·生成快·更省' },
+  { value: 'medium', label: '标准', desc: '中等质量·速度与细节均衡' },
+  { value: 'high', label: '精细', desc: '高质量·细节丰富·更贵' },
 ];
 
-const currentResolution = computed({
-  get: () => store.resolution || '1k',
+const currentQuality = computed({
+  get: () => store.quality || 'auto',
   set: (v: string) => {
-    store.resolution = v;
+    store.quality = v;
   },
 });
 
@@ -98,22 +100,75 @@ const currentPalette = computed(() =>
   store.colorPalettes.find((p) => p.preview === hoveredPalettePreview.value),
 );
 
+/** 默认模型选项按渠道分组展示 */
+const modelGroups = computed(() => {
+  const groups: {
+    channelId: string;
+    channelName: string;
+    models: typeof store.modelOptions;
+  }[] = [];
+  const byChannel = new Map<string, (typeof groups)[number]>();
+  for (const m of store.modelOptions) {
+    const key = m.channelId || m.id;
+    let group = byChannel.get(key);
+    if (!group) {
+      group = {
+        channelId: key,
+        channelName: m.channelName || '默认渠道',
+        models: [],
+      };
+      byChannel.set(key, group);
+      groups.push(group);
+    }
+    group.models.push(m);
+  }
+  return groups;
+});
+
+// 自定义尺寸：解除设计类型锁定，以用户输入尺寸为准
+function selectCustomSize() {
+  store.selectedAspectRatio = 'custom';
+  store.selectedDesignType = '';
+  store.sizeSource = 'custom';
+  if (!store.designWidth || !store.designHeight) {
+    const w = store.designWidth || 100;
+    store.designWidth = w;
+    store.designHeight = w; // 未输入时默认 1:1
+  }
+}
+
 // Select design type — auto-apply default ratio
 function selectDesignType(label: string, w: number, h: number) {
+  if (label === '无') {
+    // 「无」：解除设计类型对尺寸的锁定，清空尺寸（提示词不附加），尺寸交给比例/自定义控制
+    store.selectedDesignType = '';
+    store.selectedAspectRatio = 'auto';
+    store.designWidth = 0;
+    store.designHeight = 0;
+    store.sizeSource = 'none';
+    return;
+  }
   store.selectedDesignType = label;
   store.designWidth = w;
   store.designHeight = h;
+  store.sizeSource = 'designType'; // 尺寸由设计类型隐含
   const defaultRatio = store.designTypeRatios[label];
   if (defaultRatio) {
     store.selectedAspectRatio = defaultRatio;
-    applyRatio(defaultRatio, w);
+    applyRatio(defaultRatio, w, true);
   }
 }
 
 // Apply aspect ratio to current dimensions
-function applyRatio(ratio: string, baseW?: number) {
+function applyRatio(ratio: string, baseW?: number, fromDesignType = false) {
   store.selectedAspectRatio = ratio;
-  if (ratio === 'auto' || ratio === 'custom') return;
+  // 手动改比例/自定义尺寸后，设计类型不再匹配，自动清除选中态
+  if (ratio === 'auto' || ratio === 'custom') {
+    if (!fromDesignType) store.selectedDesignType = '';
+    // auto → 无尺寸；custom → 用户显式自定义尺寸（以选择的尺寸为准）
+    store.sizeSource = ratio === 'custom' ? 'custom' : 'none';
+    return;
+  }
 
   const parts = ratio.split(':');
   if (parts.length !== 2) return;
@@ -122,18 +177,25 @@ function applyRatio(ratio: string, baseW?: number) {
   const rh = Number.parseFloat(rhStr);
   if (!rw || !rh) return;
 
-  const w = baseW ?? store.designWidth;
+  const w = (baseW ?? store.designWidth) || 100; // 未选尺寸时用默认工作宽度
   store.designWidth = Math.round(w);
   store.designHeight = Math.round(((w * rh) / rw) * 10) / 10;
+  if (!fromDesignType) {
+    // 用户手动选择比例：以选择的尺寸为准，设计类型不再匹配
+    store.selectedDesignType = '';
+    store.sizeSource = 'ratio';
+  }
+  // fromDesignType=true：尺寸仍由设计类型隐含（sizeSource 保持 designType）
 }
 
 function resetSettings() {
-  selectDesignType('门头', 300, 150);
-  store.selectedStyle = 'flat';
-  store.selectedPalette = 'pal-3';
+  selectDesignType('无', 0, 0);
+  store.sizeSource = 'none';
+  store.selectedStyle = ''; // 无（不限制）
+  store.selectedPalette = ''; // 无（不限制）
   store.generateCount = 1;
   store.selectedModel = 'gpt-image2';
-  currentResolution.value = '1k';
+  currentQuality.value = 'auto'; // 重置生成质量为默认「自动」
 }
 </script>
 
@@ -165,6 +227,14 @@ function resetSettings() {
             <section class="settings-section">
               <h3 class="settings-section-title">设计类型</h3>
               <div class="settings-type-grid">
+                <button
+                  class="settings-type-btn"
+                  :class="{ active: !store.selectedDesignType }"
+                  @click="selectDesignType('无', 0, 0)"
+                >
+                  <span class="type-name">无</span>
+                  <span class="type-size">不限制</span>
+                </button>
                 <button
                   v-for="tpl in store.sizePresets"
                   :key="tpl.label"
@@ -201,8 +271,8 @@ function resetSettings() {
                 <button
                   class="ratio-btn custom-btn"
                   :class="{ active: store.selectedAspectRatio === 'custom' }"
-                  @click="store.selectedAspectRatio = 'custom'"
-                  title="自定义尺寸（与预设比例互斥）"
+                  @click="selectCustomSize"
+                  title="自定义尺寸（与预设比例互斥，以自定义尺寸为准）"
                 >
                   自定义
                 </button>
@@ -230,19 +300,19 @@ function resetSettings() {
               </div>
             </section>
 
-            <!-- ═══ 清晰度（在尺寸后面）═══ -->
+            <!-- ═══ 生成质量（在尺寸后面）：auto/low/medium/high ═══ -->
             <section class="settings-section">
-              <h3 class="settings-section-title">输出清晰度</h3>
+              <h3 class="settings-section-title">生成质量</h3>
               <div class="settings-resolution-row">
                 <button
-                  v-for="r in resolutionOptions"
-                  :key="r.value"
+                  v-for="q in qualityOptions"
+                  :key="q.value"
                   class="settings-resolution-btn"
-                  :class="{ active: currentResolution === r.value }"
-                  @click="currentResolution = r.value"
+                  :class="{ active: currentQuality === q.value }"
+                  @click="currentQuality = q.value"
                 >
-                  <span class="resolution-label">{{ r.label }}</span>
-                  <span class="resolution-desc">{{ r.desc }}</span>
+                  <span class="resolution-label">{{ q.label }}</span>
+                  <span class="resolution-desc">{{ q.desc }}</span>
                 </button>
               </div>
             </section>
@@ -253,6 +323,16 @@ function resetSettings() {
                 设计风格 <span class="section-hint">悬停查看案例</span>
               </h3>
               <div class="style-grid-compact">
+                <button
+                  class="style-chip"
+                  :class="{ active: !store.selectedStyle }"
+                  @mouseenter="clearHover"
+                  @mouseleave="clearHover"
+                  @click="store.selectedStyle = ''"
+                >
+                  无
+                  <span class="chip-none-sub">不限制</span>
+                </button>
                 <button
                   v-for="s in store.stylePresets"
                   :key="s.id"
@@ -273,6 +353,16 @@ function resetSettings() {
                 配色方案 <span class="section-hint">悬停查看效果</span>
               </h3>
               <div class="palette-grid-compact">
+                <button
+                  class="palette-chip palette-chip-none"
+                  :class="{ active: !store.selectedPalette }"
+                  @mouseenter="clearHover"
+                  @mouseleave="clearHover"
+                  @click="store.selectedPalette = ''"
+                >
+                  <span class="palette-chip-name">无</span>
+                  <span class="chip-none-sub">不限制</span>
+                </button>
                 <button
                   v-for="p in store.colorPalettes"
                   :key="p.id"
@@ -313,15 +403,40 @@ function resetSettings() {
                 <label class="settings-advanced-row">
                   <span class="advanced-label">默认模型</span>
                   <select v-model="store.selectedModel" class="settings-select">
-                    <option
-                      v-for="m in store.modelOptions"
-                      :key="m.id"
-                      :value="m.id"
-                      :disabled="m.disabled"
+                    <optgroup
+                      v-for="g in modelGroups"
+                      :key="g.channelId"
+                      :label="g.channelName"
                     >
-                      {{ m.label }}{{ m.recommended ? ' (推荐)' : '' }}
-                    </option>
+                      <option
+                        v-for="m in g.models"
+                        :key="m.id"
+                        :value="m.id"
+                        :disabled="m.disabled"
+                      >
+                        {{ m.label }}{{ m.recommended ? ' (推荐)' : '' }}
+                      </option>
+                    </optgroup>
                   </select>
+                </label>
+                <label class="settings-advanced-row settings-switch-row">
+                  <span class="advanced-label">
+                    自动优化提示词
+                    <span class="advanced-hint"
+                      >发送前用 DeepSeek 等文本模型精简（消耗 token）</span
+                    >
+                  </span>
+                  <span
+                    class="settings-switch"
+                    :class="{ on: store.autoOptimizePrompt }"
+                    role="switch"
+                    :aria-checked="store.autoOptimizePrompt"
+                    @click="
+                      store.autoOptimizePrompt = !store.autoOptimizePrompt
+                    "
+                  >
+                    <span class="settings-switch-dot"></span>
+                  </span>
                 </label>
               </div>
             </section>
@@ -971,6 +1086,19 @@ function resetSettings() {
   color: var(--color-neon);
 }
 
+/* 「无 / 不限制」选项（风格/配色） */
+.chip-none-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.6rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.palette-chip-none .palette-chip-name {
+  font-size: 0.74rem;
+}
+
 /* Palette preview popup — now uses shared .hover-preview-popup with dynamic positioning */
 
 /* ═══ Advanced ═══ */
@@ -1016,6 +1144,53 @@ function resetSettings() {
 
 .settings-select:focus {
   border-color: var(--color-neon);
+}
+
+/* 自动优化提示词开关行 */
+.settings-switch-row {
+  cursor: pointer;
+}
+
+.settings-switch-row .advanced-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.advanced-hint {
+  font-size: 0.68rem;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+.settings-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 38px;
+  height: 22px;
+  background: var(--color-border);
+  border-radius: 999px;
+  transition: background 0.2s;
+}
+
+.settings-switch.on {
+  background: var(--color-neon);
+}
+
+.settings-switch-dot {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
+  transition: transform 0.2s;
+}
+
+.settings-switch.on .settings-switch-dot {
+  transform: translateX(16px);
 }
 
 /* ═══ Footer ═══ */

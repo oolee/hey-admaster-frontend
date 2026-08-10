@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { AiBrandAsset } from '#/api/ai-design';
 import type {
   AiGeneratedImage,
   ChatMessage,
@@ -8,11 +9,14 @@ import type {
 import { nextTick, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
+import { fetchBrandAssetContent } from '#/api/ai-design';
 import AppHeader from '#/components/layout/AppHeader.vue';
 import { useAiDesignGeneration } from '#/composables/useAiDesignGeneration';
 import { useAuth } from '#/composables/useAuth';
 import AiChatPanel from '#/features/ai-design/AiChatPanel.vue';
 import AiSidebar from '#/features/ai-design/AiSidebar.vue';
+import BrandAssetLibrary from '#/features/ai-design/BrandAssetLibrary.vue';
+import ImageEditOverlay from '#/features/ai-design/ImageEditOverlay.vue';
 import ImageLightbox from '#/features/ai-design/ImageLightbox.vue';
 import SettingsDrawer from '#/features/ai-design/SettingsDrawer.vue';
 import { useAiDesignStore } from '#/store/aiDesignStore';
@@ -34,6 +38,13 @@ const showSettings = ref(false);
 
 // ── Chat messages ──
 const chatMessages = ref<ChatMessage[]>([]);
+
+function formatDuration(ms: number): string {
+  const total = Math.max(0, Math.round(ms / 1000));
+  if (total < 60) return `${total}s`;
+  const m = Math.floor(total / 60);
+  return `${m}分${total % 60}秒`;
+}
 const isProcessing = ref(false);
 
 function addMessage(
@@ -72,18 +83,30 @@ function onProcessingChange(processing: boolean) {
   isProcessing.value = processing;
 }
 
+/** 用户点击「停止」：中止进行中请求并通知后端取消任务（未生成成功不扣费） */
+function onStopGeneration() {
+  store.stopGeneration();
+}
+
 function onReplaceLastMessage(content: string, extra?: Partial<ChatMessage>) {
   if (chatMessages.value.length === 0) {
     addMessage('assistant', content, extra);
     return;
   }
   const lastIndex = chatMessages.value.length - 1;
-  const prev = chatMessages.value[lastIndex]!;
+  const prev = chatMessages.value[lastIndex];
+  // 生成中不再插入占位 AI 消息：若最后一条是用户消息，直接追加 AI 结果消息
+  if (!prev || prev.role === 'user') {
+    addMessage('assistant', content, extra);
+    return;
+  }
   chatMessages.value[lastIndex] = {
     ...prev,
     content,
     ...extra,
     images: extra?.images ?? prev.images,
+    // 失败消息记录原始提示词，刷新后与后端失败消息按 prompt 匹配恢复重试
+    prompt: extra?.retry?.prompt ?? prev.prompt,
   };
   syncToSession(chatMessages.value[lastIndex], extra);
 }
@@ -110,6 +133,10 @@ function deleteSession(id: string) {
   store.removeSession(id);
   if (!store.activeSession) store.createSession();
   loadActiveSession();
+}
+
+function renameSession(id: string, title: string) {
+  store.renameSession(id, title);
 }
 
 function clearCurrentSession() {
@@ -185,6 +212,27 @@ function updateRefImageTag(id: string, tag: string) {
   if (ref) ref.tag = tag;
 }
 
+// ── 品牌资产库 ──
+const showBrandAssets = ref(false);
+
+async function useAssetAsReference(asset: AiBrandAsset) {
+  try {
+    const content = await fetchBrandAssetContent(asset.id);
+    const dataUrl = `data:${content.contentType || 'image/png'};base64,${content.bytes}`;
+    refImages.value.push({
+      id: `brand-${asset.id}`,
+      dataUrl,
+      fileName: content.fileName || asset.fileName,
+      label: asset.name,
+      tag: asset.assetType === 0 ? 'logo' : 'other',
+    });
+    showBrandAssets.value = false;
+  } catch (error) {
+    // 失败时保持弹窗打开，错误信息由弹窗下次加载提示
+    window.alert(`添加品牌资产失败：${(error as Error).message || '未知错误'}`);
+  }
+}
+
 // ── Lightbox ──
 const lightboxImage = ref<AiGeneratedImage | null>(null);
 const showLightbox = ref(false);
@@ -205,30 +253,38 @@ function selectImageFromLightbox(img: AiGeneratedImage) {
   closeLightbox();
 }
 
-// ── Modify dialog ──
+// ── 局部修改（全屏标注编辑：矩形/画笔标注区域 + 修改提示词，走 /images/edits + mask） ──
 const showModifyDialog = ref(false);
 const modifyingImg = ref<AiGeneratedImage | null>(null);
-const modifyFeedback = ref('');
 
 function openModify(img: AiGeneratedImage) {
   modifyingImg.value = img;
-  modifyFeedback.value = '';
   showModifyDialog.value = true;
 }
 
-async function submitModify() {
-  if (!modifyFeedback.value.trim()) return;
-  const feedback = modifyFeedback.value.trim();
+async function submitModify(payload: {
+  mask: null | RefImage;
+  prompt: string;
+  referenceImage: RefImage;
+}) {
+  const feedback = payload.prompt.trim();
+  if (!feedback) return;
   showModifyDialog.value = false;
-  modifyFeedback.value = '';
   if (isProcessing.value) return;
   isProcessing.value = true;
+  const startTime = Date.now();
   addMessage('user', `修改：${feedback}`);
   addMessage('assistant', '正在按修改意见重绘...', {});
   try {
-    const images = await generateImages(`修改上一版方案：${feedback}`, {
+    // 局部修改（带蒙版）：显式声明 mask 语义（透明区域=编辑区），并按标注编号顺序处理各区域修改要求
+    const editPrompt = payload.mask
+      ? `对原图进行局部修改：仅修改蒙版（mask）中标注的透明区域，未标注区域保持完全不变，各区域修改要求按标注编号依次处理：${feedback}`
+      : `修改上一版方案：${feedback}`;
+    const images = await generateImages(editPrompt, {
       model: store.selectedModel,
       count: 1,
+      referenceImages: [payload.referenceImage],
+      mask: payload.mask,
     });
     const newImg = images[0] ?? {
       id: `empty-${Date.now()}`,
@@ -255,16 +311,21 @@ async function submitModify() {
       CreatedAt: new Date().toISOString(),
     });
     store.currentRevision = store.revisionCounter;
-    onReplaceLastMessage('已按修改意见重绘：', { images: [newImg] });
+    onReplaceLastMessage(
+      `已按修改意见重绘（耗时 ${formatDuration(Date.now() - startTime)}）：`,
+      { images: [newImg] },
+    );
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : '未知错误，请稍后重试';
-    onReplaceLastMessage(`重绘失败：${message}`, { isCheckResult: true });
+    onReplaceLastMessage(`重绘失败：${message}`, {
+      isCheckResult: true,
+      retry: { prompt: `修改上一版方案：${feedback}`, count: 1 },
+    });
   } finally {
     isProcessing.value = false;
   }
 }
-
 // ── Regenerate ──
 async function regenerate() {
   if (isProcessing.value) return;
@@ -280,6 +341,7 @@ async function regenerate() {
   const prompt = lastUserMsg?.content?.trim() || '换一批方案';
   addMessage('user', '换一批方案');
   isProcessing.value = true;
+  const startTime = Date.now();
   addMessage('assistant', '正在重新生成...', {});
   try {
     const images = await generateImages(prompt, {
@@ -306,17 +368,87 @@ async function regenerate() {
       CreatedAt: new Date().toISOString(),
     });
     if (store.revisionCounter === 1) store.currentRevision = 1;
-    onReplaceLastMessage(`已重新生成 ${images.length} 套方案，点击查看大图。`, {
-      images,
-    });
+    if (store.lastGenerationText) {
+      onReplaceLastMessage(
+        `${store.lastGenerationText}\n\n（耗时 ${formatDuration(Date.now() - startTime)}）`,
+        {},
+      );
+      return;
+    }
+    onReplaceLastMessage(
+      `已重新生成 ${images.length} 套方案，耗时 ${formatDuration(Date.now() - startTime)}，点击查看大图。`,
+      {
+        images,
+      },
+    );
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : '未知错误，请稍后重试';
-    onReplaceLastMessage(`生成失败：${message}`, { isCheckResult: true });
+    onReplaceLastMessage(`生成失败：${message}`, {
+      isCheckResult: true,
+      retry: { prompt, count: store.generateCount },
+    });
   } finally {
     isProcessing.value = false;
   }
 }
+// ── Retry（生成失败后重试）──
+async function onRetry(msg: ChatMessage) {
+  if (isProcessing.value) return;
+  const retry = msg.retry;
+  const prompt = retry?.prompt?.trim();
+  if (!prompt) return;
+  isProcessing.value = true;
+  const startTime = Date.now();
+  onReplaceLastMessage('正在重新生成...', {});
+  try {
+    const images = await generateImages(prompt, {
+      model: store.selectedModel,
+      count: retry?.count || 1,
+    });
+    store.revisionCounter++;
+    store.generatedImages = images;
+    store.selectedImage = images[0]?.id ?? null;
+    store.revisionHistory.unshift({
+      Id: `dr-retry-${Date.now()}`,
+      DesignSessionId: store.activeSession?.id ?? '',
+      RevisionNo: store.revisionCounter,
+      ImageUrl: images[0]?.url ?? '',
+      ThumbnailUrl: images[0]?.url ?? '',
+      Prompt: prompt,
+      OptimizedPrompt: store.optimizedPrompt,
+      UserFeedback: null,
+      Source: 'AI_GptImage2',
+      Status: store.revisionCounter === 1 ? 'Current' : 'Archived',
+      Width: store.designWidth * 10,
+      Height: store.designHeight * 10,
+      FileSize: 250_000,
+      CreatedAt: new Date().toISOString(),
+    });
+    if (store.revisionCounter === 1) store.currentRevision = 1;
+    if (store.lastGenerationText) {
+      onReplaceLastMessage(
+        `${store.lastGenerationText}\n\n（耗时 ${formatDuration(Date.now() - startTime)}）`,
+        {},
+      );
+      return;
+    }
+    onReplaceLastMessage(
+      `已重新生成 ${images.length} 套方案，耗时 ${formatDuration(Date.now() - startTime)}，点击查看大图。`,
+      { images },
+    );
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : '未知错误，请稍后重试';
+    onReplaceLastMessage(`生成失败：${message}`, {
+      isCheckResult: true,
+      retry,
+    });
+  } finally {
+    isProcessing.value = false;
+  }
+}
+
 function runProductionCheck() {
   const allPass = store.revisionCounter >= 3;
   const text = allPass
@@ -327,11 +459,36 @@ function runProductionCheck() {
   if (latest) latest.Status = 'Selected';
 }
 
-function downloadImage(url: string, title: string) {
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${title}.jpg`;
-  a.click();
+/**
+ * 真实下载：优先 fetch 签名 URL 转 Blob 保存（可正确携带 Cookie/签名），
+ * 失败时回退为直接触发浏览器下载。
+ */
+async function downloadImage(url: string, title: string) {
+  if (!url) return;
+  const safeTitle = title.replaceAll(/[\\/:*?"<>|]/g, '_') || '生成方案';
+  try {
+    const res = await fetch(url, { credentials: 'include' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    const ext =
+      blob.type.includes('jpeg') || blob.type.includes('jpg')
+        ? 'jpg'
+        : blob.type.split('/').pop() || 'png';
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = `${safeTitle}.${ext}`;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
+  } catch {
+    // 兜底：直接跳转（要求登录/签名有效时浏览器可下载）
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${safeTitle}.png`;
+    a.click();
+  }
 }
 
 function goBack() {
@@ -386,6 +543,7 @@ onUnmounted(() => {
         @new-session="newSession"
         @select-session="selectSession"
         @delete-session="deleteSession"
+        @rename-session="renameSession"
       />
 
       <div class="chat-area">
@@ -403,12 +561,21 @@ onUnmounted(() => {
           @remove-ref-image="removeRefImage"
           @update-ref-notes="updateRefImageNotes"
           @update-ref-tag="updateRefImageTag"
+          @open-brand-assets="showBrandAssets = true"
           @open-settings="showSettings = true"
           @processing-change="onProcessingChange"
+          @stop-generation="onStopGeneration"
           @replace-last-message="onReplaceLastMessage"
+          @retry="onRetry"
         />
       </div>
     </div>
+
+    <BrandAssetLibrary
+      v-if="showBrandAssets"
+      @close="showBrandAssets = false"
+      @use-asset="useAssetAsReference"
+    />
 
     <!-- Hidden file input -->
     <input
@@ -434,57 +601,13 @@ onUnmounted(() => {
     <!-- Settings drawer -->
     <SettingsDrawer :visible="showSettings" @close="showSettings = false" />
 
-    <!-- Modify dialog -->
-    <Teleport to="body">
-      <div v-if="showModifyDialog" class="modify-overlay">
-        <div class="modify-backdrop" @click="showModifyDialog = false"></div>
-        <div class="modify-dialog">
-          <div class="modify-header">
-            <h3 class="modify-title">局部修改 — {{ modifyingImg?.title }}</h3>
-            <button class="modify-close" @click="showModifyDialog = false">
-              <svg
-                viewBox="0 0 24 24"
-                width="20"
-                height="20"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <textarea
-            v-model="modifyFeedback"
-            class="modify-textarea"
-            rows="3"
-            placeholder="例如：标题字体改成粗体红色、背景调亮..."
-          ></textarea>
-          <div class="modify-tags">
-            <button class="modify-tag" @click="modifyFeedback += '颜色调整：'">
-              🎨 颜色
-            </button>
-            <button class="modify-tag" @click="modifyFeedback += '字体修改：'">
-              🔤 字体
-            </button>
-            <button class="modify-tag" @click="modifyFeedback += '布局调整：'">
-              📐 布局
-            </button>
-            <button class="modify-tag" @click="modifyFeedback += '元素增删：'">
-              ➕ 增删
-            </button>
-          </div>
-          <div class="modify-actions">
-            <button class="modify-cancel" @click="showModifyDialog = false">
-              取消
-            </button>
-            <button class="modify-submit" @click="submitModify">
-              提交修改
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <!-- 局部修改（全屏标注编辑） -->
+    <ImageEditOverlay
+      :image="modifyingImg"
+      :visible="showModifyDialog"
+      @close="showModifyDialog = false"
+      @submit="submitModify"
+    />
   </div>
 </template>
 

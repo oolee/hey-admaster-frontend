@@ -5,12 +5,16 @@ import type { AiChannelDto } from '#/api/ai-design';
 
 import { useVbenModal } from '@vben/common-ui';
 
-import ChannelModalComponent from './ChannelModal.vue';
-
 import { useVbenVxeGrid } from '@abp/ui';
 import { Button, message, Modal, Switch, Tag } from 'ant-design-vue';
 
-import { AiChannelProviderLabels, useAiDesignApi } from '#/api/ai-design';
+import {
+  AiChannelProviderLabels,
+  AiPricingUnitLabels,
+  useAiDesignApi,
+} from '#/api/ai-design';
+
+import ChannelModalComponent from './ChannelModal.vue';
 
 defineOptions({ name: 'AiDesignChannelManagement' });
 
@@ -26,9 +30,15 @@ const columns: VxeGridPropTypes.Columns<AiChannelDto> = [
   },
   { field: 'baseUrl', title: 'Base URL', minWidth: 220 },
   {
+    field: 'apiKeyMasked',
+    title: 'API Key',
+    width: 150,
+    slots: { default: 'apiKey' },
+  },
+  {
     field: 'models',
     title: '模型 / 单价',
-    minWidth: 260,
+    minWidth: 340,
     slots: { default: 'models' },
   },
   {
@@ -124,6 +134,21 @@ function providerTag(providerType: number) {
   };
   return map[providerType] || 'default';
 }
+
+function unitShort(pricingUnit: number) {
+  return (AiPricingUnitLabels[pricingUnit] || '元/张').replace('元/', '');
+}
+
+function formatPrice(price: number) {
+  return Number(price)
+    .toFixed(2)
+    .replace(/\.?0+$/, '');
+}
+
+function modelTitle(model: AiChannelDto['models'][number]) {
+  const type = model.modelType === 1 ? '非多模态' : '多模态';
+  return `${model.modelName}  ¥${formatPrice(model.pricePerImage)}/${unitShort(model.pricingUnit)}（${type}）`;
+}
 </script>
 
 <template>
@@ -139,20 +164,35 @@ function providerTag(providerType: number) {
   </div>
 
   <Grid>
+    <template #apiKey="{ row }">
+      <span class="font-mono text-xs">{{ row.apiKeyMasked || '未配置' }}</span>
+    </template>
     <template #provider="{ row }">
       <Tag :color="providerTag(row.providerType)">
         {{ AiChannelProviderLabels[row.providerType] || row.providerType }}
       </Tag>
     </template>
     <template #models="{ row }">
-      <div class="flex flex-wrap gap-1">
-        <Tag
+      <div
+        class="channel-models-row"
+        :title="row.models.length > 0 ? '悬停横向滚动查看全部模型' : undefined"
+      >
+        <template
           v-for="model in row.models"
           :key="model.id || model.modelName"
-          color="cyan"
         >
-          {{ model.modelName }} ¥{{ model.pricePerImage }}
-        </Tag>
+          <span class="channel-model-item" :title="modelTitle(model)">
+            <span class="font-medium">{{ model.modelName }}</span>
+            <span class="channel-model-price">
+              ¥{{ formatPrice(model.pricePerImage) }}/{{
+                unitShort(model.pricingUnit)
+              }}
+            </span>
+          </span>
+        </template>
+        <span v-if="row.models.length === 0" class="text-xs text-gray-400">
+          未配置模型
+        </span>
       </div>
     </template>
     <template #enabled="{ row }">
@@ -169,19 +209,79 @@ function providerTag(providerType: number) {
     </template>
     <template #action="{ row }">
       <div class="flex justify-center">
-        <Button type="link" size="small" block @click="onEdit(row)"
-          >
-编辑
-</Button
-        >
-        <Button type="link" danger size="small" block @click="onDelete(row)"
-          >
-删除
-</Button
-        >
+        <Button type="link" size="small" block @click="onEdit(row)">
+          编辑
+        </Button>
+        <Button type="link" danger size="small" block @click="onDelete(row)">
+          删除
+        </Button>
       </div>
     </template>
   </Grid>
 
   <ChannelModal @change="gridApi.query" />
 </template>
+<style scoped>
+/* 模型/单价列：单排显示，默认隐藏滚动条，悬停可横向滚动查看全部 */
+.channel-models-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  max-width: 420px;
+  padding-bottom: 2px;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-color: rgb(156 163 175 / 0%) transparent;
+  scrollbar-width: thin;
+}
+
+.channel-models-row:hover {
+  scrollbar-color: rgb(156 163 175 / 60%) transparent;
+}
+
+.channel-models-row::-webkit-scrollbar {
+  height: 5px;
+}
+
+.channel-models-row::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.channel-models-row::-webkit-scrollbar-thumb {
+  background: rgb(156 163 175 / 0%);
+  border-radius: 3px;
+}
+
+.channel-models-row:hover::-webkit-scrollbar-thumb {
+  background: rgb(156 163 175 / 60%);
+}
+
+.channel-model-item {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 3px;
+  align-items: center;
+  padding: 1px 8px;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: #0e7490;
+  background: rgb(6 182 212 / 10%);
+  border: 1px solid rgb(6 182 212 / 22%);
+  border-radius: 6px;
+}
+
+.dark .channel-model-item {
+  color: #67e8f9;
+  background: rgb(6 182 212 / 12%);
+  border-color: rgb(6 182 212 / 28%);
+}
+
+.channel-model-price {
+  font-size: 0.7rem;
+  color: rgb(14 116 144 / 75%);
+}
+
+.dark .channel-model-price {
+  color: rgb(103 232 249 / 70%);
+}
+</style>

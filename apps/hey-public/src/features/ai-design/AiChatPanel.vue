@@ -8,6 +8,12 @@ import type { AdTemplate } from '#/types/ai';
 
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
+import {
+  AiModelCapability,
+  AiModelType,
+  AiPricingUnitLabels,
+  optimizeAiPrompt,
+} from '#/api/ai-design';
 import { useAiDesignGeneration } from '#/composables/useAiDesignGeneration';
 import { useAuth } from '#/composables/useAuth';
 import { useAiDesignStore } from '#/store/aiDesignStore';
@@ -26,6 +32,7 @@ const emit = defineEmits<{
     content: string,
     extra?: Partial<ChatMessage>,
   ];
+  openBrandAssets: [];
   openLightbox: [img: AiGeneratedImage];
   openModify: [img: AiGeneratedImage];
   openSettings: [];
@@ -33,7 +40,9 @@ const emit = defineEmits<{
   regenerate: [];
   removeRefImage: [id: string];
   replaceLastMessage: [content: string, extra?: Partial<ChatMessage>];
+  retry: [msg: ChatMessage];
   runProductionCheck: [];
+  stopGeneration: [];
   triggerUpload: [tag?: string];
   updateRefNotes: [id: string, notes: string];
   updateRefTag: [id: string, tag: string];
@@ -52,6 +61,88 @@ const userAvatarText = computed(() =>
     .toUpperCase(),
 );
 
+/** 模型选项按渠道分组（后端已按渠道优先级排序，保持原有顺序分组即可） */
+const modelGroups = computed(() => {
+  const groups: {
+    channelId: string;
+    channelName: string;
+    models: typeof store.modelOptions;
+  }[] = [];
+  const byChannel = new Map<string, (typeof groups)[number]>();
+  for (const m of store.modelOptions) {
+    const key = m.channelId || m.id;
+    let group = byChannel.get(key);
+    if (!group) {
+      group = {
+        channelId: key,
+        channelName: m.channelName || '默认渠道',
+        models: [],
+      };
+      byChannel.set(key, group);
+      groups.push(group);
+    }
+    group.models.push(m);
+  }
+  return groups;
+});
+
+/** 判断用户输入是否已包含某关键词（避免重复追加已描述的设计参数） */
+function containsAny(text: string, keywords: string[]): boolean {
+  return keywords.some((k) => k && text.includes(k));
+}
+
+/** 尺寸文本：仅当用户明确选择了设计类型或尺寸（比例/自定义）时才返回；「无」时不追加 */
+function buildSizeText(): string {
+  const hasDesignType = Boolean(store.selectedDesignType);
+  const hasRatio = store.selectedAspectRatio !== 'auto';
+  if (!hasDesignType && !hasRatio) return '';
+  return store.designWidth && store.designHeight
+    ? `${store.designWidth}×${store.designHeight}cm`
+    : '';
+}
+
+/** 检测输入是否已包含尺寸描述（如 300×150、300x150、5米、2m、10cm），避免重复附加 */
+function containsSizePattern(text: string): boolean {
+  return (
+    /\d+(?:\.\d+)?\s*[x×X*]\s*\d+(?:\.\d+)?/.test(text) ||
+    /(?:宽|长|高)?\s*\d+(?:\.\d+)?\s*(?:cm|厘米|mm|毫米|m|米|寸|英寸)/i.test(
+      text,
+    )
+  );
+}
+
+/**
+ * 按选中的设计参数拼接到用户提示词后（逗号分隔）：
+ * - 选择「无」/未选择的参数不追加
+ * - 用户输入已描述相同内容（风格/配色关键词）时不再追加
+ * - 尺寸：设计类型用于设定尺寸；用户显式选择比例/自定义尺寸时以选择的尺寸为准（始终附加）
+ * - 提示词已包含设计类型名（如「门头」）时，仅跳过该类型「隐含」的尺寸，避免重复/冲突
+ * - 提示词已包含尺寸描述时不再追加，尊重用户原文
+ */
+function buildOptimizedPrompt(input: string): string {
+  const parts: string[] = [];
+  const styleName = store.styleKeyword;
+  const palName =
+    store.colorPalettes.find((p) => p.id === store.selectedPalette)?.name || '';
+  const sizeText = buildSizeText();
+  const hasSize = sizeText.trim().length > 0;
+  const designTypeName = store.selectedDesignType;
+  const inputHasDesignType = Boolean(
+    designTypeName && containsAny(input, [designTypeName]),
+  );
+  const inputHasSize = containsSizePattern(input);
+  if (styleName && !containsAny(input, [styleName])) parts.push(styleName);
+  if (palName && !containsAny(input, [palName])) parts.push(palName);
+  if (hasSize && !inputHasSize) {
+    // 仅「设计类型隐含的尺寸」在提示词已含类型名时跳过；显式尺寸（比例/自定义）以选择的尺寸为准
+    const implicitFromType = store.sizeSource === 'designType';
+    if (!(implicitFromType && inputHasDesignType)) {
+      parts.push(sizeText);
+    }
+  }
+  return parts.length > 0 ? `${input}，${parts.join('，')}` : input;
+}
+
 function formatPrice(value: null | number | undefined): string {
   const n = Number(value ?? 0);
   return n.toLocaleString('zh-CN', {
@@ -59,6 +150,62 @@ function formatPrice(value: null | number | undefined): string {
     maximumFractionDigits: 2,
   });
 }
+
+/** 积分换算：1 积分 = 0.01 元（1 元 = 100 积分） */
+function formatPoints(value: null | number | undefined): string {
+  return Math.round(Number(value ?? 0) * 100).toLocaleString('zh-CN');
+}
+
+function formatDuration(ms: number): string {
+  const totalSeconds = Math.max(0, Math.round(ms / 1000));
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}分${seconds}s`;
+}
+
+/** 生成耗时计时（处理中指示条显示已用时） */
+const generationElapsed = ref(0);
+let elapsedTimer: null | ReturnType<typeof setInterval> = null;
+function startElapsedTimer() {
+  stopElapsedTimer();
+  generationElapsed.value = 0;
+  const startedAt = Date.now();
+  elapsedTimer = setInterval(() => {
+    generationElapsed.value = Math.round((Date.now() - startedAt) / 1000);
+  }, 1000);
+}
+function stopElapsedTimer() {
+  if (elapsedTimer) {
+    clearInterval(elapsedTimer);
+    elapsedTimer = null;
+  }
+}
+
+/** 当前模型能力：无图片生成能力（对话/文本模型）时隐藏图片生成相关设置。
+ *  能力位优先：多模态视觉模型若仅配置 Chat（纯聊天），同样按文本处理 */
+const isTextModel = computed(() => {
+  const m = store.currentModel;
+  if (!m) return false;
+  const caps = m.capabilities ?? 0;
+  if (caps !== 0) {
+    return (
+      (caps &
+        (AiModelCapability.ImageGeneration |
+          AiModelCapability.ImageEditing)) ===
+      0
+    );
+  }
+  return m.modelType === AiModelType.Text;
+});
+
+/** 计价单位文案（元/张、元/次、元/1M tokens） */
+const priceUnitLabel = computed(() => {
+  const unit = store.currentModel?.pricingUnit;
+  return unit !== undefined && unit in AiPricingUnitLabels
+    ? AiPricingUnitLabels[unit]
+    : '元/张';
+});
 
 const chatInput = ref('');
 const chatContainer = ref<HTMLDivElement>();
@@ -69,6 +216,7 @@ const showPlusMenu = ref(false);
 const showModelMenu = ref(false);
 const showCountMenu = ref(false);
 const showRatioMenu = ref(false);
+const showQualityMenu = ref(false);
 
 // Quick ratio presets for the toolbar dropdown
 const quickRatioOptions = [
@@ -180,11 +328,12 @@ const templateCategories = computed(() =>
   ),
 );
 
-// Resolution options
-const resolutionOptions = [
-  { value: '1k', label: '1K', desc: '1024×1024' },
-  { value: '2k', label: '2K', desc: '2048×2048' },
-  { value: '4k', label: '4K', desc: '4096×4096' },
+// 生成质量选项（替换原 1K/2K/4K 分辨率档位：分辨率属于 size/比例维度，质量才是 auto/low/medium/high）
+const qualityOptions = [
+  { value: 'auto', label: '自动', desc: '模型自动选择最优质量（推荐）' },
+  { value: 'low', label: '快速', desc: '低质量·生成快·更省' },
+  { value: 'medium', label: '标准', desc: '中等质量·速度与细节均衡' },
+  { value: 'high', label: '精细', desc: '高质量·细节丰富·更贵' },
 ];
 
 const TEMPLATE_IMAGES: Record<string, string> = {
@@ -248,7 +397,7 @@ function getTagInfo(tagId: string) {
 
 function scrollToBottom() {
   nextTick(() => {
-    // Page-level scroll — scroll to very bottom
+    // 页面级滚动：输入区 fixed 在视口底部，滚到 body 最底部即可
     window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
   });
 }
@@ -267,44 +416,37 @@ async function analyzeAndGenerate() {
   if (!input) return;
   if (props.isProcessing) return; // 防止重复提交
 
-  const styleName = store.styleKeyword;
-  const palName =
-    store.colorPalettes.find((p) => p.id === store.selectedPalette)?.name ||
-    '默认';
-  const sizeText =
-    store.designWidth && store.designHeight
-      ? `${store.designWidth}×${store.designHeight}cm`
-      : '未指定尺寸';
   const refTags = props.refImages
     .map((r) => getTagInfo(r.tag).label)
     .filter(Boolean)
     .join('、');
   const modelLabel = currentModel.value?.shortLabel || 'GPT-image2';
 
+  // 文本对话模型：直接发送原文，不拼接设计参数；
+  // 图片模型：按已选参数拼接（未选/选择「无」的不追加，用户已描述过的不重复追加）
+  const optimized = isTextModel.value ? input : buildOptimizedPrompt(input);
+  store.optimizedPrompt = optimized;
+
   let userContent = input;
   if (props.refImages.length > 0) userContent += `\n[参考图: ${refTags}]`;
   addMessage('user', userContent || '根据参考图生成设计', {
     refImages: props.refImages.length > 0 ? [...props.refImages] : undefined,
+    optimizedPrompt: isTextModel.value ? undefined : optimized,
   });
-
-  const optimized = `${styleName}风格广告设计，${sizeText}，${palName}配色${input ? `，${input}` : ''}，专业印刷级质量。`;
-  store.optimizedPrompt = optimized;
-  addMessage(
-    'assistant',
-    `已分析需求：${optimized}\n\n正在生成 ${store.generateCount} 套方案... （模型：${modelLabel}）`,
-    {},
-  );
 
   emit('processingChange', true);
   chatInput.value = '';
   showPlusMenu.value = false;
+  const startTime = Date.now();
+  startElapsedTimer();
 
   try {
     const images = await generateImages(input, {
       model: currentModel.value?.id,
-      templateId: lastAppliedTemplateId.value,
-      count: store.generateCount,
+      templateId: isTextModel.value ? null : lastAppliedTemplateId.value,
+      count: isTextModel.value ? 1 : store.generateCount,
       referenceImages: props.refImages,
+      autoOptimize: !isTextModel.value && store.autoOptimizePrompt,
     });
 
     store.revisionCounter++;
@@ -328,26 +470,64 @@ async function analyzeAndGenerate() {
     });
     if (store.revisionCounter === 1) store.currentRevision = 1;
 
+    // 文本模型：直接展示模型返回的文本
+    if (isTextModel.value) {
+      const text = store.lastGenerationText || '（模型未返回内容）';
+      const costText =
+        store.lastChargedAmount > 0
+          ? `，本次消耗 ¥${formatPrice(store.lastChargedAmount)}（${
+              AiPricingUnitLabels[store.lastPricingUnit] ?? '元/次'
+            }）`
+          : '';
+      emit(
+        'replaceLastMessage',
+        `${text}\n\n（耗时 ${formatDuration(Date.now() - startTime)}${costText}）`,
+        {
+          cost:
+            store.lastChargedAmount > 0 ? store.lastChargedAmount : undefined,
+        },
+      );
+      return;
+    }
     const costText =
       store.lastChargedAmount > 0
-        ? `，本次消耗 ¥${formatPrice(store.lastChargedAmount)}`
+        ? `，本次消耗 ¥${formatPrice(store.lastChargedAmount)}（${
+            AiPricingUnitLabels[store.lastPricingUnit] ?? '元/张'
+          }）`
         : '';
     const summary =
       images.length > 0
-        ? `已生成 ${images.length} 套方案（${modelLabel}）${costText}，点击查看大图，或「重生成」换一批。`
+        ? `已生成 ${images.length} 套方案（${modelLabel}），耗时 ${formatDuration(Date.now() - startTime)}${costText}，点击查看大图，或「重生成」换一批。`
         : '生成完成，但没有返回图片，请稍后重试。';
     emit('replaceLastMessage', summary, { images });
   } catch (error: unknown) {
+    // 用户点击「停止」：不展示失败信息，追加一条「已停止」提示（未扣费）
+    if (
+      error instanceof Error &&
+      (error.name === 'AbortError' ||
+        ((error as { cause?: unknown }).cause instanceof Error &&
+          ((error as { cause?: Error }).cause as Error).name === 'AbortError'))
+    ) {
+      emit('replaceLastMessage', '已停止生成，本次未扣费。');
+      return;
+    }
     const message =
       error instanceof Error ? error.message : '未知错误，请稍后重试';
-    emit('replaceLastMessage', `生成失败：${message}`, {
-      isCheckResult: true,
-    });
+    emit(
+      'replaceLastMessage',
+      `生成失败：${message}（耗时 ${formatDuration(Date.now() - startTime)}）`,
+      {
+        isCheckResult: true,
+        retry: { prompt: input, count: store.generateCount },
+      },
+    );
   } finally {
+    stopElapsedTimer();
     lastAppliedTemplateId.value = null;
     emit('processingChange', false);
   }
 }
+
 // ── Prompt optimization ──
 async function optimizePrompt() {
   if (!chatInput.value.trim()) return;
@@ -355,19 +535,30 @@ async function optimizePrompt() {
   showPlusMenu.value = false;
   const styleName = store.styleKeyword;
   const palName =
-    store.colorPalettes.find((p) => p.id === store.selectedPalette)?.name ||
-    '默认';
-  const sizeText =
-    store.designWidth && store.designHeight
-      ? `${store.designWidth}×${store.designHeight}cm`
-      : '未指定尺寸';
-  await new Promise((r) => setTimeout(r, 600));
-  optimizedPreview.value = [
-    `${styleName}风格广告设计，${sizeText}，${palName}配色，`,
-    `${chatInput.value.trim()}，`,
-    '高对比度、视觉冲击力强、适合广告行业使用，',
-    '专业印刷级质量，CMYK色域兼容。',
-  ].join('');
+    store.colorPalettes.find((p) => p.id === store.selectedPalette)?.name || '';
+  const sizeText = buildSizeText();
+  const params: string[] = [];
+  if (styleName) params.push(`${styleName}风格`);
+  if (sizeText) params.push(sizeText);
+  if (palName) params.push(`${palName}配色`);
+  try {
+    // 优先走后端「提示词优化」接口（deepseek 等文本模型，可配置开关/模型）
+    const result = await optimizeAiPrompt({
+      prompt: chatInput.value.trim(),
+      styleName: styleName || null,
+      paletteName: palName || null,
+      sizeText: sizeText || null,
+    });
+    optimizedPreview.value = result.optimizedPrompt;
+  } catch {
+    // 后端不可用/未启用优化：回退本地结构化拼接
+    optimizedPreview.value = [
+      `${chatInput.value.trim()}，`,
+      ...params,
+      '高对比度、视觉冲击力强、适合广告行业使用，',
+      '专业印刷级质量，CMYK色域兼容。',
+    ].join('');
+  }
   showOptimizedPreview.value = true;
   isOptimizing.value = false;
 }
@@ -425,6 +616,7 @@ function togglePlusMenu() {
   showModelMenu.value = false;
   showCountMenu.value = false;
   showRatioMenu.value = false;
+  showQualityMenu.value = false;
   showTemplatesDrawer.value = false;
 }
 
@@ -433,12 +625,18 @@ function toggleModelMenu() {
   showPlusMenu.value = false;
   showCountMenu.value = false;
   showRatioMenu.value = false;
+  showQualityMenu.value = false;
+  // 打开下拉时刷新一次模型列表：管理端新增渠道/模型后无需刷新页面即可生效
+  if (showModelMenu.value) {
+    void store.refreshModelOptions();
+  }
 }
 
 function toggleCountMenu() {
   showCountMenu.value = !showCountMenu.value;
   showPlusMenu.value = false;
   showModelMenu.value = false;
+  showQualityMenu.value = false;
 }
 
 function toggleRatioMenu() {
@@ -446,12 +644,30 @@ function toggleRatioMenu() {
   showPlusMenu.value = false;
   showModelMenu.value = false;
   showCountMenu.value = false;
+  showQualityMenu.value = false;
+}
+
+function toggleQualityMenu() {
+  showQualityMenu.value = !showQualityMenu.value;
+  showPlusMenu.value = false;
+  showModelMenu.value = false;
+  showCountMenu.value = false;
+  showRatioMenu.value = false;
 }
 
 // Apply a quick ratio from the toolbar dropdown
 function applyQuickRatio(value: string) {
   store.selectedAspectRatio = value;
   if (value === 'auto' || value === 'custom') {
+    // 自动/自定义：解除设计类型对尺寸的锁定，尺寸交给比例/自定义控制
+    store.selectedDesignType = '';
+    if (value === 'custom') {
+      store.sizeSource = 'custom'; // 显式自定义尺寸：以选择的尺寸为准
+    } else {
+      store.designWidth = 0;
+      store.designHeight = 0;
+      store.sizeSource = 'none';
+    }
     showRatioMenu.value = false;
     return;
   }
@@ -461,8 +677,13 @@ function applyQuickRatio(value: string) {
     const rw = Number.parseFloat(rwStr);
     const rh = Number.parseFloat(rhStr);
     if (rw && rh) {
-      const w = store.designWidth;
+      // 未选设计类型/尺寸时用默认工作宽度 100，保证比例可计算且提示词可附加尺寸
+      const w = store.designWidth || 100;
+      store.designWidth = Math.round(w);
       store.designHeight = Math.round(((w * rh) / rw) * 10) / 10;
+      // 用户显式选择比例：以选择的尺寸为准，设计类型不再匹配
+      store.selectedDesignType = '';
+      store.sizeSource = 'ratio';
     }
   }
   showRatioMenu.value = false;
@@ -478,6 +699,22 @@ watch(chatInput, () => {
   });
 });
 
+// 新消息/生成状态变化时自动滚动到底部
+watch(
+  () => props.chatMessages.length,
+  async () => {
+    await nextTick();
+    scrollToBottom();
+  },
+);
+watch(
+  () => props.isProcessing,
+  async () => {
+    await nextTick();
+    scrollToBottom();
+  },
+);
+
 // 新建/切换会话时清空输入区与菜单状态
 watch(
   () => store.activeSessionId,
@@ -488,6 +725,7 @@ watch(
     showModelMenu.value = false;
     showCountMenu.value = false;
     showRatioMenu.value = false;
+    showQualityMenu.value = false;
     showTemplatesDrawer.value = false;
   },
 );
@@ -504,6 +742,7 @@ function onWindowClick(e: MouseEvent) {
   if (!target.closest('.model-menu-area')) showModelMenu.value = false;
   if (!target.closest('.count-menu-area')) showCountMenu.value = false;
   if (!target.closest('.ratio-menu-area')) showRatioMenu.value = false;
+  if (!target.closest('.quality-menu-area')) showQualityMenu.value = false;
 }
 
 // Click templates btn — use stop + ensure other menus closed
@@ -512,6 +751,7 @@ function toggleTemplatesSafe(e: MouseEvent) {
   showPlusMenu.value = false;
   showModelMenu.value = false;
   showCountMenu.value = false;
+  showQualityMenu.value = false;
   showTemplatesDrawer.value = !showTemplatesDrawer.value;
 }
 
@@ -535,13 +775,14 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('click', onWindowClick);
+  stopElapsedTimer();
 });
 </script>
 
 <template>
   <div class="ai-chat">
     <!-- Chat messages area -->
-    <div ref="chatContainer" class="chat-messages chat-messages-padded">
+    <div ref="chatContainer" class="chat-messages">
       <!-- Welcome -->
       <div v-if="chatMessages.length === 0" class="chat-welcome">
         <div class="welcome-mark">
@@ -571,8 +812,12 @@ onUnmounted(() => {
             :key="p.label"
             class="welcome-preset-btn"
             @click="
+              store.selectedDesignType = p.label;
+              store.selectedAspectRatio =
+                store.designTypeRatios[p.label] || 'auto';
               store.designWidth = p.w;
               store.designHeight = p.h;
+              store.sizeSource = 'designType';
               chatInput = `做一个${p.label}，${p.w}×${p.h}cm`;
             "
           >
@@ -581,205 +826,256 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Messages -->
-      <template v-for="msg in chatMessages" :key="msg.id">
-        <!-- User message -->
-        <div v-if="msg.role === 'user'" class="msg-row msg-user">
-          <div class="msg-bubble msg-bubble-user">
-            <!-- Uploaded reference images: top of bubble -->
-            <div v-if="msg.refImages && msg.refImages.length" class="msg-refs">
-              <div v-for="ref in msg.refImages" :key="ref.id" class="msg-ref">
-                <img :src="ref.dataUrl" class="msg-ref-img" />
-                <span class="msg-ref-tag">{{ getTagInfo(ref.tag).label }}</span>
+      <div class="chat-messages-padded">
+        <!-- Messages -->
+        <template v-for="msg in chatMessages" :key="msg.id">
+          <!-- User message -->
+          <div v-if="msg.role === 'user'" class="msg-row msg-user">
+            <div class="msg-user-line">
+              <div class="msg-bubble msg-bubble-user">
+                <!-- Uploaded reference images: top of bubble -->
+                <div
+                  v-if="msg.refImages && msg.refImages.length"
+                  class="msg-refs"
+                >
+                  <div
+                    v-for="ref in msg.refImages"
+                    :key="ref.id"
+                    class="msg-ref"
+                  >
+                    <img :src="ref.dataUrl" class="msg-ref-img" />
+                    <span class="msg-ref-tag">{{
+                      getTagInfo(ref.tag).label
+                    }}</span>
+                  </div>
+                </div>
+                <!-- Multi-line content: collapsible text block with hover-to-expand -->
+                <div
+                  v-if="msg.content.split('\n').length > 3"
+                  class="msg-content msg-content-collapsible"
+                  :title="msg.content"
+                >
+                  {{ msg.content.split('\n').slice(0, 2).join('\n')
+                  }}<span class="msg-more-hint">
+                    …（共
+                    {{ msg.content.split('\n').length }}
+                    行，悬停查看全部）</span
+                  >
+                </div>
+                <div v-else class="msg-content">{{ msg.content }}</div>
+                <!-- 系统加工后的完整提示词（灰色小字） -->
+                <div v-if="msg.optimizedPrompt" class="msg-optimized-prompt">
+                  {{ msg.optimizedPrompt }}
+                </div>
               </div>
-            </div>
-            <!-- Multi-line content: collapsible text block with hover-to-expand -->
-            <div
-              v-if="msg.content.split('\n').length > 3"
-              class="msg-content msg-content-collapsible"
-              :title="msg.content"
-            >
-              {{ msg.content.split('\n').slice(0, 2).join('\n')
-              }}<span class="msg-more-hint">
-                …（共
-                {{ msg.content.split('\n').length }} 行，悬停查看全部）</span
-              >
-            </div>
-            <div v-else class="msg-content">{{ msg.content }}</div>
-          </div>
-          <div class="msg-user-meta">
-            <div class="msg-avatar msg-avatar-user">
-              <img
-                v-if="userAvatarUrl"
-                :src="userAvatarUrl"
-                class="msg-avatar-img"
-                alt=""
-              />
-              <template v-else>{{ userAvatarText }}</template>
+              <div class="msg-avatar msg-avatar-user">
+                <img
+                  v-if="userAvatarUrl"
+                  :src="userAvatarUrl"
+                  class="msg-avatar-img"
+                  alt=""
+                />
+                <template v-else>{{ userAvatarText }}</template>
+              </div>
             </div>
             <div class="msg-time">{{ msg.time }}</div>
           </div>
-        </div>
 
-        <!-- AI message -->
-        <div v-else class="msg-row msg-ai">
-          <div class="msg-avatar">AI</div>
-          <div class="msg-body">
-            <div class="msg-bubble msg-bubble-ai">
-              <div
-                class="msg-content"
-                v-html="msg.content.replace(/\n/g, '<br>')"
-              ></div>
-
-              <!-- Generated images -->
-              <div v-if="msg.images && msg.images.length" class="msg-images">
+          <!-- AI message -->
+          <div v-else class="msg-row msg-ai">
+            <div class="msg-avatar">AI</div>
+            <div class="msg-body">
+              <div class="msg-bubble msg-bubble-ai">
                 <div
-                  class="images-grid"
-                  :class="[msg.images.length <= 4 ? 'grid-2' : 'grid-3']"
-                >
-                  <div
-                    v-for="img in msg.images"
-                    :key="img.id"
-                    class="image-card"
-                    @click="openLightbox(img)"
-                  >
-                    <div class="image-card-preview">
-                      <img
-                        :src="img.url"
-                        class="image-card-img"
-                        loading="lazy"
-                      />
-                      <div class="image-card-overlay">
-                        <button
-                          class="image-card-edit-btn"
-                          @click.stop="openModifyDialog(img)"
-                        >
-                          <svg
-                            viewBox="0 0 24 24"
-                            width="14"
-                            height="14"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                          >
-                            <path
-                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                            />
-                          </svg>
-                          编辑
-                        </button>
-                      </div>
-                    </div>
-                    <div class="image-card-footer">
-                      <span class="image-card-title">{{ img.title }}</span>
-                      <div class="image-card-actions">
-                        <button
-                          class="image-card-action-btn"
-                          :class="{ selected: store.selectedImage === img.id }"
-                          @click.stop="selectImage(img)"
-                        >
-                          {{ store.selectedImage === img.id ? '已选' : '选择' }}
-                        </button>
-                        <button
-                          class="image-card-action-btn modify"
-                          @click.stop="openModifyDialog(img)"
-                        >
-                          局部修改
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                  class="msg-content"
+                  v-html="msg.content.replace(/\n/g, '<br>')"
+                ></div>
 
-                <!-- Image action bar -->
-                <div class="image-action-bar">
-                  <button
-                    class="action-btn"
-                    title="下载"
-                    @click="
-                      downloadImage(msg.images[0]!.url, msg.images[0]!.title)
-                    "
-                  >
+                <!-- 生成失败：重试按钮 -->
+                <div v-if="msg.retry && !isProcessing" class="msg-retry-row">
+                  <button class="msg-retry-btn" @click="emit('retry', msg)">
                     <svg
                       viewBox="0 0 24 24"
-                      width="16"
-                      height="16"
+                      width="13"
+                      height="13"
                       fill="none"
                       stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path
-                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                      />
-                    </svg>
-                  </button>
-                  <button class="action-btn" title="满意">
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="16"
-                      height="16"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path
-                        d="M14 10h4.764a2 2 0 011.789 2.894l-3.764 7.527A2 2 0 0114.236 22H10a2 2 0 01-2-2V9.828a2 2 0 01.586-1.414l2-2A2 2 0 0112 5h.828a2 2 0 011.414.586l.343.343a2 2 0 002.415 0l.343-.343a2 2 0 011.414-.586z"
-                      />
-                    </svg>
-                  </button>
-                  <button class="action-btn" title="不满意">
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="16"
-                      height="16"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path
-                        d="M10 14H5.236a2 2 0 01-1.789-2.894l3.764-7.527A2 2 0 018.764 2H12a2 2 0 012 2v8.828a2 2 0 01-.586 1.414l-2 2A2 2 0 0111 17h-.828a2 2 0 01-1.414-.586l-.343-.343a2 2 0 00-2.415 0l-.343.343A2 2 0 014.586 17H3a2 2 0 01-2-2z"
-                      />
-                    </svg>
-                  </button>
-                  <div class="action-divider"></div>
-                  <button
-                    class="action-btn regenerate"
-                    @click="emit('regenerate')"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="14"
-                      height="14"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
+                      stroke-width="2.2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
                     >
                       <path
                         d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.935 6M4 12h16M4 16v5h.582m15.356-2A8.001 8.001 0 0019.065 18"
                       />
                     </svg>
-                    重生成
+                    重试
                   </button>
                 </div>
+
+                <!-- Generated images -->
+                <div v-if="msg.images && msg.images.length" class="msg-images">
+                  <div
+                    class="images-grid"
+                    :class="[msg.images.length <= 4 ? 'grid-2' : 'grid-3']"
+                  >
+                    <div
+                      v-for="img in msg.images"
+                      :key="img.id"
+                      class="image-card"
+                      @click="openLightbox(img)"
+                    >
+                      <div class="image-card-preview">
+                        <img
+                          :src="img.url"
+                          class="image-card-img"
+                          loading="lazy"
+                        />
+                        <div class="image-card-overlay">
+                          <button
+                            class="image-card-edit-btn"
+                            @click.stop="openModifyDialog(img)"
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              width="14"
+                              height="14"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                            >
+                              <path
+                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                              />
+                            </svg>
+                            编辑
+                          </button>
+                        </div>
+                      </div>
+                      <div class="image-card-footer">
+                        <span class="image-card-title">{{ img.title }}</span>
+                        <div class="image-card-actions">
+                          <button
+                            class="image-card-action-btn"
+                            :class="{
+                              selected: store.selectedImage === img.id,
+                            }"
+                            @click.stop="selectImage(img)"
+                          >
+                            {{
+                              store.selectedImage === img.id ? '已选' : '选择'
+                            }}
+                          </button>
+                          <button
+                            class="image-card-action-btn modify"
+                            @click.stop="openModifyDialog(img)"
+                          >
+                            局部修改
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Image action bar -->
+                  <div class="image-action-bar">
+                    <button
+                      class="action-btn"
+                      title="下载"
+                      @click="
+                        downloadImage(msg.images[0]!.url, msg.images[0]!.title)
+                      "
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="16"
+                        height="16"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path
+                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                        />
+                      </svg>
+                    </button>
+                    <button class="action-btn" title="满意">
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="16"
+                        height="16"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path
+                          d="M14 10h4.764a2 2 0 011.789 2.894l-3.764 7.527A2 2 0 0114.236 22H10a2 2 0 01-2-2V9.828a2 2 0 01.586-1.414l2-2A2 2 0 0112 5h.828a2 2 0 011.414.586l.343.343a2 2 0 002.415 0l.343-.343a2 2 0 011.414-.586z"
+                        />
+                      </svg>
+                    </button>
+                    <button class="action-btn" title="不满意">
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="16"
+                        height="16"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path
+                          d="M10 14H5.236a2 2 0 01-1.789-2.894l3.764-7.527A2 2 0 018.764 2H12a2 2 0 012 2v8.828a2 2 0 01-.586 1.414l-2 2A2 2 0 0111 17h-.828a2 2 0 01-1.414-.586l-.343-.343a2 2 0 00-2.415 0l-.343.343A2 2 0 014.586 17H3a2 2 0 01-2-2z"
+                        />
+                      </svg>
+                    </button>
+                    <div class="action-divider"></div>
+                    <button
+                      class="action-btn regenerate"
+                      @click="emit('regenerate')"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="14"
+                        height="14"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.935 6M4 12h16M4 16v5h.582m15.356-2A8.001 8.001 0 0019.065 18"
+                        />
+                      </svg>
+                      重生成
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="msg-time">
+                {{ msg.time }}
+                <span v-if="msg.cost" class="msg-cost"
+                  >本次消耗 ¥{{ formatPrice(msg.cost) }}</span
+                >
               </div>
             </div>
-            <div class="msg-time">{{ msg.time }}</div>
           </div>
-        </div>
-      </template>
+        </template>
 
-      <!-- Processing -->
-      <div v-if="isProcessing" class="msg-row msg-ai">
-        <div class="msg-avatar">AI</div>
-        <div class="msg-body">
-          <div class="msg-bubble msg-bubble-processing">
-            <div class="processing-content">
-              <div class="processing-spinner"></div>
-              <span>AI 正在生成设计稿...</span>
-              <span class="processing-info">
-                {{ currentModel?.shortLabel || 'GPT-image2' }} ·
-                {{ store.generateCount }}张
-              </span>
+        <!-- Processing -->
+        <div v-if="isProcessing" class="msg-row msg-ai">
+          <div class="msg-avatar">AI</div>
+          <div class="msg-body">
+            <div class="msg-bubble msg-bubble-processing">
+              <div class="processing-content">
+                <div class="processing-spinner"></div>
+                <span>{{
+                  isTextModel ? 'AI 正在思考...' : 'AI 正在生成设计稿...'
+                }}</span>
+                <span class="processing-info">
+                  {{ currentModel?.shortLabel || 'GPT-image2'
+                  }}<template v-if="!isTextModel">
+                    · {{ store.generateCount }}张</template
+                  >
+                  · 已用时 {{ generationElapsed }}s
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -923,6 +1219,30 @@ onUnmounted(() => {
               <div class="plus-divider"></div>
 
               <button
+                class="plus-item brand"
+                @click.stop="
+                  emit('openBrandAssets');
+                  showPlusMenu = false;
+                "
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="3" />
+                  <circle cx="9" cy="9" r="2" />
+                  <path d="M21 15l-5-5L5 21" />
+                </svg>
+                品牌资产库
+              </button>
+
+              <button
                 class="plus-item settings"
                 @click.stop="openSettingsFromPlus"
               >
@@ -983,9 +1303,11 @@ onUnmounted(() => {
             v-model="chatInput"
             class="input-textarea"
             :placeholder="
-              refImages.length > 0 && !chatInput.trim()
-                ? '请输入设计需求描述后再发送...'
-                : '描述设计需求...'
+              isTextModel
+                ? '输入消息，按 Enter 发送...'
+                : refImages.length > 0 && !chatInput.trim()
+                  ? '请输入设计需求描述后再发送...'
+                  : '描述设计需求...'
             "
             rows="1"
             @keydown.enter.exact.prevent="analyzeAndGenerate"
@@ -997,12 +1319,17 @@ onUnmounted(() => {
             <div
               v-if="store.walletBalance !== null"
               class="wallet-badge"
-              :title="`当前模型单价 ¥${formatPrice(store.walletUnitPrice)}/张`"
+              :title="`当前模型单价 ¥${formatPrice(store.walletUnitPrice)}${priceUnitLabel}`"
             >
               <span class="wallet-dot"></span>
-              <span>余额 ¥{{ formatPrice(store.walletBalance) }}</span>
+              <span
+                >余额 ¥{{ formatPrice(store.walletBalance) }}（{{
+                  formatPoints(store.walletBalance)
+                }}
+                积分）</span
+              >
               <span v-if="store.walletUnitPrice > 0" class="wallet-unit">
-                ¥{{ formatPrice(store.walletUnitPrice) }}/张
+                ¥{{ formatPrice(store.walletUnitPrice) }}{{ priceUnitLabel }}
               </span>
             </div>
             <div
@@ -1012,11 +1339,14 @@ onUnmounted(() => {
             <!-- Model -->
             <div class="model-menu-area">
               <button
-                class="toolbar-btn"
+                class="toolbar-btn model-btn"
                 :class="{ active: showModelMenu }"
+                :title="currentModel?.label || 'GPT-image2'"
                 @click="toggleModelMenu"
               >
-                {{ currentModel?.shortLabel || 'GPT-image2' }}
+                <span class="model-btn-label">{{
+                  currentModel?.shortLabel || 'GPT-image2'
+                }}</span>
                 <svg
                   viewBox="0 0 24 24"
                   width="12"
@@ -1030,45 +1360,66 @@ onUnmounted(() => {
               </button>
               <div v-if="showModelMenu" class="toolbar-dropdown model-dropdown">
                 <div class="dropdown-title">选择模型</div>
-                <button
-                  v-for="m in store.modelOptions"
-                  :key="m.id"
-                  :disabled="m.disabled"
-                  class="dropdown-item"
-                  :class="[
-                    {
-                      active: store.selectedModel === m.id,
-                      disabled: m.disabled,
-                    },
-                  ]"
-                  @click="
-                    store.selectedModel = m.id;
-                    showModelMenu = false;
-                  "
-                >
-                  <span>{{ m.label }}</span>
-                  <span v-if="m.recommended" class="dropdown-recommend"
-                    >推荐</span
+                <template v-for="group in modelGroups" :key="group.channelId">
+                  <div class="model-group-title">
+                    {{ group.channelName }}
+                  </div>
+                  <button
+                    v-for="m in group.models"
+                    :key="`${group.channelId}:${m.id}`"
+                    :disabled="m.disabled"
+                    class="dropdown-item"
+                    :class="[
+                      {
+                        active: store.selectedModel === m.id,
+                        disabled: m.disabled,
+                      },
+                    ]"
+                    :title="m.label"
+                    @click="
+                      store.selectedModel = m.id;
+                      showModelMenu = false;
+                    "
                   >
-                  <svg
-                    v-if="store.selectedModel === m.id"
-                    viewBox="0 0 24 24"
-                    width="16"
-                    height="16"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2.5"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </button>
+                    <span class="dropdown-item-label">{{ m.label }}</span>
+                    <span
+                      v-if="m.modelType === 1"
+                      class="dropdown-type-tag"
+                      title="非多模态：仅文本对话，不能生成图片"
+                      >非多模态</span
+                    >
+                    <span
+                      v-else
+                      class="dropdown-type-tag dropdown-type-tag-image"
+                      title="多模态：支持图片生成"
+                      >多模态</span
+                    >
+                    <span v-if="m.recommended" class="dropdown-recommend"
+                      >推荐</span
+                    >
+                    <svg
+                      v-if="store.selectedModel === m.id"
+                      viewBox="0 0 24 24"
+                      width="16"
+                      height="16"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </button>
+                </template>
+                <div v-if="modelGroups.length === 0" class="dropdown-empty">
+                  暂无可用模型，请先在管理端配置渠道
+                </div>
               </div>
             </div>
 
-            <div class="toolbar-divider"></div>
+            <div v-if="!isTextModel" class="toolbar-divider"></div>
 
-            <!-- Count -->
-            <div class="count-menu-area">
+            <!-- Count（仅图片模型） -->
+            <div v-if="!isTextModel" class="count-menu-area">
               <button
                 class="toolbar-btn"
                 :class="{ active: showCountMenu }"
@@ -1087,6 +1438,7 @@ onUnmounted(() => {
                 </svg>
               </button>
               <div v-if="showCountMenu" class="toolbar-dropdown count-dropdown">
+                <div class="dropdown-title">生成数量</div>
                 <button
                   v-for="n in store.countOptions"
                   :key="n"
@@ -1113,26 +1465,80 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <div class="toolbar-divider"></div>
+            <div v-if="!isTextModel" class="toolbar-divider"></div>
 
-            <!-- Resolution -->
-            <div class="resolution-group">
+            <!-- 生成质量（仅图片模型）：auto/low/medium/high，对应模型 quality 参数 -->
+            <div v-if="!isTextModel" class="quality-menu-area">
               <button
-                v-for="r in resolutionOptions"
-                :key="r.value"
-                class="resolution-btn"
-                :class="{ active: store.resolution === r.value }"
-                @click="store.resolution = r.value"
-                :title="r.desc"
+                class="toolbar-btn"
+                :class="{ active: showQualityMenu }"
+                @click="toggleQualityMenu"
+                title="画质选择"
               >
-                {{ r.label }}
+                <svg
+                  viewBox="0 0 24 24"
+                  width="13"
+                  height="13"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <circle cx="12" cy="12" r="4" />
+                </svg>
+                <span>{{
+                  qualityOptions.find((q) => q.value === store.quality)
+                    ?.label ?? '自动'
+                }}</span>
+                <svg
+                  viewBox="0 0 24 24"
+                  width="12"
+                  height="12"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
               </button>
+              <div
+                v-if="showQualityMenu"
+                class="toolbar-dropdown quality-dropdown"
+              >
+                <div class="dropdown-title">画质选择</div>
+                <button
+                  v-for="q in qualityOptions"
+                  :key="q.value"
+                  class="dropdown-item"
+                  :class="{ active: store.quality === q.value }"
+                  :title="q.desc"
+                  @click="
+                    store.quality = q.value;
+                    showQualityMenu = false;
+                  "
+                >
+                  <span class="dropdown-item-label">{{ q.label }}</span>
+                  <svg
+                    v-if="store.quality === q.value"
+                    viewBox="0 0 24 24"
+                    width="16"
+                    height="16"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
-            <div class="toolbar-divider"></div>
+            <div v-if="!isTextModel" class="toolbar-divider"></div>
 
-            <!-- Quick aspect ratio selector -->
-            <div class="ratio-menu-area">
+            <!-- Quick aspect ratio selector（仅图片模型） -->
+            <div v-if="!isTextModel" class="ratio-menu-area">
               <button
                 class="toolbar-btn"
                 :class="{ active: showRatioMenu }"
@@ -1195,10 +1601,11 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <div class="toolbar-divider"></div>
+            <div v-if="!isTextModel" class="toolbar-divider"></div>
 
-            <!-- Templates -->
+            <!-- Templates（仅图片模型） -->
             <button
+              v-if="!isTextModel"
               class="toolbar-btn"
               :class="{ active: showTemplatesDrawer }"
               data-toolbar-tpl
@@ -1223,10 +1630,11 @@ onUnmounted(() => {
               <span>模版</span>
             </button>
 
-            <div class="toolbar-divider"></div>
+            <div v-if="!isTextModel" class="toolbar-divider"></div>
 
-            <!-- Design params (renamed from 详细设置) -->
+            <!-- Design params（仅图片模型） -->
             <button
+              v-if="!isTextModel"
               class="toolbar-btn settings-btn"
               @click="emit('openSettings')"
               title="设计参数"
@@ -1285,15 +1693,26 @@ onUnmounted(() => {
             </button>
           </div>
 
-          <!-- Send button — simple up arrow -->
+          <!-- Send / Stop：生成中变为方形停止按钮，点击中止生成（未扣费） -->
           <button
+            v-if="isProcessing"
+            class="send-btn send-btn-stop"
+            @click="emit('stopGeneration')"
+            title="停止生成"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <rect x="6" y="6" width="12" height="12" rx="2" />
+            </svg>
+          </button>
+          <button
+            v-else
             class="send-btn"
-            :disabled="!hasContent || isProcessing"
+            :class="{ 'send-btn-text': isTextModel }"
+            :disabled="!hasContent"
             @click="analyzeAndGenerate"
-            title="发送"
+            :title="isTextModel ? '发送' : '生成'"
           >
             <svg
-              v-if="!isProcessing"
               viewBox="0 0 24 24"
               width="18"
               height="18"
@@ -1305,7 +1724,6 @@ onUnmounted(() => {
             >
               <path d="M12 19V5M5 12l7-7 7 7" />
             </svg>
-            <div v-else class="send-spinner"></div>
           </button>
         </div>
 
@@ -1439,12 +1857,17 @@ onUnmounted(() => {
 
 /* Welcome */
 .chat-welcome {
+  position: relative;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
+
+  /* 与底部输入框同宽同居中（输入区左右 padding 各 16px），任意屏宽/侧栏状态均对齐 */
+  width: min(980px, calc(100% - 32px));
   padding: 60px 20px 40px;
+  margin: 0 auto;
   text-align: center;
   animation: welcome-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
@@ -1522,7 +1945,7 @@ onUnmounted(() => {
   flex-wrap: wrap;
   gap: 10px;
   justify-content: center;
-  max-width: 560px;
+  max-width: 100%;
 }
 
 .welcome-preset-btn {
@@ -1680,6 +2103,34 @@ onUnmounted(() => {
   white-space: pre-wrap;
 }
 
+/* 生成失败重试按钮 */
+.msg-retry-row {
+  display: flex;
+  margin-top: 12px;
+}
+
+.msg-retry-btn {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 6px 14px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-neon);
+  cursor: pointer;
+  background: var(--color-neon-glow);
+  border: 1px solid var(--color-neon-dim);
+  border-radius: 10px;
+  transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.msg-retry-btn:hover {
+  color: var(--color-bg-primary);
+  background: var(--color-neon);
+  box-shadow: 0 6px 18px var(--color-neon-glow);
+  transform: translateY(-1px);
+}
+
 /* Multi-line collapsible text block — shows preview, expands on hover via title */
 .msg-content-collapsible {
   position: relative;
@@ -1710,6 +2161,18 @@ onUnmounted(() => {
   color: inherit;
 }
 
+/* 用户消息下方：系统加工后的完整提示词（灰色小字） */
+.msg-optimized-prompt {
+  padding-top: 8px;
+  margin-top: 8px;
+  font-size: 0.72rem;
+  line-height: 1.6;
+  color: rgb(0 0 0 / 55%);
+  word-break: break-all;
+  white-space: pre-wrap;
+  border-top: 1px dashed rgb(0 0 0 / 20%);
+}
+
 .msg-time {
   margin-top: 4px;
   font-size: 0.65rem;
@@ -1717,24 +2180,25 @@ onUnmounted(() => {
 }
 
 .msg-user .msg-time {
-  margin-top: 4px;
-  text-align: center;
+  padding-right: 4px;
+  margin-top: 0;
+  text-align: right;
 }
 
 /* 用户头像（右侧） */
 .msg-user {
-  flex-direction: row;
-  gap: 10px;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
   justify-content: flex-end;
 }
 
-.msg-user-meta {
+.msg-user-line {
   display: flex;
-  flex-shrink: 0;
-  flex-direction: column;
-  gap: 4px;
-  align-items: center;
+  gap: 10px;
+  align-items: flex-start;
+  justify-content: flex-end;
+  width: 100%;
 }
 
 .msg-avatar-img {
@@ -1752,15 +2216,14 @@ onUnmounted(() => {
   box-shadow: 0 6px 16px rgb(80 100 255 / 30%);
 }
 
-.msg-user {
-  flex-direction: row;
-  gap: 10px;
-  align-items: center;
-  justify-content: flex-end;
-}
-
 .msg-ai .msg-time {
   margin-left: 4px;
+}
+
+.msg-cost {
+  margin-left: 6px;
+  font-weight: 600;
+  color: var(--color-text-muted);
 }
 
 /* Reference images in messages */
@@ -2343,7 +2806,7 @@ onUnmounted(() => {
 /* ChatGPT-style + button — sits at left-bottom inside input card */
 .input-plus-area {
   position: absolute;
-  bottom: 12px;
+  bottom: 0;
   left: 12px;
   z-index: 3;
 }
@@ -2382,7 +2845,7 @@ onUnmounted(() => {
 .input-textarea {
   width: 100%;
   min-height: 84px;
-  padding: 18px 58px 58px 64px;
+  padding: 18px 58px 12px 64px;
   font-family: inherit;
   font-size: 0.95rem;
   line-height: 1.6;
@@ -2454,15 +2917,12 @@ onUnmounted(() => {
 
 /* Toolbar */
 .input-toolbar {
-  position: absolute;
-  right: 58px;
-  bottom: 12px;
-  left: 60px;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   row-gap: 5px;
   align-items: center;
+  margin: 4px 58px 0 60px;
 }
 
 .toolbar-btn {
@@ -2480,6 +2940,17 @@ onUnmounted(() => {
   border: 1px solid var(--color-border);
   border-radius: 10px;
   transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 模型按钮：限制最大宽度，长模型名省略号显示，悬浮看完整名称 */
+.model-btn {
+  max-width: 168px;
+}
+
+.model-btn-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .toolbar-btn:hover {
@@ -2536,7 +3007,7 @@ onUnmounted(() => {
 
 .input-plus-area {
   position: absolute;
-  bottom: 12px;
+  bottom: 0;
   left: 12px;
   z-index: 3;
 }
@@ -2564,8 +3035,12 @@ onUnmounted(() => {
 .model-dropdown {
   left: 0;
   min-width: 220px;
+  max-width: 320px;
+  max-height: 320px;
+  overflow: hidden auto;
   transform: none;
   transform-origin: bottom left;
+  animation: dropdown-in-left 0.18s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .count-dropdown {
@@ -2575,9 +3050,26 @@ onUnmounted(() => {
 /* Fix the ratio dropdown same treatment */
 .ratio-dropdown {
   min-width: 140px;
+
+  .quality-dropdown {
+    min-width: 140px;
+  }
 }
 
 @keyframes dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+/* 左对齐菜单（model-dropdown 等 transform:none）专用动画，避免被 translateX(-50%) 拉偏 */
+@keyframes dropdown-in-left {
   from {
     opacity: 0;
     transform: translateY(4px) scale(0.98);
@@ -2606,8 +3098,33 @@ onUnmounted(() => {
   letter-spacing: 0.08em;
 }
 
+.model-group-title {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 6px 12px 4px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.04em;
+  background: var(--color-bg-secondary);
+  border-top: 1px solid var(--color-border);
+}
+
+.model-group-title:first-of-type {
+  border-top: none;
+}
+
+.dropdown-empty {
+  padding: 14px 10px;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
 .dropdown-item {
   display: flex;
+  gap: 8px;
   align-items: center;
   justify-content: space-between;
   width: 100%;
@@ -2620,6 +3137,14 @@ onUnmounted(() => {
   border: none;
   border-radius: 10px;
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dropdown-item-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dropdown-item:hover:not(.disabled) {
@@ -2646,6 +3171,22 @@ onUnmounted(() => {
   color: #16a34a;
   background: #dcfce7;
   border-radius: 4px;
+}
+
+.dropdown-type-tag {
+  padding: 1px 5px;
+  margin-left: 4px;
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: #0ea5e9;
+  white-space: nowrap;
+  background: rgb(14 165 233 / 12%);
+  border-radius: 4px;
+}
+
+.dropdown-type-tag-image {
+  color: #8b5cf6;
+  background: rgb(139 92 246 / 12%);
 }
 
 /* + Menu */
@@ -2791,6 +3332,11 @@ onUnmounted(() => {
   background: #fff7ed;
 }
 
+.plus-item.brand:hover {
+  color: #e879f9;
+  background: #fdf4ff;
+}
+
 :global(.dark) .plus-item.transfer:hover {
   color: #fdba74;
   background: rgb(249 115 22 / 14%);
@@ -2908,7 +3454,7 @@ onUnmounted(() => {
 .send-btn {
   position: absolute;
   right: 12px;
-  bottom: 12px;
+  bottom: 0;
   z-index: 2;
   display: flex;
   align-items: center;
@@ -2960,6 +3506,33 @@ onUnmounted(() => {
   border-top-color: #fff;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+}
+
+.send-btn-stop {
+  color: #fff;
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+  border-color: rgb(255 255 255 / 18%);
+  box-shadow:
+    0 4px 14px rgb(239 68 68 / 40%),
+    0 0 0 1px rgb(255 255 255 / 10%) inset;
+}
+
+.send-btn-stop:hover:not(:disabled) {
+  box-shadow:
+    0 10px 26px rgb(239 68 68 / 45%),
+    0 0 0 1px rgb(255 255 255 / 16%) inset;
+  transform: translateY(-3px) scale(1.08);
+}
+
+/* 文本模型发送按钮：加宽容纳「发送」文字 */
+.send-btn-text {
+  width: 56px;
+}
+
+.send-text-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 1px;
 }
 
 .mini-spinner {

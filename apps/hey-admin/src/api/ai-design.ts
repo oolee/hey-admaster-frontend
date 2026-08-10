@@ -41,6 +41,99 @@ export const AiChannelProviderLabels: Record<number, string> = {
   [AiChannelProviderType.Mock]: 'Mock',
 };
 
+export enum AiModelCapability {
+  None = 0,
+  Chat = 1,
+  TextGeneration = 2,
+  ImageGeneration = 4,
+  ImageEditing = 8,
+  Vision = 16,
+  Audio = 32,
+  Video = 64,
+  Embedding = 128,
+}
+
+export const AiModelCapabilityLabels: Record<number, string> = {
+  [AiModelCapability.Chat]: '对话',
+  [AiModelCapability.TextGeneration]: '文本生成',
+  [AiModelCapability.ImageGeneration]: '文生图',
+  [AiModelCapability.ImageEditing]: '图生图',
+  [AiModelCapability.Vision]: '视觉理解',
+  [AiModelCapability.Audio]: '语音',
+  [AiModelCapability.Video]: '视频',
+  [AiModelCapability.Embedding]: '向量',
+};
+
+/** 能力位转 ModelType（兼容视图）：含图片能力→多模态，否则→非多模态 */
+export function capabilitiesToModelType(capabilities: number): number {
+  return capabilities &
+    (AiModelCapability.ImageGeneration | AiModelCapability.ImageEditing)
+    ? AiModelType.Image
+    : AiModelType.Text;
+}
+
+/**
+ * 请求参数能力位（Flags）：声明某参数在请求中「禁用」（渠道不支持则跳过发送）。
+ * 与后端 AiRequestParam 对齐：如 apiyi gpt-image-2-vip 不接受 n/quality。
+ */
+export enum AiRequestParam {
+  None = 0,
+  Size = 1,
+  Quality = 2,
+  Count = 4,
+  ResponseFormat = 8,
+  Background = 16,
+  Moderation = 32,
+  OutputFormat = 64,
+  OutputCompression = 128,
+  PartialImages = 256,
+  Style = 512,
+  User = 1024,
+  Stream = 2048,
+  InputFidelity = 4096,
+}
+
+export const AiRequestParamLabels: Record<number, string> = {
+  [AiRequestParam.Size]: '尺寸 size',
+  [AiRequestParam.Quality]: '质量 quality',
+  [AiRequestParam.Count]: '张数 n',
+  [AiRequestParam.ResponseFormat]: '返回格式',
+  [AiRequestParam.Background]: '背景',
+  [AiRequestParam.Moderation]: '审核级别',
+  [AiRequestParam.OutputFormat]: '输出格式',
+  [AiRequestParam.OutputCompression]: '输出压缩',
+  [AiRequestParam.PartialImages]: '流式部分图',
+  [AiRequestParam.Style]: '风格',
+  [AiRequestParam.User]: '用户标识',
+  [AiRequestParam.Stream]: '流式',
+  [AiRequestParam.InputFidelity]: '输入保真度',
+};
+
+export const AiRequestParamOptions = Object.entries(AiRequestParamLabels).map(
+  ([value, label]) => ({ value: Number(value), label }),
+);
+export enum AiModelType {
+  Image = 0,
+  Text = 1,
+}
+
+export const AiModelTypeLabels: Record<number, string> = {
+  [AiModelType.Image]: '多模态',
+  [AiModelType.Text]: '非多模态',
+};
+
+export enum AiPricingUnit {
+  PerImage = 0,
+  PerRequest = 1,
+  Per1MTokens = 2,
+}
+
+export const AiPricingUnitLabels: Record<number, string> = {
+  [AiPricingUnit.PerImage]: '元/张',
+  [AiPricingUnit.PerRequest]: '元/次',
+  [AiPricingUnit.Per1MTokens]: '元/1M tokens',
+};
+
 export interface AiChannelModelDto {
   id: string;
   modelName: string;
@@ -50,6 +143,11 @@ export interface AiChannelModelDto {
   maxImagesPerRequest: number;
   supportedSizes?: null | string;
   pricePerImage: number;
+  modelType: number;
+  pricingUnit: number;
+  capabilities: number;
+  /** 禁用的请求参数位（Flags）：如 apiyi gpt-image-2-vip 不接受 n/quality；0=全部支持 */
+  disabledRequestParams: number;
 }
 
 export interface AiChannelDto {
@@ -57,6 +155,8 @@ export interface AiChannelDto {
   name: string;
   providerType: number;
   baseUrl?: null | string;
+  /** API Key 脱敏展示（前几位 + ****），后端不返回明文 */
+  apiKeyMasked?: null | string;
   enabled: boolean;
   priority: number;
   weight: number;
@@ -79,6 +179,11 @@ export interface CreateUpdateAiChannelModelDto {
   maxImagesPerRequest: number;
   supportedSizes?: null | string;
   pricePerImage: number;
+  modelType: number;
+  pricingUnit: number;
+  capabilities: number;
+  /** 禁用的请求参数位（Flags）：如 apiyi gpt-image-2-vip 不接受 n/quality；0=全部支持 */
+  disabledRequestParams: number;
 }
 
 export interface CreateUpdateAiChannelDto {
@@ -159,6 +264,8 @@ export interface AiDesignSettingsDto {
   gatewayTimeoutSeconds: number;
   gatewayEnableSse: boolean;
   gatewayExternalBaseUrl?: null | string;
+  promptOptimizationEnabled?: boolean | null;
+  promptOptimizationModel?: null | string;
 }
 
 export interface UpdateAiDesignSettingsInput {
@@ -177,6 +284,8 @@ export interface UpdateAiDesignSettingsInput {
   gatewayTimeoutSeconds?: null | number;
   gatewayEnableSse?: boolean | null;
   gatewayExternalBaseUrl?: null | string;
+  promptOptimizationEnabled?: boolean | null;
+  promptOptimizationModel?: null | string;
 }
 
 export interface PagedInput {
@@ -219,7 +328,18 @@ export function useAiDesignApi() {
 
   const setChannelEnabled = (id: string, enabled: boolean) =>
     request<AiChannelDto>(`${BASE_URL}/channels/${id}/enabled`, {
-      data: enabled,
+      params: { enabled },
+      method: 'POST',
+    });
+
+  /** 自动获取上游模型列表（OpenAI 兼容：GET {baseUrl}/models） */
+  const fetchChannelModels = (input: {
+    apiKey?: null | string;
+    baseUrl?: null | string;
+    providerType: number;
+  }) =>
+    request<string[]>(`${BASE_URL}/channels/fetch-models`, {
+      data: input,
       method: 'POST',
     });
 
@@ -274,6 +394,7 @@ export function useAiDesignApi() {
     updateChannel,
     deleteChannel,
     setChannelEnabled,
+    fetchChannelModels,
     getSessions,
     deleteSession,
     getWallets,

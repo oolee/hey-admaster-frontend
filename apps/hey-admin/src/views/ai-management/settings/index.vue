@@ -153,11 +153,34 @@ const [GatewayForm, gatewayFormApi] = useVbenForm({
   showDefaultActions: false,
 });
 
+// ── 分组5：提示词优化 ──
+const [PromptForm, promptFormApi] = useVbenForm({
+  commonConfig: { colon: true, controlClass: 'w-full' },
+  schema: [
+    {
+      component: 'Switch',
+      controlClass: 'w-auto',
+      fieldName: 'promptOptimizationEnabled',
+      label: '启用提示词优化（后台文本模型精简）',
+    },
+    {
+      component: 'Input',
+      fieldName: 'promptOptimizationModel',
+      label: '优化模型',
+      componentProps: {
+        placeholder: '如：deepseek-chat，留空自动选择启用的文本模型',
+      },
+    },
+  ],
+  showDefaultActions: false,
+});
+
 const allFormApis = [
   retentionFormApi,
   generationFormApi,
   storageFormApi,
   gatewayFormApi,
+  promptFormApi,
 ];
 
 function setAllValues(values: Record<string, any>) {
@@ -165,10 +188,10 @@ function setAllValues(values: Record<string, any>) {
 }
 
 async function collectAllValues(): Promise<Record<string, any>> {
-  const [a, b, c] = await Promise.all(
+  const [a, b, c, d, e] = await Promise.all(
     allFormApis.map((api) => api.submitForm()),
   );
-  return { ...a, ...b, ...c };
+  return { ...a, ...b, ...c, ...d, ...e };
 }
 
 onMounted(async () => {
@@ -186,7 +209,7 @@ async function onSave() {
   try {
     // Validate all forms first
     for (const api of allFormApis) {
-      await api.validateForm();
+      await api.validate();
     }
     const values = await collectAllValues();
     const input: UpdateAiDesignSettingsInput = {
@@ -205,6 +228,8 @@ async function onSave() {
       gatewayTimeoutSeconds: values.gatewayTimeoutSeconds,
       gatewayEnableSse: values.gatewayEnableSse ?? true,
       gatewayExternalBaseUrl: values.gatewayExternalBaseUrl || null,
+      promptOptimizationEnabled: values.promptOptimizationEnabled ?? false,
+      promptOptimizationModel: values.promptOptimizationModel || null,
     };
     const result = await updateSettings(input);
     setAllValues(result);
@@ -278,6 +303,29 @@ async function onSave() {
         </div>
       </Card>
 
+      <!-- Card 5: 提示词优化 -->
+      <Card class="shadow-sm lg:col-span-2" :bordered="true">
+        <template #title>
+          <div class="flex items-center gap-2">
+            <span
+              class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-100 text-cyan-700 text-sm font-bold dark:bg-cyan-900/30 dark:text-cyan-400"
+            >
+              P
+            </span>
+            <span class="font-semibold">提示词优化</span>
+          </div>
+        </template>
+        <div class="grid gap-x-8 gap-y-1 md:grid-cols-2">
+          <PromptForm />
+        </div>
+        <div
+          class="mt-3 rounded-lg border border-cyan-200 bg-cyan-50 px-4 py-2 text-xs text-cyan-700 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-300"
+        >
+          启用后，AI 设计页的「AI 优化提示词」会调用后台文本模型（如
+          deepseek）把用户提示词与已选设计参数精简为一条简短有效的生图提示词；未启用或调用失败时回退本地结构化拼接。
+        </div>
+      </Card>
+
       <!-- Card 4: 统一网关（new-api） -->
       <Card class="shadow-sm lg:col-span-2" :bordered="true">
         <template #title>
@@ -296,8 +344,8 @@ async function onSave() {
         <div
           class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300"
         >
-          配置网关后，所有模型请求统一走 new-api 中转（OpenAI 兼容协议），渠道自身的
-          BaseUrl/Key 仅作为未配置网关时的直连回退。
+          配置网关后，所有模型请求统一走 new-api 中转（OpenAI
+          兼容协议），渠道自身的 BaseUrl/Key 仅作为未配置网关时的直连回退。
         </div>
       </Card>
     </div>
