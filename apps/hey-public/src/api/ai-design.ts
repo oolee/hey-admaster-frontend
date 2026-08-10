@@ -278,6 +278,25 @@ export interface AiTemplate {
   printSize?: null | string;
   isActive: boolean;
   sortOrder: number;
+  /** 模板来源：0 内置 / 1 用户对话沉淀共享 */
+  source: number;
+  /** 共享者用户 Id（用户共享模板） */
+  ownerUserId?: null | string;
+  /** 封面图（AiImageAsset.Id） */
+  coverImageId?: null | string;
+  /** 封面图访问地址（模板封面公开端点） */
+  coverImageUrl?: null | string;
+  /** 被使用次数 */
+  usageCount: number;
+}
+
+/** 对话沉淀为共享模板输入 */
+export interface AiTemplateCreateFromGenerationInput {
+  taskId: string;
+  name?: null | string;
+  category: string;
+  description?: null | string;
+  promptHint?: null | string;
 }
 
 // ── 生图 ──
@@ -360,6 +379,26 @@ export function deleteAiSession(id: string): Promise<void> {
 // ── 模板 / 模型选项 ──
 export function fetchAiTemplates(): Promise<AiTemplate[]> {
   return aiDesignApi<AiTemplate[]>('/templates');
+}
+
+/** 对话沉淀：把一次成功生成的提示词 + 封面图沉淀为共享模板（登录用户） */
+export function createAiTemplateFromGeneration(
+  input: AiTemplateCreateFromGenerationInput,
+): Promise<AiTemplate> {
+  return aiDesignApi<AiTemplate>('/templates/from-generation', {
+    method: 'POST',
+    body: input,
+  });
+}
+
+/** 模板被选用一次：热度 +1 */
+export function incrementAiTemplateUsage(id: string): Promise<void> {
+  return aiDesignApi<void>(`/templates/${id}/usage`, { method: 'PUT' });
+}
+
+/** 删除用户共享模板（共享者本人或管理员） */
+export function deleteAiTemplate(id: string): Promise<void> {
+  return aiDesignApi<void>(`/templates/${id}`, { method: 'DELETE' });
 }
 
 export function fetchAiModelOptions(): Promise<AiModelOption[]> {
@@ -628,3 +667,4 @@ export function fetchBrandAssetContent(
 ): Promise<AiBrandAssetContent> {
   return aiDesignApi<AiBrandAssetContent>(`/brand-assets/${id}/content`);
 }
+

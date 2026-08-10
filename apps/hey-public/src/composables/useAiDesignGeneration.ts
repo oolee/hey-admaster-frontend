@@ -69,71 +69,76 @@ function extractPromptSize(prompt: string): ExtractedSize | null {
  * AI 设计真实生图（后端 Hey.AdMaster.AiDesign 模块）
  * 统一构建请求参数：尺寸、质量、参考图 base64、模型、模板、蒙版（局部修改）等。
  */
+/** gpt-image-2 30 档常见尺寸（对齐 apiyi gpt-image-2-vip：10 比例 × 3 分辨率档）。
+ * 1K/2K/4K 为「模糊档位」，选中档位后默认取该档最大分辨率；也可精确选择档内任意尺寸。
+ */
+/** gpt-image-2 30 档常见尺寸（对齐 apiyi gpt-image-2-vip：10 比例 × 3 分辨率档） */
+export const GPT_IMAGE_TIER_SIZES: {
+  sizes: { name: string; ratio: string; size: string }[];
+  tier: '1k' | '2k' | '4k';
+  tierLabel: string;
+}[] = [
+  {
+    tier: '1k',
+    tierLabel: '1K Fast',
+    sizes: [
+      { ratio: '1:1', name: 'Square', size: '1280x1280' },
+      { ratio: '2:3', name: 'Portrait', size: '848x1280' },
+      { ratio: '3:2', name: 'Photo', size: '1280x848' },
+      { ratio: '3:4', name: 'Portrait', size: '960x1280' },
+      { ratio: '4:3', name: 'Standard', size: '1280x960' },
+      { ratio: '4:5', name: 'Social', size: '1024x1280' },
+      { ratio: '5:4', name: 'Large', size: '1280x1024' },
+      { ratio: '9:16', name: 'Story', size: '720x1280' },
+      { ratio: '16:9', name: 'Wide', size: '1280x720' },
+      { ratio: '21:9', name: 'Cinema', size: '1280x544' },
+    ],
+  },
+  {
+    tier: '2k',
+    tierLabel: '2K Recommended',
+    sizes: [
+      { ratio: '1:1', name: 'Square', size: '2048x2048' },
+      { ratio: '2:3', name: 'Portrait', size: '1360x2048' },
+      { ratio: '3:2', name: 'Photo', size: '2048x1360' },
+      { ratio: '3:4', name: 'Portrait', size: '1536x2048' },
+      { ratio: '4:3', name: 'Standard', size: '2048x1536' },
+      { ratio: '4:5', name: 'Social', size: '1632x2048' },
+      { ratio: '5:4', name: 'Large', size: '2048x1632' },
+      { ratio: '9:16', name: 'Story', size: '1152x2048' },
+      { ratio: '16:9', name: 'Wide', size: '2048x1152' },
+      { ratio: '21:9', name: 'Cinema', size: '2048x864' },
+    ],
+  },
+  {
+    tier: '4k',
+    tierLabel: '4K Detail',
+    sizes: [
+      { ratio: '1:1', name: 'Square', size: '2880x2880' },
+      { ratio: '2:3', name: 'Portrait', size: '2336x3520' },
+      { ratio: '3:2', name: 'Photo', size: '3520x2336' },
+      { ratio: '3:4', name: 'Portrait', size: '2480x3312' },
+      { ratio: '4:3', name: 'Standard', size: '3312x2480' },
+      { ratio: '4:5', name: 'Social', size: '2560x3216' },
+      { ratio: '5:4', name: 'Large', size: '3216x2560' },
+      { ratio: '9:16', name: 'Story', size: '2160x3840' },
+      { ratio: '16:9', name: 'Wide', size: '3840x2160' },
+      { ratio: '21:9', name: 'Cinema', size: '3840x1632' },
+    ],
+  },
+];
+
+/** 各档位「最大分辨率」兜底（未选比例时默认选中） */
+export const GPT_IMAGE_TIER_MAX: Record<'1k' | '2k' | '4k', string> = {
+  '1k': '1280x1280',
+  '2k': '2048x2048',
+  '4k': '3840x2160',
+};
+
+
 export function useAiDesignGeneration() {
   const store = useAiDesignStore();
 
-  /** gpt-image-2 30 档常见尺寸（对齐 apiyi gpt-image-2-vip：10 比例 × 3 分辨率档） */
-  export const GPT_IMAGE_TIER_SIZES: {
-    sizes: { name: string; ratio: string; size: string }[];
-    tier: '1k' | '2k' | '4k';
-    tierLabel: string;
-  }[] = [
-    {
-      tier: '1k',
-      tierLabel: '1K Fast',
-      sizes: [
-        { ratio: '1:1', name: 'Square', size: '1280x1280' },
-        { ratio: '2:3', name: 'Portrait', size: '848x1280' },
-        { ratio: '3:2', name: 'Photo', size: '1280x848' },
-        { ratio: '3:4', name: 'Portrait', size: '960x1280' },
-        { ratio: '4:3', name: 'Standard', size: '1280x960' },
-        { ratio: '4:5', name: 'Social', size: '1024x1280' },
-        { ratio: '5:4', name: 'Large', size: '1280x1024' },
-        { ratio: '9:16', name: 'Story', size: '720x1280' },
-        { ratio: '16:9', name: 'Wide', size: '1280x720' },
-        { ratio: '21:9', name: 'Cinema', size: '1280x544' },
-      ],
-    },
-    {
-      tier: '2k',
-      tierLabel: '2K Recommended',
-      sizes: [
-        { ratio: '1:1', name: 'Square', size: '2048x2048' },
-        { ratio: '2:3', name: 'Portrait', size: '1360x2048' },
-        { ratio: '3:2', name: 'Photo', size: '2048x1360' },
-        { ratio: '3:4', name: 'Portrait', size: '1536x2048' },
-        { ratio: '4:3', name: 'Standard', size: '2048x1536' },
-        { ratio: '4:5', name: 'Social', size: '1632x2048' },
-        { ratio: '5:4', name: 'Large', size: '2048x1632' },
-        { ratio: '9:16', name: 'Story', size: '1152x2048' },
-        { ratio: '16:9', name: 'Wide', size: '2048x1152' },
-        { ratio: '21:9', name: 'Cinema', size: '2048x864' },
-      ],
-    },
-    {
-      tier: '4k',
-      tierLabel: '4K Detail',
-      sizes: [
-        { ratio: '1:1', name: 'Square', size: '2880x2880' },
-        { ratio: '2:3', name: 'Portrait', size: '2336x3520' },
-        { ratio: '3:2', name: 'Photo', size: '3520x2336' },
-        { ratio: '3:4', name: 'Portrait', size: '2480x3312' },
-        { ratio: '4:3', name: 'Standard', size: '3312x2480' },
-        { ratio: '4:5', name: 'Social', size: '2560x3216' },
-        { ratio: '5:4', name: 'Large', size: '3216x2560' },
-        { ratio: '9:16', name: 'Story', size: '2160x3840' },
-        { ratio: '16:9', name: 'Wide', size: '3840x2160' },
-        { ratio: '21:9', name: 'Cinema', size: '3840x1632' },
-      ],
-    },
-  ];
-
-  /** 各档位「最大分辨率」兜底（未选比例时默认选中） */
-  export const GPT_IMAGE_TIER_MAX: Record<'1k' | '2k' | '4k', string> = {
-    '1k': '1280x1280',
-    '2k': '2048x2048',
-    '4k': '3840x2160',
-  };
   /** 模型未声明 supportedSizes 时的兜底固定尺寸集（OpenAI 兼容 /images/generations 常见值） */
   const DEFAULT_SIZES = ['1024x1024', '1536x1024', '1024x1536'];
 
@@ -195,6 +200,30 @@ export function useAiDesignGeneration() {
   }
 
   function buildSize(prompt = ''): string {
+    // 精确选择（30 档中指定具体尺寸）：优先返回该尺寸；模型声明了 supportedSizes 且不含该尺寸时，
+    // 就近匹配比例最接近的支持尺寸，避免上游拒绝
+    if (store.exactSize) {
+      const supported = store.currentModel?.supportedSizes?.length
+        ? store.currentModel.supportedSizes
+        : null;
+      if (!supported || supported.includes(store.exactSize)) {
+        return store.exactSize;
+      }
+      const parsed = supported.map((s) => {
+        const [wStr, hStr] = s.split('x') as [string, string];
+        const w = Number.parseInt(wStr, 10);
+        const h = Number.parseInt(hStr, 10);
+        return { size: s, w, h, ratio: w / h };
+      });
+      const exactRatio = (() => {
+        const [wStr, hStr] = store.exactSize.split('x') as [string, string];
+        return Number.parseInt(wStr, 10) / Number.parseInt(hStr, 10);
+      })();
+      const best = [...parsed].toSorted(
+        (a, b) => Math.abs(a.ratio - exactRatio) - Math.abs(b.ratio - exactRatio),
+      )[0];
+      return best?.size ?? parsed[0]?.size ?? store.exactSize;
+    }
     const supported = store.currentModel?.supportedSizes?.length
       ? store.currentModel.supportedSizes
       : null;

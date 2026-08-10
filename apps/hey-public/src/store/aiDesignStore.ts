@@ -371,6 +371,8 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
   const selectedAspectRatio = ref('auto'); // 默认自动：未选择比例/设计类型时提示词不附加尺寸
   /** 分辨率档位（模糊选择）：auto=自动 / 1k / 2k / 4k。选档位时取该档最大分辨率或按比例匹配 30 档尺寸 */
   const resolutionTier = ref<'1k' | '2k' | '4k' | 'auto'>('auto');
+/** 精确尺寸（如 1536x1024）：用户在 30 档尺寸中精确选择后生效；为空时按「档位+比例」自动解析 */
+  const exactSize = ref<string>('');
 
   // ── Style presets (expanded with real case preview images) ──
   const stylePresets = [
@@ -994,6 +996,7 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
     selectedDesignType,
     selectedAspectRatio,
     resolutionTier,
+    exactSize,
     stylePresets,
     colorPalettes,
     tagOptions,
