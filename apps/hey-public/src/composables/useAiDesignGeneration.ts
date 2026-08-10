@@ -65,14 +65,9 @@ function extractPromptSize(prompt: string): ExtractedSize | null {
   return null;
 }
 
-/**
- * AI 设计真实生图（后端 Hey.AdMaster.AiDesign 模块）
- * 统一构建请求参数：尺寸、质量、参考图 base64、模型、模板、蒙版（局部修改）等。
- */
 /** gpt-image-2 30 档常见尺寸（对齐 apiyi gpt-image-2-vip：10 比例 × 3 分辨率档）。
  * 1K/2K/4K 为「模糊档位」，选中档位后默认取该档最大分辨率；也可精确选择档内任意尺寸。
  */
-/** gpt-image-2 30 档常见尺寸（对齐 apiyi gpt-image-2-vip：10 比例 × 3 分辨率档） */
 export const GPT_IMAGE_TIER_SIZES: {
   sizes: { name: string; ratio: string; size: string }[];
   tier: '1k' | '2k' | '4k';

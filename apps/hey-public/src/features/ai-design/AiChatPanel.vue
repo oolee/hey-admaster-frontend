@@ -12,11 +12,16 @@ import {
   AiModelCapability,
   AiModelType,
   AiPricingUnitLabels,
+  createAiTemplateFromGeneration,
+  incrementAiTemplateUsage,
   optimizeAiPrompt,
   queryAiGenerationTask,
   retryPersistAiImages,
 } from '#/api/ai-design';
-import { useAiDesignGeneration } from '#/composables/useAiDesignGeneration';
+import {
+  GPT_IMAGE_TIER_SIZES,
+  useAiDesignGeneration,
+} from '#/composables/useAiDesignGeneration';
 import { useAuth } from '#/composables/useAuth';
 import { useAiDesignStore } from '#/store/aiDesignStore';
 import { buildPrompt, getTemplatesByCategory } from '#/utils/templates';
@@ -205,7 +210,7 @@ const isTextModel = computed(() => {
 /** 模型计价单位文案（按模型自身 pricingUnit） */
 function modelUnitLabel(unit: number | undefined): string {
   return unit !== undefined && unit in AiPricingUnitLabels
-    ? AiPricingUnitLabels[unit]
+    ? AiPricingUnitLabels[unit] ?? '元/张'
     : '元/张';
 }
 
@@ -227,7 +232,10 @@ const showQualityMenu = ref(false);
 
 // Quick ratio presets for the toolbar dropdown
 /** 分辨率档位（模糊选择）：auto=自动 / 1k / 2k / 4k，选档位默认取该档最大分辨率 */
-const resolutionTierOptions = [
+const resolutionTierOptions: {
+  value: 'auto' | '1k' | '2k' | '4k';
+  label: string;
+}[] = [
   { value: 'auto', label: '自动' },
   { value: '1k', label: '1K' },
   { value: '2k', label: '2K' },
@@ -326,6 +334,7 @@ const lastAppliedTemplateId = ref<null | string>(null);
 const backendTemplates = computed<AdTemplate[]>(() =>
   store.templates.map((t) => ({
     id: t.templateId,
+    backendId: t.id,
     name: t.name,
     category: t.category,
     icon: t.icon ?? 'mdi:apps',
@@ -335,6 +344,9 @@ const backendTemplates = computed<AdTemplate[]>(() =>
     recommendedModel: t.recommendedModel ?? '',
     defaultSize: t.defaultSize ?? '',
     printSize: t.printSize ?? '',
+    source: t.source ?? 0,
+    coverImageUrl: t.coverImageUrl ?? '',
+    usageCount: t.usageCount ?? 0,
   })),
 );
 const templateCategories = computed(() =>
@@ -342,6 +354,17 @@ const templateCategories = computed(() =>
     backendTemplates.value.length > 0 ? backendTemplates.value : undefined,
   ),
 );
+
+// 存为模板弹窗（对话沉淀 → 用户共享模板）
+const showSaveTemplateDialog = ref(false);
+const saveTemplateTaskId = ref<null | string>(null);
+const saveTemplateCategory = ref('');
+const saveTemplateName = ref('');
+const saveTemplateDesc = ref('');
+const saveTemplateBusy = ref(false);
+const saveTemplateCategoryOptions = computed(() => [
+  ...new Set(Object.keys(templateCategories.value).filter(Boolean)),
+]);
 
 // 生成质量选项（替换原 1K/2K/4K 分辨率档位：分辨率属于 size/比例维度，质量才是 auto/low/medium/high）
 const qualityOptions = [
@@ -367,7 +390,12 @@ const TEMPLATE_IMAGES: Record<string, string> = {
 };
 
 function templateImage(tpl: AdTemplate): string {
-  return TEMPLATE_IMAGES[tpl.id] || '/images/fede/fede.jpg';
+  // 用户共享模板优先展示真实生成图封面；内置模板回退到本地占位图
+  return (
+    tpl.coverImageUrl ||
+    TEMPLATE_IMAGES[tpl.id] ||
+    '/images/fede/fede.jpg'
+  );
 }
 
 function toggleTemplates() {
@@ -397,6 +425,76 @@ function applyTemplate(tpl: AdTemplate) {
     templateHint.value = '';
   }, 2500);
   nextTick(() => textareaRef.value?.focus());
+  // 选用一次：热度 +1（仅后端模板）
+  if (tpl.backendId) {
+    incrementAiTemplateUsage(tpl.backendId).catch(() => {});
+  }
+}
+
+/** 复制共享模板的原始提示词到剪贴板（「共享提示词参考」） */
+function copyTemplatePrompt(tpl: AdTemplate) {
+  navigator.clipboard
+    ?.writeText(tpl.promptTemplate)
+    .then(() => {
+      templateHint.value = `已复制「${tpl.name}」提示词，可粘贴到任意输入框`;
+      window.setTimeout(() => {
+        templateHint.value = '';
+      }, 2500);
+    })
+    .catch(() => {
+      templateHint.value = '复制失败，请手动选择提示词复制';
+      window.setTimeout(() => {
+        templateHint.value = '';
+      }, 2500);
+    });
+}
+
+/** 打开「存为模板」弹窗（仅限有生成结果的成功任务） */
+function openSaveTemplateDialog(msg: ChatMessage) {
+  if (!msg.taskId || !msg.images?.length) return;
+  saveTemplateTaskId.value = msg.taskId;
+  saveTemplateCategory.value = '';
+  saveTemplateName.value = '';
+  saveTemplateDesc.value = '';
+  showSaveTemplateDialog.value = true;
+}
+
+/** 确认沉淀：按分类把本次生成的提示词 + 封面图存入模板库 */
+async function confirmSaveTemplate() {
+  const taskId = saveTemplateTaskId.value;
+  const category = saveTemplateCategory.value.trim();
+  if (!taskId || saveTemplateBusy.value) return;
+  if (!category) {
+    templateHint.value = '请选择或输入模板分类';
+    window.setTimeout(() => {
+      templateHint.value = '';
+    }, 2500);
+    return;
+  }
+  saveTemplateBusy.value = true;
+  try {
+    await createAiTemplateFromGeneration({
+      taskId,
+      category,
+      name: saveTemplateName.value.trim() || null,
+      description: saveTemplateDesc.value.trim() || null,
+      promptHint: null,
+    });
+    await store.refreshTemplates();
+    showSaveTemplateDialog.value = false;
+    templateHint.value = `已存入模板库（分类：${category}），可打开「创意模版」查看`;
+    window.setTimeout(() => {
+      templateHint.value = '';
+    }, 3000);
+  } catch (error: unknown) {
+    alert(
+      error instanceof Error
+        ? `保存模板失败：${error.message}`
+        : '保存模板失败，请稍后重试',
+    );
+  } finally {
+    saveTemplateBusy.value = false;
+  }
 }
 
 // Computed
@@ -682,6 +780,8 @@ function toggleQualityMenu() {
 // Apply a quick ratio from the toolbar dropdown
 function applyQuickRatio(value: string) {
   store.selectedAspectRatio = value;
+  // 切换到「比例」模式时清空精确尺寸，避免精确尺寸覆盖比例选择
+  store.exactSize = '';
   if (value === 'auto' || value === 'custom') {
     // 自动/自定义：解除设计类型对尺寸的锁定，尺寸交给比例/自定义控制
     store.selectedDesignType = '';
@@ -710,6 +810,34 @@ function applyQuickRatio(value: string) {
       store.sizeSource = 'ratio';
     }
   }
+  showRatioMenu.value = false;
+}
+
+/** 精确尺寸按钮文案：精确尺寸 > 比例+档位 > 自动 */
+const sizeButtonText = computed(() => {
+  if (store.exactSize) return store.exactSize;
+  const ratio =
+    store.selectedAspectRatio === 'auto'
+      ? '自动'
+      : store.selectedAspectRatio === 'custom'
+        ? '自定义'
+        : store.selectedAspectRatio;
+  return store.resolutionTier === 'auto'
+    ? ratio
+    : `${ratio} · ${store.resolutionTier.toUpperCase()}`;
+});
+
+/** 选择 30 档中的精确尺寸：与「模糊档位」互斥，尺寸自带比例 */
+function pickExactSize(size: string) {
+  store.exactSize = size;
+  store.resolutionTier = 'auto';
+  showRatioMenu.value = false;
+}
+
+/** 选择模糊档位（1K/2K/4K）：与「精确尺寸」互斥，默认取该档最大分辨率 */
+function pickResolutionTier(tier: '1k' | '2k' | '4k' | 'auto') {
+  store.resolutionTier = tier;
+  store.exactSize = '';
   showRatioMenu.value = false;
 }
 
@@ -1025,6 +1153,29 @@ onUnmounted(() => {
                       class="trace-loading"
                       >…</span
                     >
+                  </button>
+                  <button
+                    v-if="msg.images && msg.images.length"
+                    class="msg-trace-toggle msg-save-template-btn"
+                    title="把本次生成的提示词与封面图按分类沉淀为共享模板"
+                    @click="openSaveTemplateDialog(msg)"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="13"
+                      height="13"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                    </svg>
+                    存为模板
                   </button>
                   <button
                     v-if="msg.persistFailed && !isProcessing"
@@ -1783,17 +1934,7 @@ onUnmounted(() => {
                   <rect x="3" y="6" width="18" height="12" rx="1.5" />
                   <path d="M9 6v12M15 6v12" stroke-dasharray="2 2" />
                 </svg>
-                <span
-                  >{{
-                    store.selectedAspectRatio === 'auto'
-                      ? '自动'
-                      : store.selectedAspectRatio === 'custom'
-                        ? '自定义'
-                        : store.selectedAspectRatio
-                  }}<template v-if="store.resolutionTier !== 'auto'">
-                    · {{ store.resolutionTier.toUpperCase() }}</template
-                  ></span
-                >
+                <span>{{ sizeButtonText }}</span>
                 <svg
                   viewBox="0 0 24 24"
                   width="12"
@@ -1827,6 +1968,36 @@ onUnmounted(() => {
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 </button>
+
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-title">精确尺寸（30 档，按 1K/2K/4K 分组）</div>
+                <div class="exact-size-groups">
+                  <div
+                    v-for="g in GPT_IMAGE_TIER_SIZES"
+                    :key="g.tier"
+                    class="exact-size-group"
+                  >
+                    <div class="exact-size-group-title">
+                      {{ g.tierLabel }}
+                      <span class="exact-size-group-hint"
+                        >选档取最大分辨率</span
+                      >
+                    </div>
+                    <div class="exact-size-grid">
+                      <button
+                        v-for="s in g.sizes"
+                        :key="s.size"
+                        class="exact-size-item"
+                        :class="{ active: store.exactSize === s.size }"
+                        :title="`${s.name} ${s.ratio} ${s.size}`"
+                        @click="pickExactSize(s.size)"
+                      >
+                        {{ s.size }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 <div class="dropdown-divider"></div>
                 <div class="dropdown-title">分辨率档位（模糊选择）</div>
                 <button
@@ -1835,7 +2006,7 @@ onUnmounted(() => {
                   class="dropdown-item"
                   :class="[{ active: store.resolutionTier === t.value }]"
                   title="选 1K/2K/4K 时默认取该档最大分辨率；不选则自动匹配"
-                  @click="store.resolutionTier = t.value"
+                  @click="pickResolutionTier(t.value)"
                 >
                   <span>{{ t.label }}</span>
                   <svg
@@ -2023,10 +2194,12 @@ onUnmounted(() => {
               >
                 <div class="tpl-group-title">{{ cat }}</div>
                 <div class="tpl-group-list">
-                  <button
+                  <div
                     v-for="tpl in list"
                     :key="tpl.id"
                     class="template-card"
+                    role="button"
+                    tabindex="0"
                     :title="tpl.description"
                     @click.stop="
                       applyTemplate(tpl);
@@ -2041,6 +2214,35 @@ onUnmounted(() => {
                         alt=""
                       />
                       <span class="template-cat">{{ tpl.category }}</span>
+                      <span
+                        v-if="tpl.source === 1"
+                        class="template-shared-badge"
+                        title="用户对话沉淀的共享模板"
+                        >共享</span
+                      >
+                      <button
+                        v-if="tpl.source === 1"
+                        class="template-copy-btn"
+                        title="复制原始提示词（共享提示词参考）"
+                        @click.stop="copyTemplatePrompt(tpl)"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          width="11"
+                          height="11"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <rect x="9" y="9" width="13" height="13" rx="2" />
+                          <path
+                            d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"
+                          />
+                        </svg>
+                        复制
+                      </button>
                     </span>
                     <span class="template-name">{{ tpl.name }}</span>
                     <span class="template-tag-row">
@@ -2050,9 +2252,103 @@ onUnmounted(() => {
                       <span class="template-tag template-tag-dim">{{
                         tpl.defaultSize
                       }}</span>
+                      <span
+                        v-if="(tpl.usageCount ?? 0) > 0"
+                        class="template-tag template-tag-heat"
+                        >热度 {{ tpl.usageCount }}</span
+                      >
                     </span>
-                  </button>
+                  </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- 存为模板弹窗（对话沉淀 → 共享模板） -->
+    <Teleport to="body">
+      <Transition name="drawer-fade">
+        <div
+          v-if="showSaveTemplateDialog"
+          class="tpl-drawer-overlay save-tpl-overlay"
+          @click.self="showSaveTemplateDialog = false"
+        >
+          <div class="tpl-drawer save-tpl-dialog">
+            <div class="tpl-drawer-header">
+              <h3 class="tpl-drawer-title">存为模板</h3>
+              <button
+                class="tpl-drawer-close"
+                @click="showSaveTemplateDialog = false"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                >
+                  <path d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div class="save-tpl-body">
+              <p class="save-tpl-tip">
+                将本次生成使用的提示词与封面图沉淀为共享模板，其他用户可参考与复用。
+              </p>
+              <label class="save-tpl-label" for="save-tpl-category"
+                >分类（必填）</label
+              >
+              <input
+                id="save-tpl-category"
+                v-model="saveTemplateCategory"
+                class="save-tpl-input"
+                list="save-tpl-categories"
+                placeholder="选择或输入新分类，如：门头设计"
+              />
+              <datalist id="save-tpl-categories">
+                <option
+                  v-for="cat in saveTemplateCategoryOptions"
+                  :key="cat"
+                  :value="cat"
+                />
+              </datalist>
+              <label class="save-tpl-label" for="save-tpl-name"
+                >模板名称</label
+              >
+              <input
+                id="save-tpl-name"
+                v-model="saveTemplateName"
+                class="save-tpl-input"
+                placeholder="留空自动命名（分类+时间）"
+              />
+              <label class="save-tpl-label" for="save-tpl-desc"
+                >备注说明</label
+              >
+              <textarea
+                id="save-tpl-desc"
+                v-model="saveTemplateDesc"
+                class="save-tpl-textarea"
+                rows="2"
+                placeholder="可选：补充适用场景 / 使用建议"
+              ></textarea>
+              <div class="save-tpl-actions">
+                <button
+                  class="save-tpl-btn"
+                  @click="showSaveTemplateDialog = false"
+                >
+                  取消
+                </button>
+                <button
+                  class="save-tpl-btn save-tpl-btn-primary"
+                  :disabled="saveTemplateBusy"
+                  @click="confirmSaveTemplate"
+                >
+                  {{ saveTemplateBusy ? '保存中...' : '保存' }}
+                </button>
               </div>
             </div>
           </div>
@@ -2425,6 +2721,17 @@ onUnmounted(() => {
   cursor: not-allowed;
   opacity: 0.6;
   transform: none;
+}
+
+.msg-save-template-btn {
+  color: var(--color-neon);
+  border-color: var(--color-neon-dim);
+  background: var(--color-neon-glow);
+}
+
+.msg-save-template-btn:hover {
+  color: var(--color-bg-primary);
+  background: var(--color-neon);
 }
 
 .msg-trace-panel {
@@ -3444,11 +3751,80 @@ onUnmounted(() => {
 
 /* Fix the ratio dropdown same treatment */
 .ratio-dropdown {
-  min-width: 140px;
+  min-width: 320px;
+  max-width: 400px;
+  max-height: 440px;
+  overflow: hidden auto;
+  padding: 8px;
 
   .quality-dropdown {
     min-width: 140px;
   }
+}
+
+/* ── 精确尺寸（30 档按 1K/2K/4K 分组）── */
+.exact-size-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.exact-size-group-title {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px 2px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  letter-spacing: 0.04em;
+  background: var(--color-bg-secondary);
+  /* 同模型分组标题：顶部不留边框，钉住时紧贴容器顶 */
+  border-top: none;
+}
+
+.exact-size-group-hint {
+  font-size: 0.56rem;
+  font-weight: 400;
+  color: var(--color-text-muted);
+  opacity: 0.75;
+}
+
+.exact-size-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+  padding: 2px 10px 8px;
+}
+
+.exact-size-item {
+  padding: 3px 2px;
+  font-size: 0.58rem;
+  line-height: 1.3;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.exact-size-item:hover {
+  color: var(--color-neon);
+  background: var(--color-neon-glow);
+  border-color: var(--color-neon-dim);
+}
+
+.exact-size-item.active {
+  font-weight: 600;
+  color: var(--color-neon);
+  background: var(--color-neon-glow);
+  border-color: var(--color-neon);
 }
 
 @keyframes dropdown-in {
@@ -3509,11 +3885,10 @@ onUnmounted(() => {
   color: var(--color-text-muted);
   letter-spacing: 0.04em;
   background: var(--color-bg-secondary);
-  border-top: 1px solid var(--color-border);
-}
-
-.model-group-title:first-of-type {
+  /* 顶部不留边框：钉住时紧贴滚动容器顶，避免出现缝隙/双线；
+     分组分隔线用上投影绘制，钉住滚动时被滚动容器裁剪、自然消失 */
   border-top: none;
+  box-shadow: 0 -1px 0 var(--color-border);
 }
 
 .dropdown-empty {
@@ -4264,6 +4639,153 @@ onUnmounted(() => {
   color: var(--color-text-muted);
   background: var(--color-bg-card);
   border-color: var(--color-border);
+}
+
+.template-tag-heat {
+  color: #b45309;
+  background: rgb(245 158 11 / 12%);
+  border-color: rgb(245 158 11 / 30%);
+}
+
+.template-shared-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 2px 8px;
+  font-size: 0.56rem;
+  font-weight: 600;
+  color: #fff;
+  background: rgb(122 158 0 / 85%);
+  border-radius: 9999px;
+}
+
+.template-copy-btn {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  padding: 3px 7px;
+  font-size: 0.56rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  background: rgb(0 0 0 / 55%);
+  border: none;
+  border-radius: 9999px;
+  backdrop-filter: blur(4px);
+  transition: all 0.15s ease;
+}
+
+.template-copy-btn:hover {
+  color: #fff;
+  background: rgb(0 0 0 / 75%);
+}
+
+/* ── 存为模板弹窗 ── */
+.save-tpl-overlay {
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+}
+
+.save-tpl-dialog {
+  width: 440px;
+  height: auto;
+  max-height: 85vh;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgb(0 0 0 / 30%);
+}
+
+.save-tpl-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 20px 20px;
+  overflow-y: auto;
+}
+
+.save-tpl-tip {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}
+
+.save-tpl-label {
+  margin-top: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.save-tpl-input,
+.save-tpl-textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.save-tpl-input:focus,
+.save-tpl-textarea:focus {
+  border-color: var(--color-neon-dim);
+}
+
+.save-tpl-textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+
+.save-tpl-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.save-tpl-btn {
+  padding: 7px 18px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+
+.save-tpl-btn:hover {
+  border-color: var(--color-neon-dim);
+  color: var(--color-neon);
+}
+
+.save-tpl-btn-primary {
+  color: var(--color-bg-primary);
+  background: var(--color-neon);
+  border-color: var(--color-neon);
+}
+
+.save-tpl-btn-primary:hover {
+  color: var(--color-bg-primary);
+  background: var(--color-neon);
+  box-shadow: 0 6px 18px var(--color-neon-glow);
+}
+
+.save-tpl-btn-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  box-shadow: none;
 }
 
 /* ── Resolution group ── */

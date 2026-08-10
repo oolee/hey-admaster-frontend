@@ -33,6 +33,14 @@ export interface AdTemplate {
   recommendedModel: string;
   defaultSize: string;
   printSize: string;
+  /** 后端模板主键 Id（用户共享模板，用于热度/删除等 API） */
+  backendId?: null | string;
+  /** 模板来源：0 内置 / 1 用户对话沉淀共享 */
+  source?: number;
+  /** 封面图地址（用户共享模板展示真实生成图封面） */
+  coverImageUrl?: null | string;
+  /** 被使用次数（热度） */
+  usageCount?: number;
 }
 
 export interface GenerateResponse {
