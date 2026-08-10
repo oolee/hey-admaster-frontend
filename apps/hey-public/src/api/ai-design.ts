@@ -337,7 +337,7 @@ export function retryPersistAiImages(
   taskId: string,
 ): Promise<AiGenerationResult> {
   return aiDesignApi<AiGenerationResult>(
-    `/generation/tasks/${taskId}/retry-persist-images`,
+    `/generation/tasks/${taskId}/retry-persist`,
     { method: 'POST' },
   );
 }
