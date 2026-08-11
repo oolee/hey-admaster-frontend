@@ -276,6 +276,14 @@ export interface AiTemplate {
   promptTemplate: string;
   promptHint?: null | string;
   recommendedModel?: null | string;
+  /** 展示用模型名（用户共享模板附带渠道商，如 gpt-image-2（apikey.fun）） */
+  recommendedModelLabel?: null | string;
+  /** 沉淀模板时使用的渠道 Id（前台据此精确选中同一渠道下的模型） */
+  channelId?: null | string;
+  /** 沉淀模板时使用的渠道名称 */
+  channelName?: null | string;
+  /** 沉淀模板时的生成质量（auto/low/medium/high） */
+  defaultQuality?: null | string;
   defaultSize?: null | string;
   printSize?: null | string;
   isActive: boolean;
@@ -669,4 +677,3 @@ export function fetchBrandAssetContent(
 ): Promise<AiBrandAssetContent> {
   return aiDesignApi<AiBrandAssetContent>(`/brand-assets/${id}/content`);
 }
-

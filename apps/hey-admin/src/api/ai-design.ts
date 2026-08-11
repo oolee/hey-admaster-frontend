@@ -178,6 +178,8 @@ export interface AiChannelModelDto {
   capabilities: number;
   /** 禁用的请求参数位（Flags）：如 apiyi gpt-image-2-vip 不接受 n/quality；0=全部支持 */
   disabledRequestParams: number;
+  /** 后台配置的默认返回格式（url / b64_json），null=交给 Provider 默认（b64_json） */
+  defaultResponseFormat?: null | string;
 }
 
 export interface AiChannelDto {
@@ -216,6 +218,8 @@ export interface CreateUpdateAiChannelModelDto {
   capabilities: number;
   /** 禁用的请求参数位（Flags）：如 apiyi gpt-image-2-vip 不接受 n/quality；0=全部支持 */
   disabledRequestParams: number;
+  /** 后台配置的默认返回格式（url / b64_json），null=交给 Provider 默认（b64_json） */
+  defaultResponseFormat?: null | string;
 }
 
 export interface CreateUpdateAiChannelDto {
@@ -266,6 +270,12 @@ export interface AiChatMessageAdminDto {
   totalTokens?: null | number;
   textResult?: null | string;
   chargedAmount?: null | number;
+  /** 实际使用的渠道名称（任务快照） */
+  channelName?: null | string;
+  /** 实际使用的渠道 Base URL（渠道删除后可能为 null） */
+  channelBaseUrl?: null | string;
+  /** 最终调用上游 API 的完整请求 URL（留痕/排查问题） */
+  requestUrl?: null | string;
   requestPayloadJson?: null | string;
   responsePayloadJson?: null | string;
   externalImageUrls: string[];
@@ -327,6 +337,14 @@ export interface AiTemplateDto {
   promptTemplate: string;
   promptHint?: null | string;
   recommendedModel?: null | string;
+  /** 展示用模型名（用户共享模板附带渠道商，如 gpt-image-2（apikey.fun）） */
+  recommendedModelLabel?: null | string;
+  /** 沉淀模板时使用的渠道 Id */
+  channelId?: null | string;
+  /** 沉淀模板时使用的渠道名称 */
+  channelName?: null | string;
+  /** 沉淀模板时的生成质量（auto/low/medium/high） */
+  defaultQuality?: null | string;
   defaultSize?: null | string;
   printSize?: null | string;
   isActive: boolean;
@@ -481,9 +499,12 @@ export function useAiDesignApi() {
 
   /** 管理端：会话详情（含完整对话记录与生成任务留痕） */
   const getSessionDetail = (id: string) =>
-    request<AiDesignSessionDetailDto>(`${BASE_URL}/sessions/${id}/admin-detail`, {
-      method: 'GET',
-    });
+    request<AiDesignSessionDetailDto>(
+      `${BASE_URL}/sessions/${id}/admin-detail`,
+      {
+        method: 'GET',
+      },
+    );
 
   /** 管理端：重新落库指定任务的图片（补偿首次落库失败） */
   const adminRetryPersistImages = (taskId: string) =>

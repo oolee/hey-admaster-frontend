@@ -151,13 +151,22 @@ function onDelete(row: AiTemplateDto) {
       <span>{{ row.ownerUserName || (row.source === 0 ? '系统' : '-') }}</span>
     </template>
     <template #model="{ row }">
-      <span class="text-xs">{{ row.recommendedModel || '-' }}</span>
+      <span
+        class="text-xs"
+        :title="row.channelName || row.recommendedModel || ''"
+      >
+        {{ row.recommendedModelLabel || row.recommendedModel || '-' }}
+      </span>
     </template>
     <template #created="{ row }">
       <span>{{ formatTime(row.creationTime) }}</span>
     </template>
     <template #action="{ row }">
-      <Button type="link" size="small" @click="onDetail(row)">查看提示词</Button>
+      <Button type="link" size="small" @click="onDetail(row)"
+        >
+查看提示词
+</Button
+      >
       <Button
         v-if="row.source === 1"
         type="link"
@@ -204,11 +213,29 @@ function onDelete(row: AiTemplateDto) {
         <div class="mb-1 font-medium text-gray-500">提示词模板</div>
         <pre
           class="max-h-56 overflow-auto whitespace-pre-wrap rounded bg-gray-50 p-2 text-xs"
-        >{{ detail.promptTemplate }}</pre>
+          >{{ detail.promptTemplate }}</pre>
       </div>
       <div v-if="detail.promptHint">
         <div class="mb-1 font-medium text-gray-500">输入提示</div>
         <div class="text-xs text-gray-600">{{ detail.promptHint }}</div>
+      </div>
+      <div>
+        <div class="mb-1 font-medium text-gray-500">推荐模型</div>
+        <div class="text-xs text-gray-600">
+          {{ detail.recommendedModelLabel || detail.recommendedModel || '-' }}
+        </div>
+      </div>
+      <div v-if="detail.channelName">
+        <div class="mb-1 font-medium text-gray-500">渠道商</div>
+        <div class="text-xs text-gray-600">{{ detail.channelName }}</div>
+      </div>
+      <div v-if="detail.defaultSize">
+        <div class="mb-1 font-medium text-gray-500">默认尺寸</div>
+        <div class="text-xs text-gray-600">{{ detail.defaultSize }}</div>
+      </div>
+      <div v-if="detail.defaultQuality">
+        <div class="mb-1 font-medium text-gray-500">默认质量</div>
+        <div class="text-xs text-gray-600">{{ detail.defaultQuality }}</div>
       </div>
       <div v-if="detail.printSize">
         <div class="mb-1 font-medium text-gray-500">印刷尺寸</div>

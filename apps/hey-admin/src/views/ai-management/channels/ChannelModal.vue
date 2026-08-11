@@ -216,6 +216,7 @@ function onGet() {
       priority: item.priority,
       supportedSizes: item.supportedSizes ?? null,
       disabledRequestParams: item.disabledRequestParams ?? 0,
+      defaultResponseFormat: item.defaultResponseFormat ?? null,
       weight: item.weight,
     }));
   } else {
@@ -246,6 +247,7 @@ function addModel() {
     priority: 100,
     supportedSizes: null,
     disabledRequestParams: 0,
+    defaultResponseFormat: null,
     weight: 1,
   });
 }
@@ -276,6 +278,13 @@ function toggleDisabledParam(index: number, param: number, checked: boolean) {
 const modelTypeOptions = Object.entries(AiModelTypeLabels).map(
   ([value, label]) => ({ label, value: Number(value) }),
 );
+
+/** 后台配置的默认返回格式（url / b64_json，null=自动交给 Provider 默认 b64_json） */
+const responseFormatOptions = [
+  { value: '', label: '自动' },
+  { value: 'url', label: 'url（返回链接）' },
+  { value: 'b64_json', label: 'base64（b64_json）' },
+];
 
 function pricingUnitOptions(modelType: number) {
   if (modelType === AiModelType.Text) {
@@ -549,6 +558,7 @@ async function autoFetchModels() {
         priority: 100,
         supportedSizes: null,
         disabledRequestParams: 0,
+        defaultResponseFormat: null,
         weight: 1,
       });
       existing.add(String(name).trim());
@@ -705,6 +715,12 @@ async function onSubmit(values: Record<string, any>) {
                 title="模型支持的输出尺寸，如 1024x1024（仅图片模型）"
               >
                 支持尺寸
+              </th>
+              <th
+                class="w-32 px-3 py-2 text-left font-medium"
+                title="后台配置该模型请求时默认使用的返回格式（url / b64_json），不从前台透传；自动=交给 Provider 默认（b64_json 便于本地落库）"
+              >
+                默认返回格式
               </th>
               <th
                 class="min-w-[300px] px-3 py-2 text-left font-medium"
@@ -882,6 +898,28 @@ async function onSubmit(values: Record<string, any>) {
                 >
                   —
                 </div>
+                <Select
+                  v-else
+                  :value="model.defaultResponseFormat ?? ''"
+                  size="small"
+                  class="w-full"
+                  :options="responseFormatOptions"
+                  title="后台配置该模型返回格式（url / b64_json），不从前台透传"
+                  @update:value="
+                    (value: any) =>
+                      updateModel(index, {
+                        defaultResponseFormat: value || null,
+                      })
+                  "
+                />
+              </td>
+              <td class="px-3 py-2">
+                <div
+                  v-if="model.modelType === AiModelType.Text"
+                  class="pt-1 text-center text-gray-400"
+                >
+                  —
+                </div>
                 <div
                   v-else
                   class="flex min-h-[32px] flex-wrap items-center gap-x-2 gap-y-1"
@@ -891,14 +929,6 @@ async function onSubmit(values: Record<string, any>) {
                     :key="param.value"
                     class="flex cursor-pointer items-center gap-1 text-xs"
                   >
-                    <Tooltip
-                      :title="param.description || param.label"
-                      placement="top"
-                    >
-                      <InfoCircleOutlined
-                        class="cursor-help text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                      />
-                    </Tooltip>
                     <Checkbox
                       :checked="
                         Boolean(
@@ -915,6 +945,14 @@ async function onSubmit(values: Record<string, any>) {
                           )
                       "
                     />
+                    <Tooltip
+                      :title="param.description || param.label"
+                      placement="top"
+                    >
+                      <InfoCircleOutlined
+                        class="cursor-help text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      />
+                    </Tooltip>
                     <span
                       class="select-none whitespace-nowrap text-gray-600 dark:text-gray-300"
                     >

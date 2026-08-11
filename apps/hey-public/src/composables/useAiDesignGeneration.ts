@@ -130,7 +130,6 @@ export const GPT_IMAGE_TIER_MAX: Record<'1k' | '2k' | '4k', string> = {
   '4k': '3840x2160',
 };
 
-
 export function useAiDesignGeneration() {
   const store = useAiDesignStore();
 
@@ -215,7 +214,8 @@ export function useAiDesignGeneration() {
         return Number.parseInt(wStr, 10) / Number.parseInt(hStr, 10);
       })();
       const best = [...parsed].toSorted(
-        (a, b) => Math.abs(a.ratio - exactRatio) - Math.abs(b.ratio - exactRatio),
+        (a, b) =>
+          Math.abs(a.ratio - exactRatio) - Math.abs(b.ratio - exactRatio),
       )[0];
       return best?.size ?? parsed[0]?.size ?? store.exactSize;
     }
@@ -352,7 +352,8 @@ export function useAiDesignGeneration() {
     const extracted = !isText && !hasSize ? extractPromptSize(prompt) : null;
     const images = await store.generateImages({
       prompt,
-      optimizedPrompt: store.optimizedPrompt || null,
+      // 局部修改（带蒙版）：修改指令已完整包含在 prompt 中，不再复用上一次会话遗留的优化提示词
+      optimizedPrompt: options.mask ? prompt : store.optimizedPrompt || null,
       model: modelName,
       channelId: current?.channelId ?? null,
       size: isText ? null : buildSize(prompt),

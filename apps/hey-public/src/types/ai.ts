@@ -31,6 +31,14 @@ export interface AdTemplate {
   promptTemplate: string;
   promptHint: string;
   recommendedModel: string;
+  /** 展示用模型名（用户共享模板附带渠道商，如 gpt-image-2（apikey.fun）） */
+  recommendedModelLabel?: string;
+  /** 沉淀模板时使用的渠道 Id（前台据此精确选中同一渠道下的模型） */
+  channelId?: null | string;
+  /** 沉淀模板时使用的渠道名称 */
+  channelName?: string;
+  /** 沉淀模板时的生成质量（auto/low/medium/high） */
+  defaultQuality?: string;
   defaultSize: string;
   printSize: string;
   /** 后端模板主键 Id（用户共享模板，用于热度/删除等 API） */

@@ -210,7 +210,7 @@ const isTextModel = computed(() => {
 /** 模型计价单位文案（按模型自身 pricingUnit） */
 function modelUnitLabel(unit: number | undefined): string {
   return unit !== undefined && unit in AiPricingUnitLabels
-    ? AiPricingUnitLabels[unit] ?? '元/张'
+    ? (AiPricingUnitLabels[unit] ?? '元/张')
     : '元/张';
 }
 
@@ -233,8 +233,8 @@ const showQualityMenu = ref(false);
 // Quick ratio presets for the toolbar dropdown
 /** 分辨率档位（模糊选择）：auto=自动 / 1k / 2k / 4k，选档位默认取该档最大分辨率 */
 const resolutionTierOptions: {
-  value: 'auto' | '1k' | '2k' | '4k';
   label: string;
+  value: '1k' | '2k' | '4k' | 'auto';
 }[] = [
   { value: 'auto', label: '自动' },
   { value: '1k', label: '1K' },
@@ -342,6 +342,10 @@ const backendTemplates = computed<AdTemplate[]>(() =>
     promptTemplate: t.promptTemplate,
     promptHint: t.promptHint ?? '',
     recommendedModel: t.recommendedModel ?? '',
+    recommendedModelLabel: t.recommendedModelLabel ?? '',
+    channelId: t.channelId ?? null,
+    channelName: t.channelName ?? '',
+    defaultQuality: t.defaultQuality ?? '',
     defaultSize: t.defaultSize ?? '',
     printSize: t.printSize ?? '',
     source: t.source ?? 0,
@@ -354,6 +358,23 @@ const templateCategories = computed(() =>
     backendTemplates.value.length > 0 ? backendTemplates.value : undefined,
   ),
 );
+// 模板抽屉：每分类默认展示前 4 个，超出部分通过「查看更多」展开
+const expandedTemplateCats = ref<Set<string>>(new Set());
+const TEMPLATE_PREVIEW_LIMIT = 4;
+
+/** 某分类当前应展示的模板列表（未展开时截断前 4 个） */
+function visibleTemplates(list: AdTemplate[]): AdTemplate[] {
+  return expandedTemplateCats.value.has(list[0]?.category ?? '')
+    ? list
+    : list.slice(0, TEMPLATE_PREVIEW_LIMIT);
+}
+
+function toggleTemplateCategory(cat: string) {
+  const next = new Set(expandedTemplateCats.value);
+  if (next.has(cat)) next.delete(cat);
+  else next.add(cat);
+  expandedTemplateCats.value = next;
+}
 
 // 存为模板弹窗（对话沉淀 → 用户共享模板）
 const showSaveTemplateDialog = ref(false);
@@ -392,9 +413,7 @@ const TEMPLATE_IMAGES: Record<string, string> = {
 function templateImage(tpl: AdTemplate): string {
   // 用户共享模板优先展示真实生成图封面；内置模板回退到本地占位图
   return (
-    tpl.coverImageUrl ||
-    TEMPLATE_IMAGES[tpl.id] ||
-    '/images/fede/fede.jpg'
+    tpl.coverImageUrl || TEMPLATE_IMAGES[tpl.id] || '/images/fede/fede.jpg'
   );
 }
 
@@ -420,10 +439,50 @@ function applyTemplate(tpl: AdTemplate) {
   };
   chatInput.value = buildPrompt(tpl, inputs);
   lastAppliedTemplateId.value = tpl.id;
-  templateHint.value = `已填入「${tpl.name}」提示词，可继续编辑`;
+
+  // 应用模板沉淀时的参数设置（模型/尺寸/质量），生成张数固定 1 张
+  const warnings: string[] = [];
+  if (tpl.recommendedModel) {
+    const target = store.modelOptions.find(
+      (m) =>
+        (tpl.channelId &&
+          m.channelId === tpl.channelId &&
+          m.modelName === tpl.recommendedModel) ||
+        (!tpl.channelId && m.modelName === tpl.recommendedModel),
+    );
+    if (target) {
+      if (target.disabled) {
+        warnings.push(
+          `模板推荐的模型「${tpl.recommendedModelLabel || tpl.recommendedModel}」当前已禁用，请手动选择其他模型`,
+        );
+      } else {
+        store.selectedModel = target.id;
+      }
+    } else {
+      warnings.push(
+        `模板推荐的模型「${tpl.recommendedModelLabel || tpl.recommendedModel}」未配置或已下架，请手动选择模型`,
+      );
+    }
+  }
+  if (
+    tpl.defaultQuality &&
+    qualityOptions.some((q) => q.value === tpl.defaultQuality)
+  ) {
+    store.quality = tpl.defaultQuality;
+  }
+  if (tpl.defaultSize && /^\d+x\d+$/i.test(tpl.defaultSize)) {
+    store.exactSize = tpl.defaultSize;
+    store.resolutionTier = 'auto';
+  }
+  store.generateCount = 1;
+
+  templateHint.value =
+    warnings.length > 0
+      ? `已填入「${tpl.name}」提示词（${warnings.join('；')}）`
+      : `已填入「${tpl.name}」提示词，已同步模板的模型/尺寸/质量参数，可继续编辑`;
   window.setTimeout(() => {
     templateHint.value = '';
-  }, 2500);
+  }, 4000);
   nextTick(() => textareaRef.value?.focus());
   // 选用一次：热度 +1（仅后端模板）
   if (tpl.backendId) {
@@ -520,7 +579,8 @@ const BACK_TO_BOTTOM_THRESHOLD = 320;
 
 function onWindowScroll() {
   const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-  showBackToBottom.value = window.scrollY + BACK_TO_BOTTOM_THRESHOLD < maxScroll;
+  showBackToBottom.value =
+    window.scrollY + BACK_TO_BOTTOM_THRESHOLD < maxScroll;
 }
 
 function addMessage(
@@ -835,11 +895,56 @@ const sizeButtonText = computed(() => {
     : `${ratio} · ${store.resolutionTier.toUpperCase()}`;
 });
 
-/** 选择 30 档中的精确尺寸：与「模糊档位」互斥，尺寸自带比例 */
+/** 精确尺寸去重：同一档内仅保留长宽对中的一种（横版优先），并记录对调后的尺寸，
+ * 避免 1280x848 / 848x1280 这类只是长宽互换的重复选项。
+ */
+const compactTierSizes = computed(() =>
+  GPT_IMAGE_TIER_SIZES.map((g) => {
+    const seen = new Set<string>();
+    const sizes = g.sizes
+      .map((s) => {
+        const [wStr, hStr] = s.size.split('x') as [string, string];
+        const w = Number.parseInt(wStr, 10);
+        const h = Number.parseInt(hStr, 10);
+        return { ...s, w, h };
+      })
+      .filter((s) => {
+        const key = `${Math.min(s.w, s.h)}x${Math.max(s.w, s.h)}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .map((s) => ({
+        ratio: s.ratio,
+        name: s.name,
+        // 横版/方形作为代表项，竖版可通过「对调长宽」切换
+        size: s.w >= s.h ? s.size : `${s.h}x${s.w}`,
+        flippedSize: s.w >= s.h ? `${s.h}x${s.w}` : s.size,
+      }));
+    return { ...g, sizes };
+  }),
+);
+
+/** 预览对调后的尺寸（不修改状态） */
+function swapPreview(size: string): string {
+  const [wStr, hStr] = size.split('x') as [string, string];
+  if (!wStr || !hStr) return size;
+  return `${hStr}x${wStr}`;
+}
+
+/** 对调长宽：1280x848 → 848x1280（横竖互切） */
+function swapSelectedSize() {
+  if (!store.exactSize) return;
+  const [wStr, hStr] = store.exactSize.split('x') as [string, string];
+  if (!wStr || !hStr) return;
+  store.exactSize = `${hStr}x${wStr}`;
+}
+
+/** 选择 30 档中的精确尺寸：与「比例/模糊档位」互斥，尺寸自带比例与分辨率。
+ * 不关闭弹窗：选中后可立即「对调长宽」，或改选比例/档位切换。 */
 function pickExactSize(size: string) {
   store.exactSize = size;
   store.resolutionTier = 'auto';
-  showRatioMenu.value = false;
 }
 
 /** 选择模糊档位（1K/2K/4K）：与「精确尺寸」互斥，默认取该档最大分辨率 */
@@ -1009,27 +1114,6 @@ onUnmounted(() => {
 
 <template>
   <div class="ai-chat">
-    <!-- Chat messages area -->
-  <button
-    v-if="showBackToBottom"
-    class="back-to-bottom-btn"
-    title="回到底部"
-    @click="scrollToBottom"
-  >
-    <svg
-      viewBox="0 0 24 24"
-      width="20"
-      height="20"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    >
-      <path d="M12 5v14M5 12l7 7 7-7" />
-    </svg>
-  </button>
-
     <div ref="chatContainer" class="chat-messages">
       <!-- Welcome -->
       <div v-if="chatMessages.length === 0" class="chat-welcome">
@@ -1982,12 +2066,21 @@ onUnmounted(() => {
                   v-for="r in quickRatioOptions"
                   :key="r.value"
                   class="dropdown-item"
-                  :class="[{ active: store.selectedAspectRatio === r.value }]"
+                  :class="[
+                    {
+                      active:
+                        store.exactSize === '' &&
+                        store.selectedAspectRatio === r.value,
+                    },
+                  ]"
                   @click="applyQuickRatio(r.value)"
                 >
                   <span>{{ r.label }}</span>
                   <svg
-                    v-if="store.selectedAspectRatio === r.value"
+                    v-if="
+                      store.exactSize === '' &&
+                      store.selectedAspectRatio === r.value
+                    "
                     viewBox="0 0 24 24"
                     width="16"
                     height="16"
@@ -2000,17 +2093,19 @@ onUnmounted(() => {
                 </button>
 
                 <div class="dropdown-divider"></div>
-                <div class="dropdown-title">精确尺寸（30 档，按 1K/2K/4K 分组）</div>
+                <div class="dropdown-title">
+                  精确尺寸（按 1K/2K/4K 分组，长宽对已去重）
+                </div>
                 <div class="exact-size-groups">
                   <div
-                    v-for="g in GPT_IMAGE_TIER_SIZES"
+                    v-for="g in compactTierSizes"
                     :key="g.tier"
                     class="exact-size-group"
                   >
                     <div class="exact-size-group-title">
                       {{ g.tierLabel }}
                       <span class="exact-size-group-hint"
-                        >选档取最大分辨率</span
+                        >选尺寸后可用「对调长宽」切横竖版</span
                       >
                     </div>
                     <div class="exact-size-grid">
@@ -2018,8 +2113,12 @@ onUnmounted(() => {
                         v-for="s in g.sizes"
                         :key="s.size"
                         class="exact-size-item"
-                        :class="{ active: store.exactSize === s.size }"
-                        :title="`${s.name} ${s.ratio} ${s.size}`"
+                        :class="{
+                          active:
+                            store.exactSize === s.size ||
+                            store.exactSize === s.flippedSize,
+                        }"
+                        :title="`${s.name} ${s.ratio} ${s.size}${s.flippedSize === s.size ? '' : `（对调 ${s.flippedSize}）`}`"
                         @click="pickExactSize(s.size)"
                       >
                         {{ s.size }}
@@ -2028,19 +2127,52 @@ onUnmounted(() => {
                   </div>
                 </div>
 
+                <div v-if="store.exactSize" class="exact-lock-hint">
+                  已锁定精确尺寸（比例与分辨率档位自动失效），可在此对调长宽
+                </div>
+                <div v-if="store.exactSize" class="swap-size-row">
+                  <span class="swap-size-current">{{ store.exactSize }}</span>
+                  <button
+                    class="swap-size-btn"
+                    :title="`将 ${store.exactSize} 对调为 ${swapPreview(store.exactSize)}`"
+                    @click="swapSelectedSize"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="13"
+                      height="13"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path d="M7 16V4m0 0L3 8m4-4l4 4" />
+                      <path d="M17 8v12m0 0l4-4m-4 4l-4-4" />
+                    </svg>
+                    对调长宽
+                  </button>
+                </div>
+
                 <div class="dropdown-divider"></div>
                 <div class="dropdown-title">分辨率档位（模糊选择）</div>
                 <button
                   v-for="t in resolutionTierOptions"
                   :key="t.value"
                   class="dropdown-item"
-                  :class="[{ active: store.resolutionTier === t.value }]"
-                  title="选 1K/2K/4K 时默认取该档最大分辨率；不选则自动匹配"
+                  :class="[
+                    {
+                      active:
+                        store.exactSize === '' &&
+                        store.resolutionTier === t.value,
+                    },
+                  ]"
+                  title="选 1K/2K/4K 时默认取该档最大分辨率；与精确尺寸互斥"
                   @click="pickResolutionTier(t.value)"
                 >
                   <span>{{ t.label }}</span>
                   <svg
-                    v-if="store.resolutionTier === t.value"
+                    v-if="
+                      store.exactSize === '' && store.resolutionTier === t.value
+                    "
                     viewBox="0 0 24 24"
                     width="16"
                     height="16"
@@ -2225,7 +2357,7 @@ onUnmounted(() => {
                 <div class="tpl-group-title">{{ cat }}</div>
                 <div class="tpl-group-list">
                   <div
-                    v-for="tpl in list"
+                    v-for="tpl in visibleTemplates(list)"
                     :key="tpl.id"
                     class="template-card"
                     role="button"
@@ -2277,7 +2409,7 @@ onUnmounted(() => {
                     <span class="template-name">{{ tpl.name }}</span>
                     <span class="template-tag-row">
                       <span class="template-tag">{{
-                        tpl.recommendedModel
+                        tpl.recommendedModelLabel || tpl.recommendedModel
                       }}</span>
                       <span class="template-tag template-tag-dim">{{
                         tpl.defaultSize
@@ -2289,6 +2421,19 @@ onUnmounted(() => {
                       >
                     </span>
                   </div>
+                </div>
+                <div
+                  v-if="list.length > TEMPLATE_PREVIEW_LIMIT"
+                  class="tpl-view-more"
+                  @click.stop="toggleTemplateCategory(cat)"
+                >
+                  {{
+                    expandedTemplateCats.has(cat)
+                      ? '收起'
+                      : `查看更多（${ 
+                        list.length - TEMPLATE_PREVIEW_LIMIT 
+                        }）`
+                  }}
                 </div>
               </div>
             </div>
@@ -2344,20 +2489,16 @@ onUnmounted(() => {
                   v-for="cat in saveTemplateCategoryOptions"
                   :key="cat"
                   :value="cat"
-                />
+                ></option>
               </datalist>
-              <label class="save-tpl-label" for="save-tpl-name"
-                >模板名称</label
-              >
+              <label class="save-tpl-label" for="save-tpl-name">模板名称</label>
               <input
                 id="save-tpl-name"
                 v-model="saveTemplateName"
                 class="save-tpl-input"
                 placeholder="留空自动命名（分类+时间）"
               />
-              <label class="save-tpl-label" for="save-tpl-desc"
-                >备注说明</label
-              >
+              <label class="save-tpl-label" for="save-tpl-desc">备注说明</label>
               <textarea
                 id="save-tpl-desc"
                 v-model="saveTemplateDesc"
@@ -2385,6 +2526,28 @@ onUnmounted(() => {
         </div>
       </Transition>
     </Teleport>
+
+    <!-- 回到底部（悬浮于输入区上方，页面滚动远离底部时出现） -->
+    <button
+      v-if="showBackToBottom"
+      class="back-to-bottom-btn"
+      :class="{ 'sidebar-collapsed': sidebarCollapsed }"
+      title="回到底部"
+      @click="scrollToBottom"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        width="20"
+        height="20"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M12 5v14M5 12l7 7 7-7" />
+      </svg>
+    </button>
   </div>
 </template>
 
@@ -2755,8 +2918,8 @@ onUnmounted(() => {
 
 .msg-save-template-btn {
   color: var(--color-neon);
-  border-color: var(--color-neon-dim);
   background: var(--color-neon-glow);
+  border-color: var(--color-neon-dim);
 }
 
 .msg-save-template-btn:hover {
@@ -3784,15 +3947,61 @@ onUnmounted(() => {
   min-width: 320px;
   max-width: 400px;
   max-height: 440px;
-  overflow: hidden auto;
   padding: 8px;
+  overflow: hidden auto;
 
   .quality-dropdown {
     min-width: 140px;
   }
 }
 
-/* ── 精确尺寸（30 档按 1K/2K/4K 分组）── */
+/* ── 精确尺寸（按 1K/2K/4K 分组）── */
+.exact-lock-hint {
+  padding: 4px 10px 2px;
+  font-size: 0.58rem;
+  line-height: 1.4;
+  color: var(--color-neon, #7df9ff);
+  background: var(--color-neon-glow, rgb(125 249 255 / 10%));
+  border-radius: 6px;
+}
+
+.swap-size-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px 8px;
+}
+
+.swap-size-current {
+  padding: 3px 8px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--color-neon);
+  background: var(--color-neon-glow);
+  border: 1px solid var(--color-neon-dim);
+  border-radius: 6px;
+}
+
+.swap-size-btn {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 10px;
+  font-size: 0.62rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.swap-size-btn:hover {
+  color: var(--color-neon);
+  background: var(--color-neon-glow);
+  border-color: var(--color-neon-dim);
+}
+
 .exact-size-groups {
   display: flex;
   flex-direction: column;
@@ -3812,6 +4021,7 @@ onUnmounted(() => {
   color: var(--color-text-muted);
   letter-spacing: 0.04em;
   background: var(--color-bg-secondary);
+
   /* 同模型分组标题：顶部不留边框，钉住时紧贴容器顶 */
   border-top: none;
 }
@@ -3834,9 +4044,9 @@ onUnmounted(() => {
   padding: 3px 2px;
   font-size: 0.58rem;
   line-height: 1.3;
+  color: var(--color-text-secondary);
   text-align: center;
   white-space: nowrap;
-  color: var(--color-text-secondary);
   cursor: pointer;
   background: none;
   border: 1px solid var(--color-border);
@@ -3915,6 +4125,7 @@ onUnmounted(() => {
   color: var(--color-text-muted);
   letter-spacing: 0.04em;
   background: var(--color-bg-secondary);
+
   /* 顶部不留边框：钉住时紧贴滚动容器顶，避免出现缝隙/双线；
      分组分隔线用上投影绘制，钉住滚动时被滚动容器裁剪、自然消失 */
   border-top: none;
@@ -4715,8 +4926,8 @@ onUnmounted(() => {
 
 /* ── 存为模板弹窗 ── */
 .save-tpl-overlay {
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   padding: 16px;
 }
 
@@ -4724,9 +4935,9 @@ onUnmounted(() => {
   width: 440px;
   height: auto;
   max-height: 85vh;
+  overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: 16px;
-  overflow: hidden;
   box-shadow: 0 20px 60px rgb(0 0 0 / 30%);
 }
 
@@ -4759,10 +4970,10 @@ onUnmounted(() => {
   padding: 8px 10px;
   font-size: 0.8rem;
   color: var(--color-text-primary);
+  outline: none;
   background: var(--color-bg-primary);
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  outline: none;
   transition: border-color 0.15s ease;
 }
 
@@ -4772,8 +4983,8 @@ onUnmounted(() => {
 }
 
 .save-tpl-textarea {
-  resize: vertical;
   font-family: inherit;
+  resize: vertical;
 }
 
 .save-tpl-actions {
@@ -4796,8 +5007,8 @@ onUnmounted(() => {
 }
 
 .save-tpl-btn:hover {
-  border-color: var(--color-neon-dim);
   color: var(--color-neon);
+  border-color: var(--color-neon-dim);
 }
 
 .save-tpl-btn-primary {
@@ -4814,8 +5025,8 @@ onUnmounted(() => {
 
 .save-tpl-btn-primary:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
   box-shadow: none;
+  opacity: 0.6;
 }
 
 /* ── Resolution group ── */
@@ -5007,6 +5218,24 @@ onUnmounted(() => {
   gap: 8px;
 }
 
+.tpl-view-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 0 2px;
+  margin-top: 4px;
+  font-size: 0.72rem;
+  color: var(--color-neon);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.2s;
+}
+
+.tpl-view-more:hover {
+  color: var(--color-text-primary);
+  text-decoration: underline;
+}
+
 /* Drawer transition */
 .drawer-fade-enter-active,
 .drawer-fade-leave-active {
@@ -5027,42 +5256,58 @@ onUnmounted(() => {
 .drawer-fade-leave-to .tpl-drawer {
   transform: translateX(100%);
 }
-/* Back-to-bottom floating button */
+
+/* Back-to-bottom floating button：相对输入区水平居中（输入区 left 264px / 折叠 60px / 移动端 0） */
 .back-to-bottom-btn {
   position: fixed;
-  right: 24px;
-  bottom: 148px;
+  bottom: 258px; /* 输入区约 230px 高，按钮悬浮于输入卡上方，避免遮挡 */
+  left: calc(50% + 132px);
   z-index: 60;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 42px;
+  height: 42px;
+  color: var(--color-neon);
+  cursor: pointer;
   background: color-mix(in srgb, var(--color-neon) 16%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-neon) 45%, transparent);
-  color: var(--color-neon);
+  border-radius: 50%;
+  box-shadow: 0 8px 22px rgb(0 0 0 / 28%);
   backdrop-filter: blur(10px);
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
-  cursor: pointer;
+  transform: translateX(-50%);
   transition:
+    left 0.28s cubic-bezier(0.4, 0, 0.2, 1),
     transform 0.2s ease,
     opacity 0.2s ease;
   animation: back-to-bottom-in 0.25s ease;
 }
-.back-to-bottom-btn:hover {
-  transform: translateY(-3px) scale(1.06);
-  background: color-mix(in srgb, var(--color-neon) 28%, transparent);
+
+.back-to-bottom-btn.sidebar-collapsed {
+  left: calc(50% + 30px);
 }
-@keyframes back-to-bottom-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+@media (max-width: 768px) {
+  .back-to-bottom-btn,
+  .back-to-bottom-btn.sidebar-collapsed {
+    left: 50%;
   }
 }
 
+.back-to-bottom-btn:hover {
+  background: color-mix(in srgb, var(--color-neon) 28%, transparent);
+  transform: translateX(-50%) translateY(-3px) scale(1.06);
+}
+
+@keyframes back-to-bottom-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
 </style>

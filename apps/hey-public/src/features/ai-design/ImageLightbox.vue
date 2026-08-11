@@ -1,20 +1,46 @@
 <script setup lang="ts">
 import type { AiGeneratedImage } from '#/store/aiDesignStore';
 
-import { onMounted, onUnmounted, watch } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 
 const props = defineProps<{
   image: AiGeneratedImage | null;
   selectedImageId: null | string;
   visible: boolean;
 }>();
-
 const emit = defineEmits<{
   close: [];
   download: [url: string, title: string];
   modify: [img: AiGeneratedImage];
   select: [img: AiGeneratedImage];
 }>();
+/** 缩放档位（滚轮以 1.15 倍步进，按钮 ±25%），支持复位 */
+const MIN_SCALE = 0.25;
+const MAX_SCALE = 8;
+const scale = ref(1);
+
+function clampScale(v: number) {
+  return Math.min(MAX_SCALE, Math.max(MIN_SCALE, v));
+}
+
+function zoomIn() {
+  scale.value = clampScale(scale.value * 1.25);
+}
+
+function zoomOut() {
+  scale.value = clampScale(scale.value / 1.25);
+}
+
+function resetZoom() {
+  scale.value = 1;
+}
+
+function onWheel(e: WheelEvent) {
+  e.preventDefault();
+  scale.value = clampScale(
+    e.deltaY < 0 ? scale.value * 1.15 : scale.value / 1.15,
+  );
+}
 
 function handleKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape' && props.visible) {
@@ -29,6 +55,14 @@ watch(
   () => props.visible,
   (v) => {
     document.body.style.overflow = v ? 'hidden' : '';
+    if (!v) resetZoom();
+  },
+);
+
+watch(
+  () => props.image?.id,
+  () => {
+    resetZoom();
   },
 );
 </script>
@@ -57,8 +91,40 @@ watch(
       <!-- Title -->
       <div class="lightbox-title">{{ image.title }}</div>
 
-      <!-- Image -->
-      <img :src="image.url" :alt="image.title" class="lightbox-image" />
+      <!-- Zoom controls -->
+      <div class="lightbox-zoom">
+        <button class="lightbox-zoom-btn" title="缩小" @click="zoomOut">
+          −
+        </button>
+        <span class="lightbox-zoom-percent"
+          >{{ Math.round(scale * 100) }}%</span
+        >
+        <button class="lightbox-zoom-btn" title="放大" @click="zoomIn">
+          ＋
+        </button>
+        <button
+          class="lightbox-zoom-btn lightbox-zoom-reset"
+          :class="{ disabled: scale === 1 }"
+          title="复原（100%）"
+          :disabled="scale === 1"
+          @click="resetZoom"
+        >
+          复原
+        </button>
+      </div>
+
+      <!-- Image：滚轮缩放仅对图片生效；点击图片以外的区域返回对话 -->
+      <div class="lightbox-stage" @click="emit('close')">
+        <img
+          :src="image.url"
+          :alt="image.title"
+          class="lightbox-image"
+          :style="{ transform: `scale(${scale})` }"
+          draggable="false"
+          @click.stop
+          @wheel.stop="onWheel"
+        />
+      </div>
 
       <!-- Action bar -->
       <div class="lightbox-actions">
@@ -171,12 +237,81 @@ watch(
   color: #fff;
 }
 
+.lightbox-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  cursor: zoom-in;
+}
+
+.lightbox-zoom {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  z-index: 10;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 10px;
+  background: rgb(255 255 255 / 10%);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  transform: translateX(-50%);
+}
+
+.lightbox-zoom-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  font-size: 0.8rem;
+  color: #fff;
+  cursor: pointer;
+  background: rgb(255 255 255 / 10%);
+  border: none;
+  border-radius: 999px;
+  transition: background 0.2s;
+}
+
+.lightbox-zoom-btn:hover:not(:disabled) {
+  background: rgb(255 255 255 / 24%);
+}
+
+.lightbox-zoom-btn.disabled,
+.lightbox-zoom-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.lightbox-zoom-reset {
+  font-size: 0.7rem;
+  color: var(--color-neon, #7df9ff);
+  background: rgb(125 249 255 / 12%);
+}
+
+.lightbox-zoom-percent {
+  min-width: 44px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  text-align: center;
+}
+
 .lightbox-image {
-  max-width: 90vw;
-  max-height: 80vh;
+  max-width: 94vw;
+  max-height: 88vh;
+  user-select: none;
   object-fit: contain;
   border-radius: 12px;
   box-shadow: 0 20px 60px rgb(0 0 0 / 50%);
+  transform-origin: center center;
+  transition: transform 0.12s ease-out;
 }
 
 .lightbox-actions {

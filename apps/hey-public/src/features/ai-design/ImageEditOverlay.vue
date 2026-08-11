@@ -245,28 +245,32 @@ function badgeStyle(op: MarkOp) {
   };
 }
 
-/** 气泡默认位置：优先放在区域右上方，越界时翻转到左侧并收敛到画布内 */
+/** 画布在视口中的位置（气泡用视口坐标，便于拖出图片区域） */
+function stageViewportRect() {
+  const canvas = canvasRef.value;
+  return canvas?.getBoundingClientRect() ?? { left: 0, top: 0 };
+}
+
+/** 气泡默认位置：优先放在区域右上方，越界时翻转到左侧，并收敛到视口内 */
 function computeBubblePos(op: MarkOp): { x: number; y: number } {
+  const rect = stageViewportRect();
   const b = opBounds(op);
-  const w = display.value.width;
-  const h = display.value.height;
   const bw = 250;
-  let left = b.x + b.w + 10;
-  if (left + bw > w) left = b.x - bw - 10;
-  left = Math.max(6, Math.min(left, Math.max(6, w - bw - 6)));
-  let top = b.y - 56;
-  top = Math.max(6, Math.min(top, Math.max(6, h - 150)));
+  let left = rect.left + b.x + b.w + 10;
+  if (left + bw > window.innerWidth) left = rect.left + b.x - bw - 10;
+  left = Math.max(6, Math.min(left, Math.max(6, window.innerWidth - bw - 6)));
+  let top = rect.top + b.y - 56;
+  top = Math.max(6, Math.min(top, Math.max(6, window.innerHeight - 170)));
   return { x: left, y: top };
 }
 
-/** 气泡位置：拖动后使用记忆位置，否则使用默认位置（始终收敛在画布内） */
+/** 气泡位置：拖动后使用记忆位置（视口坐标），否则使用默认位置。
+ * 允许拖出图片区域，仅收敛到视口边缘，便于不遮挡画面。 */
 function bubbleStyle(op: MarkOp) {
   const pos = op.bubblePos ?? computeBubblePos(op);
-  const w = display.value.width;
-  const h = display.value.height;
   const bw = 250;
-  const x = Math.max(6, Math.min(pos.x, Math.max(6, w - bw - 6)));
-  const y = Math.max(6, Math.min(pos.y, Math.max(6, h - 150)));
+  const x = Math.max(4, Math.min(pos.x, window.innerWidth - bw - 4));
+  const y = Math.max(4, Math.min(pos.y, window.innerHeight - 170));
   return { left: `${x}px`, top: `${y}px` };
 }
 
@@ -343,6 +347,19 @@ function cancelNote() {
   noteDraft.value = '';
 }
 
+/** 删除单个标注（按编号气泡内的「删除此标注」触发，不要求按顺序） */
+function removeOp(id: number) {
+  const idx = ops.value.findIndex((o) => o.id === id);
+  if (idx === -1) return;
+  ops.value.splice(idx, 1);
+  if (editingNoteId.value === id) {
+    editingNoteId.value = null;
+    noteDraft.value = '';
+  }
+  syncPrompt();
+  redraw();
+}
+
 function undo() {
   const op = ops.value.pop();
   if (op && editingNoteId.value === op.id) {
@@ -365,8 +382,9 @@ function onImgLoad() {
   const img = imgRef.value;
   if (!img) return;
   natural.value = { width: img.naturalWidth, height: img.naturalHeight };
-  const maxW = window.innerWidth * 0.86;
-  const maxH = window.innerHeight * 0.6;
+  // 尽可能多显示图片：减去顶栏与底部整体要求框的占用空间（提示条已悬浮定位，不占布局空间）
+  const maxW = window.innerWidth * 0.92;
+  const maxH = Math.max(220, window.innerHeight - 270);
   const scale = Math.min(1, maxW / img.naturalWidth, maxH / img.naturalHeight);
   display.value = {
     width: Math.max(1, Math.round(img.naturalWidth * scale)),
@@ -593,7 +611,12 @@ onUnmounted(() => {
         </button>
       </div>
 
-      <!-- 图片 + 标注画布 + 编号气泡 -->
+      <!-- 操作提示：移到图片之外，暗红警示色 -->
+      <div class="edit-stage-hint">
+        标注区域，在编号气泡中填写修改要求，确认后自动汇总到下方；气泡可拖出图片区域
+      </div>
+
+      <!-- 图片 + 标注画布 + 编号徽标（裁剪容器内） -->
       <div
         class="edit-stage"
         :style="{
@@ -601,37 +624,42 @@ onUnmounted(() => {
           height: `${display.height}px`,
         }"
       >
-        <img
-          ref="imgRef"
-          :src="image.url"
-          :alt="image.title"
-          class="edit-img"
-          @load="onImgLoad"
-        />
-        <canvas
-          ref="canvasRef"
-          class="edit-canvas"
-          @pointerdown="onPointerDown"
-          @pointermove="onPointerMove"
-          @pointerup="onPointerUp"
-          @pointercancel="onPointerUp"
-        ></canvas>
+        <div class="edit-stage-clip">
+          <img
+            ref="imgRef"
+            :src="image.url"
+            :alt="image.title"
+            class="edit-img"
+            @load="onImgLoad"
+          />
+          <canvas
+            ref="canvasRef"
+            class="edit-canvas"
+            @pointerdown="onPointerDown"
+            @pointermove="onPointerMove"
+            @pointerup="onPointerUp"
+            @pointercancel="onPointerUp"
+          ></canvas>
+          <template v-for="(op, index) in ops" :key="op.id">
+            <!-- 编号徽标：点击可重新编辑该区域要求 -->
+            <span
+              class="mark-badge"
+              :class="{ editing: editingNoteId === op.id }"
+              :style="badgeStyle(op)"
+              @mousedown.stop
+              @click.stop="openNoteForOp(op.id)"
+              :title="
+                op.note
+                  ? `标注${index + 1}：${op.note}`
+                  : `标注${index + 1}（未填写要求）`
+              "
+              >{{ index + 1 }}</span
+            >
+          </template>
+        </div>
+
+        <!-- 编号气泡：视口坐标，可拖出图片区域，支持删除单个标注 -->
         <template v-for="(op, index) in ops" :key="op.id">
-          <!-- 编号徽标：点击可重新编辑该区域要求 -->
-          <span
-            class="mark-badge"
-            :class="{ editing: editingNoteId === op.id }"
-            :style="badgeStyle(op)"
-            @mousedown.stop
-            @click.stop="openNoteForOp(op.id)"
-            :title="
-              op.note
-                ? `标注${index + 1}：${op.note}`
-                : `标注${index + 1}（未填写要求）`
-            "
-            >{{ index + 1 }}</span
-          >
-          <!-- 编号气泡：填写该区域的修改要求 -->
           <div
             v-if="editingNoteId === op.id"
             class="mark-bubble"
@@ -672,13 +700,13 @@ onUnmounted(() => {
               @keydown.esc.stop="cancelNote"
             ></textarea>
             <div class="mark-bubble-actions">
+              <button class="mark-bubble-del" @click="removeOp(op.id)">
+                删除此标注
+              </button>
               <button class="mark-bubble-ok" @click="confirmNote">确定</button>
             </div>
           </div>
         </template>
-        <div class="edit-stage-hint">
-          标注区域，在编号气泡中填写修改要求，确认后自动汇总到下方
-        </div>
       </div>
 
       <!-- 底部整体要求框 -->
@@ -815,10 +843,20 @@ onUnmounted(() => {
 .edit-stage {
   position: relative;
   flex-shrink: 0;
-  margin-top: 28px;
-  overflow: hidden;
+  margin-top: 16px;
+
+  /* 允许标注气泡拖出图片区域：裁剪只作用于图片/画布/徽标所在的 clip 容器 */
+  overflow: visible;
   border-radius: 14px;
   box-shadow: 0 24px 80px rgb(0 0 0 / 55%);
+}
+
+.edit-stage-clip {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 14px;
 }
 
 .edit-img {
@@ -864,8 +902,8 @@ onUnmounted(() => {
 
 /* ── 编号气泡 ── */
 .mark-bubble {
-  position: absolute;
-  z-index: 30;
+  position: fixed;
+  z-index: 40;
   width: 250px;
   padding: 10px 10px 8px;
   background: rgb(18 22 30 / 96%);
@@ -936,8 +974,27 @@ onUnmounted(() => {
 
 .mark-bubble-actions {
   display: flex;
+  gap: 6px;
   justify-content: flex-end;
   margin-top: 8px;
+}
+
+.mark-bubble-del {
+  padding: 5px 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #e0665e;
+  cursor: pointer;
+  background: rgb(224 102 94 / 10%);
+  border: 1px solid rgb(224 102 94 / 40%);
+  border-radius: 8px;
+  transition: all 0.15s;
+}
+
+.mark-bubble-del:hover {
+  color: #fff;
+  background: rgb(192 57 43 / 80%);
+  border-color: rgb(192 57 43 / 80%);
 }
 
 .mark-bubble-ok {
@@ -958,17 +1015,16 @@ onUnmounted(() => {
 
 .edit-stage-hint {
   position: absolute;
-  bottom: 10px;
-  left: 50%;
-  z-index: 12;
-  padding: 5px 12px;
-  font-size: 0.7rem;
-  color: rgb(255 255 255 / 75%);
+  top: 132px;
+  right: 24px;
+  z-index: 21;
+  padding: 6px 14px;
+  font-size: 0.72rem;
+  color: #e0665e;
   white-space: nowrap;
-  pointer-events: none;
-  background: rgb(0 0 0 / 45%);
+  background: rgb(192 57 43 / 16%);
+  border: 1px solid rgb(224 102 94 / 35%);
   border-radius: 999px;
-  transform: translateX(-50%);
 }
 
 /* ── 底部整体要求框 ── */
