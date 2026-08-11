@@ -138,9 +138,8 @@ async function loadDetail(sessionId: string, force = false) {
   }
   loadingDetailId.value = sessionId;
   try {
+    // 对话记录由后端按创建时间倒序返回（最新消息在最上面），此处直接存储
     const detail = await getSessionDetail(sessionId);
-    // 对话记录倒序展示：最新消息在最上面
-    detail.messages = [...detail.messages].reverse();
     detailMap.value = { ...detailMap.value, [sessionId]: detail };
   } catch {
     message.error('加载对话详情失败，请稍后重试');
