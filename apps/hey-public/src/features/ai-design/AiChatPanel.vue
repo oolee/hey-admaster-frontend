@@ -16,6 +16,7 @@ import {
   incrementAiTemplateUsage,
   optimizeAiPrompt,
   queryAiGenerationTask,
+  redeemRedeemCode,
   retryPersistAiImages,
 } from '#/api/ai-design';
 import {
@@ -487,6 +488,39 @@ const saveTemplateBusy = ref(false);
 const saveTemplateCategoryOptions = computed(() => [
   ...new Set(Object.keys(templateCategories.value).filter(Boolean)),
 ]);
+
+// 充值码兑换弹窗（无在线支付前的充值入口）
+const showRedeemDialog = ref(false);
+const redeemCodeInput = ref('');
+const redeemBusy = ref(false);
+const redeemError = ref<null | string>(null);
+
+function openRedeemDialog() {
+  redeemCodeInput.value = '';
+  redeemError.value = null;
+  showRedeemDialog.value = true;
+}
+
+async function confirmRedeem() {
+  const code = redeemCodeInput.value.trim();
+  if (!code) {
+    redeemError.value = '请输入充值码';
+    return;
+  }
+  redeemBusy.value = true;
+  redeemError.value = null;
+  try {
+    const result = await redeemRedeemCode(code);
+    await store.refreshWallet();
+    showRedeemDialog.value = false;
+    const credited = result.record.creditedAmount ?? result.code.faceValue;
+    alert(`兑换成功，已到账 ¥${formatPrice(credited)}`);
+  } catch (error: any) {
+    redeemError.value = error?.message || '兑换失败，请检查充值码';
+  } finally {
+    redeemBusy.value = false;
+  }
+}
 
 // 生成质量选项（替换原 1K/2K/4K 分辨率档位：分辨率属于 size/比例维度，质量才是 auto/low/medium/high）
 const qualityOptions = [
@@ -1993,6 +2027,18 @@ onUnmounted(() => {
               class="toolbar-divider"
               v-if="store.walletBalance !== null"
             ></div>
+            <button
+              v-if="store.walletBalance !== null"
+              class="toolbar-btn"
+              title="兑换充值码充值余额"
+              @click="openRedeemDialog"
+            >
+              兑换
+            </button>
+            <div
+              class="toolbar-divider"
+              v-if="store.walletBalance !== null"
+            ></div>
             <!-- Model -->
             <div class="model-menu-area">
               <button
@@ -2634,6 +2680,68 @@ onUnmounted(() => {
                       : `查看更多（${list.length - TEMPLATE_PREVIEW_LIMIT}）`
                   }}
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- 充值码兑换弹窗（无在线支付前的充值入口） -->
+    <Teleport to="body">
+      <Transition name="drawer-fade">
+        <div
+          v-if="showRedeemDialog"
+          class="tpl-drawer-overlay save-tpl-overlay"
+          @click.self="showRedeemDialog = false"
+        >
+          <div class="tpl-drawer save-tpl-dialog redeem-dialog">
+            <div class="tpl-drawer-header">
+              <h3 class="tpl-drawer-title">充值码兑换</h3>
+              <button
+                class="tpl-drawer-close"
+                @click="showRedeemDialog = false"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                >
+                  <path d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div class="save-tpl-body">
+              <p class="save-tpl-tip">
+                输入客服发放的充值码，兑换后直接到账余额（大小写不敏感）。
+              </p>
+              <label class="save-tpl-label" for="redeem-code">充值码</label>
+              <input
+                id="redeem-code"
+                v-model="redeemCodeInput"
+                class="save-tpl-input"
+                placeholder="如 ABC1-2DEF-34GH"
+                @keydown.enter="confirmRedeem"
+              />
+              <p v-if="redeemError" class="redeem-error">{{ redeemError }}</p>
+              <div class="save-tpl-actions">
+                <button
+                  class="save-tpl-btn"
+                  @click="showRedeemDialog = false"
+                >
+                  取消
+                </button>
+                <button
+                  class="save-tpl-btn save-tpl-btn-primary"
+                  :disabled="redeemBusy"
+                  @click="confirmRedeem"
+                >
+                  {{ redeemBusy ? '兑换中...' : '兑换' }}
+                </button>
               </div>
             </div>
           </div>
@@ -5167,6 +5275,13 @@ onUnmounted(() => {
   font-size: 0.75rem;
   line-height: 1.6;
   color: var(--color-text-muted);
+}
+
+.redeem-error {
+  margin-top: 6px;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: #ef4444;
 }
 
 .save-tpl-label {

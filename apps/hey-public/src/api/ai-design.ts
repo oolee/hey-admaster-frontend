@@ -512,6 +512,27 @@ export interface AiRechargeOrderResult {
   isDemoMode: boolean;
 }
 
+export interface AiRedeemCode {
+  id: string;
+  code: string;
+  batchNo?: null | string;
+  faceValue: number;
+  status: number;
+  statusLabel?: null | string;
+  expireAt?: null | string;
+  redeemedByUserId?: null | string;
+  redeemedAt?: null | string;
+  redeemOrderNo?: null | string;
+  remark?: null | string;
+  creationTime: string;
+}
+
+export interface AiRedeemResult {
+  wallet: AiWallet;
+  record: AiRechargeRecord;
+  code: AiRedeemCode;
+}
+
 export interface AiPagedResult<T> {
   totalCount: number;
   items: T[];
@@ -520,6 +541,14 @@ export interface AiPagedResult<T> {
 /** 获取我的钱包（余额/累计消费/单价） */
 export function fetchMyWallet(): Promise<AiWallet> {
   return aiDesignApi<AiWallet>('/billing/wallet');
+}
+
+/** 兑换充值码（大小写不敏感，入钱包并生成已支付充值流水） */
+export function redeemRedeemCode(code: string): Promise<AiRedeemResult> {
+  return aiDesignApi<AiRedeemResult>('/billing/redeem', {
+    method: 'POST',
+    body: { code },
+  });
 }
 
 /** 获取我的计费流水（分页，时间倒序） */
