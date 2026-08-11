@@ -197,6 +197,10 @@ function mapMessageDtoToChatMessage(
     .filter((a): a is AiImageAsset => Boolean(a))
     .map((asset) => mapAssetToGeneratedImage(asset));
 
+  // 后端失败消息（System 类型 + 失败前缀）自动恢复重试能力：
+  // 刷新/换设备后历史失败对话仍可直接重试（张数取任务实际请求数）
+  const failedReason = extractFailReason(msg.content ?? '');
+
   return {
     id: msg.id,
     role: msg.role === 0 ? 'user' : 'assistant',
@@ -207,6 +211,13 @@ function mapMessageDtoToChatMessage(
     prompt: msg.prompt ?? undefined,
     optimizedPrompt: msg.optimizedPrompt ?? undefined,
     taskId: msg.taskId ?? undefined,
+    retry:
+      msg.messageType === 20 && failedReason
+        ? {
+            prompt: msg.prompt ?? msg.content ?? '',
+            count: msg.requestedCount ?? 1,
+          }
+        : undefined,
     images: images.length > 0 ? images : undefined,
   };
 }

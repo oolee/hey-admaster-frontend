@@ -129,6 +129,8 @@ export interface AiChatMessage {
   errorMessage?: null | string;
   creationTime: string;
   generatedImageIds: string[];
+  /** 请求生成张数（失败消息重试恢复张数用） */
+  requestedCount?: null | number;
 }
 
 export interface AiDesignSession {
