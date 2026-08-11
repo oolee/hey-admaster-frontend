@@ -392,11 +392,46 @@ export interface AiUsageRecordDto {
   model: string;
   quantity: number;
   unitPrice: number;
+  tierKey?: null | string;
+  pricingUnit: AiPricingUnit;
   amount: number;
   status: AiUsageRecordStatus;
   settledAt?: null | string;
   failReason?: null | string;
   creationTime: string;
+}
+
+export interface AiBillingTierDto {
+  id: string;
+  model: string;
+  pricingUnit: AiPricingUnit;
+  tierKey?: null | string;
+  minQuantity: number;
+  maxQuantity?: null | number;
+  unitPrice: number;
+  isActive: boolean;
+  remark?: null | string;
+  creationTime: string;
+}
+
+export interface AiCreateBillingTierInput {
+  model: string;
+  pricingUnit: AiPricingUnit;
+  tierKey?: null | string;
+  minQuantity: number;
+  maxQuantity?: null | number;
+  unitPrice: number;
+  isActive: boolean;
+  remark?: null | string;
+}
+
+export interface AiUpdateBillingTierInput {
+  tierKey?: null | string;
+  minQuantity: number;
+  maxQuantity?: null | number;
+  unitPrice: number;
+  isActive: boolean;
+  remark?: null | string;
 }
 
 export interface AiDesignSettingsDto {
@@ -559,6 +594,28 @@ export function useAiDesignApi() {
       { method: 'GET', params: input },
     );
 
+  // ---------- 阶梯计费档位（管理端） ----------
+  const getBillingTiers = (input: PagedInput) =>
+    request<PagedResultDto<AiBillingTierDto>>(`${BASE_URL}/billing-tiers`, {
+      method: 'GET',
+      params: input,
+    });
+
+  const createBillingTier = (input: AiCreateBillingTierInput) =>
+    request<AiBillingTierDto>(`${BASE_URL}/billing-tiers`, {
+      data: input,
+      method: 'POST',
+    });
+
+  const updateBillingTier = (id: string, input: AiUpdateBillingTierInput) =>
+    request<AiBillingTierDto>(`${BASE_URL}/billing-tiers/${id}`, {
+      data: input,
+      method: 'PUT',
+    });
+
+  const deleteBillingTier = (id: string) =>
+    request(`${BASE_URL}/billing-tiers/${id}`, { method: 'DELETE' });
+
   // ---------- 模块设置 ----------
   const getSettings = () =>
     request<AiDesignSettingsDto>(`${BASE_URL}/settings`, { method: 'GET' });
@@ -588,6 +645,10 @@ export function useAiDesignApi() {
     getWallets,
     rechargeWallet,
     getUsageRecords,
+    getBillingTiers,
+    createBillingTier,
+    updateBillingTier,
+    deleteBillingTier,
     getSettings,
     updateSettings,
   };

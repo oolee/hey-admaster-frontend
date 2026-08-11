@@ -18,6 +18,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('#/views/ai-management/channels/index.vue'),
       },
       {
+        meta: { title: '冲量价档位' },
+        name: 'AiDesignBillingTiers',
+        path: '/ai-management/billing-tiers',
+        component: () => import('#/views/ai-management/billing-tier/index.vue'),
+      },
+      {
         meta: { title: '对话历史' },
         name: 'AiDesignSessions',
         path: '/ai-management/sessions',
@@ -51,8 +57,7 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '容器策略' },
         name: 'AiDesignBlobPolicies',
         path: '/ai-management/blob-policy',
-        component: () =>
-          import('#/views/ai-management/blob-policy/index.vue'),
+        component: () => import('#/views/ai-management/blob-policy/index.vue'),
       },
     ],
   },
