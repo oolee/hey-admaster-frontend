@@ -48,6 +48,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('#/views/ai-management/usage-record/index.vue'),
       },
       {
+        meta: { title: '充值码管理' },
+        name: 'AiDesignRedeemCodes',
+        path: '/ai-management/redeem-codes',
+        component: () =>
+          import('#/views/ai-management/redeem-code/index.vue'),
+      },
+      {
         meta: { title: '模块设置' },
         name: 'AiDesignSettings',
         path: '/ai-management/settings',

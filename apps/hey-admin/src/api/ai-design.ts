@@ -434,6 +434,29 @@ export interface AiUpdateBillingTierInput {
   remark?: null | string;
 }
 
+export interface AiRedeemCodeDto {
+  id: string;
+  code: string;
+  batchNo?: null | string;
+  faceValue: number;
+  status: number;
+  statusLabel?: null | string;
+  expireAt?: null | string;
+  redeemedByUserId?: null | string;
+  redeemedAt?: null | string;
+  redeemOrderNo?: null | string;
+  remark?: null | string;
+  creationTime: string;
+}
+
+export interface AiGenerateRedeemCodeInput {
+  count: number;
+  faceValue: number;
+  expireAt?: null | string;
+  batchNo?: null | string;
+  remark?: null | string;
+}
+
 export interface AiDesignSettingsDto {
   defaultRetentionDays: number;
   guestRetentionDays: number;
@@ -616,6 +639,24 @@ export function useAiDesignApi() {
   const deleteBillingTier = (id: string) =>
     request(`${BASE_URL}/billing-tiers/${id}`, { method: 'DELETE' });
 
+  // ---------- 充值码（管理端） ----------
+  const getRedeemCodes = (input: PagedInput) =>
+    request<PagedResultDto<AiRedeemCodeDto>>(
+      `${BASE_URL}/billing/redeem-codes`,
+      { method: 'GET', params: input },
+    );
+
+  const generateRedeemCodes = (input: AiGenerateRedeemCodeInput) =>
+    request<AiRedeemCodeDto[]>(`${BASE_URL}/billing/redeem-codes/generate`, {
+      data: input,
+      method: 'POST',
+    });
+
+  const disableRedeemCode = (id: string) =>
+    request(`${BASE_URL}/billing/redeem-codes/${id}/disable`, {
+      method: 'POST',
+    });
+
   // ---------- 模块设置 ----------
   const getSettings = () =>
     request<AiDesignSettingsDto>(`${BASE_URL}/settings`, { method: 'GET' });
@@ -649,6 +690,9 @@ export function useAiDesignApi() {
     createBillingTier,
     updateBillingTier,
     deleteBillingTier,
+    getRedeemCodes,
+    generateRedeemCodes,
+    disableRedeemCode,
     getSettings,
     updateSettings,
   };
