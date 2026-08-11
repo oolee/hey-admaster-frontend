@@ -36,14 +36,14 @@ const detailMap = ref<Record<string, AiDesignSessionDetailDto>>({});
 const loadingDetailId = ref<null | string>(null);
 
 /** 消息角色：0=用户 1=AI 2=系统 */
-const ROLE_LABELS: Record<number, { color: string; text: string; }> = {
+const ROLE_LABELS: Record<number, { color: string; text: string }> = {
   0: { text: '用户', color: 'blue' },
   1: { text: 'AI', color: 'green' },
   2: { text: '系统', color: 'default' },
 };
 
 /** 任务状态：0=待处理 10=处理中 20=成功 30=失败 40=已取消 */
-const STATUS_LABELS: Record<number, { color: string; text: string; }> = {
+const STATUS_LABELS: Record<number, { color: string; text: string }> = {
   0: { text: '待处理', color: 'default' },
   10: { text: '处理中', color: 'processing' },
   20: { text: '成功', color: 'success' },
@@ -298,9 +298,16 @@ function formatDuration(ms?: null | number) {
   return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
 }
 
+/** 后端返回 UTC 时间（ABP 序列化不带时区标识，如 2026-08-11T09:48:32），补 Z 按 UTC 解析再转本地时区显示 */
+function parseApiTime(value: string): Date {
+  return /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value)
+    ? new Date(value)
+    : new Date(`${value}Z`);
+}
+
 function formatTime(value?: null | string) {
   if (!value) return '-';
-  const date = new Date(value);
+  const date = parseApiTime(value);
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
@@ -572,10 +579,9 @@ function formatTime(value?: null | string) {
                 size="small"
                 type="link"
                 @click="copyText(callDetailMsg.requestUrl!)"
-                >
-复制
-</Button
               >
+                复制
+              </Button>
             </div>
             <div class="call-detail-item">
               <span class="call-detail-label">耗时 / Tokens / 金额</span>
@@ -610,21 +616,17 @@ function formatTime(value?: null | string) {
                   size="small"
                   type="link"
                   @click="showFullRequest = !showFullRequest"
-                  >
-{{
-                    showFullRequest ? '收起完整内容' : '显示完整 base64'
-                  }}
-</Button
                 >
+                  {{ showFullRequest ? '收起完整内容' : '显示完整 base64' }}
+                </Button>
                 <Button
                   v-if="callDetailMsg.requestPayloadJson"
                   size="small"
                   type="link"
                   @click="copyText(callDetailMsg.requestPayloadJson!)"
-                  >
-复制
-</Button
                 >
+                  复制
+                </Button>
               </div>
             </div>
             <pre
@@ -653,21 +655,17 @@ function formatTime(value?: null | string) {
                   size="small"
                   type="link"
                   @click="showFullResponse = !showFullResponse"
-                  >
-{{
-                    showFullResponse ? '收起完整内容' : '显示完整 base64'
-                  }}
-</Button
                 >
+                  {{ showFullResponse ? '收起完整内容' : '显示完整 base64' }}
+                </Button>
                 <Button
                   v-if="callDetailMsg.responsePayloadJson"
                   size="small"
                   type="link"
                   @click="copyText(callDetailMsg.responsePayloadJson!)"
-                  >
-复制
-</Button
                 >
+                  复制
+                </Button>
               </div>
             </div>
             <pre

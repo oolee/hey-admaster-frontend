@@ -217,6 +217,8 @@ function onGet() {
       supportedSizes: item.supportedSizes ?? null,
       disabledRequestParams: item.disabledRequestParams ?? 0,
       defaultResponseFormat: item.defaultResponseFormat ?? null,
+      sizeMode: item.sizeMode ?? 0,
+      paramProfileJson: item.paramProfileJson ?? null,
       weight: item.weight,
     }));
   } else {
@@ -248,6 +250,8 @@ function addModel() {
     supportedSizes: null,
     disabledRequestParams: 0,
     defaultResponseFormat: null,
+    sizeMode: 0,
+    paramProfileJson: null,
     weight: 1,
   });
 }
@@ -285,6 +289,58 @@ const responseFormatOptions = [
   { value: 'url', label: 'url（返回链接）' },
   { value: 'b64_json', label: 'base64（b64_json）' },
 ];
+
+/** 尺寸发送模式：Auto=直传 WxH（OpenAI 官方语义）；Tier=size 传档位字面量 1k/2k/4k（如 GPTeam gpt-image-2 必须传档位才出 4K） */
+const sizeModeOptions = [
+  { value: 0, label: '自动（直传 WxH）' },
+  { value: 1, label: '档位字面量（1k/2k/4k）' },
+];
+
+// --- 参数适配策略编辑（JSON，供应商参数差异映射）---
+const paramProfileVisible = ref(false);
+const paramProfileIndex = ref<null | number>(null);
+const paramProfileText = ref('');
+
+function openParamProfileEditor(index: number) {
+  paramProfileIndex.value = index;
+  paramProfileText.value = models.value[index]?.paramProfileJson ?? '';
+  paramProfileVisible.value = true;
+}
+
+/** 一键填充 GPTeam gpt-image-2 示例（size 档位 + aspect_ratio + upscale） */
+function fillParamProfileExample() {
+  paramProfileText.value = JSON.stringify(
+    {
+      sizeMode: 1,
+      sizeTierMap: { '1k': '1k', '2k': '2k', '4k': '4k' },
+      defaultSizeTier: '4k',
+      emitAspectRatio: true,
+      fixedQuality: null,
+      fixedCount: null,
+      extraParams: { upscale: '4k', resize_mode: 'proportional' },
+    },
+    null,
+    2,
+  );
+}
+
+function saveParamProfile() {
+  if (paramProfileIndex.value === null) return;
+  const text = paramProfileText.value.trim();
+  if (text) {
+    try {
+      JSON.parse(text);
+    } catch {
+      message.error('参数适配策略不是合法的 JSON，请检查后保存');
+      return;
+    }
+  }
+  updateModel(paramProfileIndex.value, {
+    paramProfileJson: text || null,
+  });
+  paramProfileVisible.value = false;
+  paramProfileIndex.value = null;
+}
 
 function pricingUnitOptions(modelType: number) {
   if (modelType === AiModelType.Text) {
@@ -559,6 +615,8 @@ async function autoFetchModels() {
         supportedSizes: null,
         disabledRequestParams: 0,
         defaultResponseFormat: null,
+        sizeMode: 0,
+        paramProfileJson: null,
         weight: 1,
       });
       existing.add(String(name).trim());
@@ -721,6 +779,18 @@ async function onSubmit(values: Record<string, any>) {
                 title="后台配置该模型请求时默认使用的返回格式（url / b64_json），不从前台透传；自动=交给 Provider 默认（b64_json 便于本地落库）"
               >
                 默认返回格式
+              </th>
+              <th
+                class="w-36 px-3 py-2 text-left font-medium"
+                title="尺寸发送模式：自动=按 OpenAI 官方直传 WxH；档位字面量=size 只传 1k/2k/4k（如 GPTeam gpt-image-2 必须传档位才出 4K，任意像素仅当比例参考）"
+              >
+                尺寸模式
+              </th>
+              <th
+                class="w-28 px-3 py-2 text-left font-medium"
+                title="请求参数适配策略（JSON）：质量/张数映射、aspect_ratio、固定附加参数等，配置驱动适配不同供应商参数差异，无需改代码"
+              >
+                参数适配
               </th>
               <th
                 class="min-w-[300px] px-3 py-2 text-left font-medium"
@@ -920,6 +990,43 @@ async function onSubmit(values: Record<string, any>) {
                 >
                   —
                 </div>
+                <Select
+                  v-else
+                  :value="model.sizeMode ?? 0"
+                  size="small"
+                  class="w-full"
+                  :options="sizeModeOptions"
+                  title="尺寸发送模式：自动=直传 WxH；档位=size 传 1k/2k/4k（GPTeam gpt-image-2 等供应商必须选档位模式才能出 4K）"
+                  @update:value="
+                    (value: any) =>
+                      updateModel(index, { sizeMode: Number(value) })
+                  "
+                />
+              </td>
+              <td class="px-3 py-2">
+                <div
+                  v-if="model.modelType === AiModelType.Text"
+                  class="pt-1 text-center text-gray-400"
+                >
+                  —
+                </div>
+                <Button
+                  v-else
+                  size="small"
+                  class="w-full"
+                  title="编辑请求参数适配策略（JSON）：质量/张数映射、aspect_ratio、固定附加参数"
+                  @click="openParamProfileEditor(index)"
+                >
+                  {{ model.paramProfileJson ? '编辑策略' : '配置策略' }}
+                </Button>
+              </td>
+              <td class="px-3 py-2">
+                <div
+                  v-if="model.modelType === AiModelType.Text"
+                  class="pt-1 text-center text-gray-400"
+                >
+                  —
+                </div>
                 <div
                   v-else
                   class="flex min-h-[32px] flex-wrap items-center gap-x-2 gap-y-1"
@@ -1097,6 +1204,56 @@ async function onSubmit(values: Record<string, any>) {
       <div class="mt-4 flex justify-end gap-2">
         <Button @click="sizeEditorVisible = false">取消</Button>
         <Button type="primary" @click="saveSizeEditor">确定</Button>
+      </div>
+    </AntModal>
+
+    <!-- 参数适配策略编辑弹窗（供应商参数差异映射） -->
+    <AntModal
+      v-model:open="paramProfileVisible"
+      title="请求参数适配策略（JSON）"
+      :footer="null"
+      :width="720"
+      @cancel="paramProfileVisible = false"
+    >
+      <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <span class="text-xs text-gray-500 dark:text-gray-400">
+          配置驱动适配不同供应商参数差异，无需改代码；留空使用 OpenAI
+          官方默认语义。
+        </span>
+        <Button size="small" type="link" @click="fillParamProfileExample">
+          填充 GPTEAM gpt-image-2 示例
+        </Button>
+      </div>
+      <div class="mb-1.5 text-xs font-medium text-gray-500 dark:text-gray-400">
+        支持的字段
+      </div>
+      <ul
+        class="mb-3 list-disc pl-5 text-xs leading-relaxed text-gray-500 dark:text-gray-400"
+      >
+        <li>sizeMode：0=直传 WxH，1=档位字面量 1k/2k/4k</li>
+        <li>
+          sizeTierMap：前端档位 → 上游字面量映射（如 {"1k":"1k","4k":"4k"}）
+        </li>
+        <li>defaultSizeTier：前端未选档位时的默认档位（如 "4k"）</li>
+        <li>
+          emitAspectRatio：是否把尺寸换算为 aspect_ratio 附加（GPTEAM 支持）
+        </li>
+        <li>qualityValueMap / fixedQuality：质量值映射或固定质量</li>
+        <li>fixedCount：固定张数（>0 时忽略前端 n）</li>
+        <li>
+          extraParams：固定附加/覆盖参数（如
+          {"upscale":"4k","resize_mode":"proportional"}）
+        </li>
+      </ul>
+      <Input.TextArea
+        v-model:value="paramProfileText"
+        :rows="10"
+        class="font-mono"
+        placeholder="{&#10;  &quot;sizeMode&quot;: 1,&#10;  &quot;emitAspectRatio&quot;: true&#10;}"
+      />
+      <div class="mt-4 flex justify-end gap-2">
+        <Button @click="paramProfileVisible = false">取消</Button>
+        <Button type="primary" @click="saveParamProfile">确定</Button>
       </div>
     </AntModal>
   </Modal>

@@ -28,8 +28,15 @@ const filteredSessions = computed(() => {
 
 const recentSessions = computed(() => store.sessions.slice(0, 8));
 
+/** 后端返回 UTC 时间（ABP 序列化不带时区标识），补 Z 按 UTC 解析再转本地时区 */
+function parseApiTime(value: string): Date {
+  return /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value)
+    ? new Date(value)
+    : new Date(`${value}Z`);
+}
+
 function timeLabel(iso: string): string {
-  const d = new Date(iso);
+  const d = parseApiTime(iso);
   const diff = Date.now() - d.getTime();
   const mins = Math.floor(diff / 60_000);
   if (mins < 1) return '刚刚';

@@ -15,6 +15,7 @@ import { defineStore } from 'pinia';
 import {
   AiGenerationStatus,
   aiImageUrl,
+  AiRequestParam,
   cancelAiGenerationTask,
   createAiSession,
   deleteAiSession,
@@ -132,6 +133,14 @@ export interface ModelOption {
   price?: number;
   /** 模型支持的尺寸列表（如 ["1024x1024","1536x1024","1024x1536"]，空则用默认值） */
   supportedSizes?: string[];
+  /** 禁用的请求参数（Flags，与后端 AiRequestParam 对齐）：前端据此禁用/隐藏对应控件 */
+  disabledRequestParams?: number;
+  /** 单次最大生成张数（0=不限制） */
+  maxImagesPerRequest?: number;
+  /** 尺寸发送模式：0 直传 WxH、1 档位字面量 */
+  sizeMode?: number;
+  /** 请求参数适配策略 JSON（fixedCount/fixedQuality/sizeTierMap/defaultSizeTier...），空=无 */
+  paramProfileJson?: null | string;
 }
 
 export interface SizePreset {
@@ -313,7 +322,7 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
 
   // ── Generation count ──
   const generateCount = ref<number>(1);
-  const countOptions = [1, 2, 4, 6, 8];
+  const baseCountOptions = [1, 2, 4, 6, 8];
   // ── Quality options（生成质量，替换原 1K/2K/4K 分辨率档位：分辨率属于 size/比例维度，质量才是 auto/low/medium/high） ──
   const qualityOptions = [
     { value: 'auto', label: '自动', desc: '模型自动选择最优质量（推荐）' },
@@ -384,7 +393,7 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
   const selectedAspectRatio = ref('auto'); // 默认自动：未选择比例/设计类型时提示词不附加尺寸
   /** 分辨率档位（模糊选择）：auto=自动 / 1k / 2k / 4k。选档位时取该档最大分辨率或按比例匹配 30 档尺寸 */
   const resolutionTier = ref<'1k' | '2k' | '4k' | 'auto'>('auto');
-/** 精确尺寸（如 1536x1024）：用户在 30 档尺寸中精确选择后生效；为空时按「档位+比例」自动解析 */
+  /** 精确尺寸（如 1536x1024）：用户在 30 档尺寸中精确选择后生效；为空时按「档位+比例」自动解析 */
   const exactSize = ref<string>('');
 
   // ── Style presets (expanded with real case preview images) ──
@@ -654,6 +663,62 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
     modelOptions.find((m) => m.id === selectedModel.value),
   );
 
+  /** 当前模型禁用的请求参数位（与后端 AiRequestParam 对齐，0=全部支持） */
+  const modelDisabledParams = computed(
+    () => currentModel.value?.disabledRequestParams ?? 0,
+  );
+
+  /** 当前模型请求参数适配策略（解析 paramProfileJson，供固定张数/画质/尺寸档位判断） */
+  interface ModelParamProfile {
+    fixedCount?: null | number;
+    fixedQuality?: null | string;
+    defaultSizeTier?: null | string;
+    sizeTierMap?: Record<string, string>;
+  }
+  const modelParamProfile = computed<ModelParamProfile | null>(() => {
+    const json = currentModel.value?.paramProfileJson;
+    if (!json) return null;
+    try {
+      return JSON.parse(json) as ModelParamProfile;
+    } catch {
+      return null;
+    }
+  });
+
+  /** 生成张数选项：按当前模型能力动态裁剪（渠道固定张数 / 禁用 n / maxImagesPerRequest 上限） */
+  const countOptions = computed<number[]>(() => {
+    const profile = modelParamProfile.value;
+    if (profile?.fixedCount && profile.fixedCount > 0)
+      return [profile.fixedCount];
+    if (modelDisabledParams.value & AiRequestParam.Count) return [1];
+    const max = currentModel.value?.maxImagesPerRequest ?? 0;
+    return max > 0
+      ? baseCountOptions.filter((c) => c <= max)
+      : baseCountOptions;
+  });
+
+  /** 画质不可选：渠道禁用 quality 或固定 quality（如 apiyi gpt-image-2-vip 强制 high） */
+  const qualityDisabled = computed(() => {
+    if (modelDisabledParams.value & AiRequestParam.Quality) return true;
+    return Boolean(modelParamProfile.value?.fixedQuality);
+  });
+
+  /** 尺寸不可选：渠道禁用 size 参数（尺寸只能写进提示词，前端隐藏尺寸选择） */
+  const sizeDisabled = computed(() =>
+    Boolean(modelDisabledParams.value & AiRequestParam.Size),
+  );
+
+  // 模型/能力变化时同步张数（固定张数或超出上限时回退到合法值）
+  watch(
+    [selectedModel, countOptions],
+    () => {
+      if (!countOptions.value.includes(generateCount.value)) {
+        generateCount.value = countOptions.value[0] ?? 1;
+      }
+    },
+    { immediate: true },
+  );
+
   // 风格关键词（去掉尾部「风格/风」，用于拼入模板 prompt 的 {style}风格 占位）
   const styleKeyword = computed(() => {
     const name =
@@ -841,6 +906,10 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
       pricingUnit: option.pricingUnit ?? 0,
       price: option.price ?? 0,
       supportedSizes: option.supportedSizes ?? [],
+      disabledRequestParams: option.disabledRequestParams ?? 0,
+      maxImagesPerRequest: option.maxImagesPerRequest ?? 0,
+      sizeMode: option.sizeMode ?? 0,
+      paramProfileJson: option.paramProfileJson ?? null,
     };
   }
 
@@ -1028,6 +1097,10 @@ export const useAiDesignStore = defineStore('aiDesign', () => {
     currentRevision,
     revisionCounter,
     currentModel,
+    modelDisabledParams,
+    modelParamProfile,
+    qualityDisabled,
+    sizeDisabled,
     styleKeyword,
     sessions,
     activeSessionId,

@@ -88,9 +88,16 @@ const gridOptions: VxeGridProps<AiTemplateDto> = {
 
 const [Grid, gridApi] = useVbenVxeGrid({ gridOptions });
 
+/** 后端返回 UTC 时间（ABP 序列化不带时区标识，如 2026-08-11T09:48:32），补 Z 按 UTC 解析再转本地时区显示 */
+function parseApiTime(value: string): Date {
+  return /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value)
+    ? new Date(value)
+    : new Date(`${value}Z`);
+}
+
 function formatTime(value?: null | string) {
   if (!value) return '-';
-  const date = new Date(value);
+  const date = parseApiTime(value);
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
@@ -162,11 +169,9 @@ function onDelete(row: AiTemplateDto) {
       <span>{{ formatTime(row.creationTime) }}</span>
     </template>
     <template #action="{ row }">
-      <Button type="link" size="small" @click="onDetail(row)"
-        >
-查看提示词
-</Button
-      >
+      <Button type="link" size="small" @click="onDetail(row)">
+        查看提示词
+      </Button>
       <Button
         v-if="row.source === 1"
         type="link"

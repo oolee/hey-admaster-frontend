@@ -172,6 +172,15 @@ function formatDuration(ms: number): string {
   return `${minutes}分${seconds}s`;
 }
 
+/** 后端返回 UTC 时间（ABP 序列化不带时区标识），补 Z 按 UTC 解析再转本地时区显示 */
+function formatMsgTime(value?: null | string): string {
+  if (!value) return '';
+  const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value);
+  const date = new Date(hasZone ? value : `${value}Z`);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 /** 生成耗时计时（处理中指示条显示已用时） */
 const generationElapsed = ref(0);
 let elapsedTimer: null | ReturnType<typeof setInterval> = null;
@@ -230,9 +239,9 @@ const showCountMenu = ref(false);
 const showRatioMenu = ref(false);
 const showQualityMenu = ref(false);
 
-// Quick ratio presets for the toolbar dropdown
-/** 分辨率档位（模糊选择）：auto=自动 / 1k / 2k / 4k，选档位默认取该档最大分辨率 */
-const resolutionTierOptions: {
+// ── 尺寸可选项：按当前模型后台声明的 supportedSizes 动态过滤（未配置则显示全部）──
+/** 分辨率档位默认项（模型未声明 supportedSizes 时使用全部档位） */
+const DEFAULT_TIER_OPTIONS: {
   label: string;
   value: '1k' | '2k' | '4k' | 'auto';
 }[] = [
@@ -242,7 +251,8 @@ const resolutionTierOptions: {
   { value: '4k', label: '4K' },
 ];
 
-const quickRatioOptions = [
+/** 比例默认项（模型未声明 supportedSizes 时使用全部比例） */
+const DEFAULT_QUICK_RATIOS = [
   { value: 'auto', label: '自动' },
   { value: '2:1', label: '2:1' },
   { value: '1:2', label: '1:2' },
@@ -251,6 +261,97 @@ const quickRatioOptions = [
   { value: '4:3', label: '4:3' },
   { value: '1:1', label: '1:1' },
 ];
+
+/** 按长边判断尺寸所属档位（1k/2k/4k），无法解析返回 null */
+function tierOfSize(size: string): '1k' | '2k' | '4k' | null {
+  const [wStr, hStr] = size.split('x') as [string, string];
+  const w = Number.parseInt(wStr, 10);
+  const h = Number.parseInt(hStr, 10);
+  if (!w || !h) return null;
+  const longEdge = Math.max(w, h);
+  if (longEdge <= 1280) return '1k';
+  if (longEdge <= 2048) return '2k';
+  return '4k';
+}
+
+/** 最大公约数（用于简化宽高比） */
+function gcd(a: number, b: number): number {
+  let x = Math.abs(a);
+  let y = Math.abs(b);
+  while (y) {
+    [x, y] = [y, x % y];
+  }
+  return x || 1;
+}
+
+/** 尺寸归一键（小x大，忽略横竖）：1024x1536 与 1536x1024 视为同一尺寸 */
+function normalizeSizeKey(size: string): string {
+  const [wStr, hStr] = size.split('x') as [string, string];
+  const w = Number.parseInt(wStr, 10);
+  const h = Number.parseInt(hStr, 10);
+  if (!w || !h) return size.trim().toLowerCase();
+  return `${Math.min(w, h)}x${Math.max(w, h)}`;
+}
+
+/** 尺寸 → 简化宽高比（如 1536x1024 → 3:2） */
+function ratioOfSize(size: string): string {
+  const [wStr, hStr] = size.split('x') as [string, string];
+  const w = Number.parseInt(wStr, 10);
+  const h = Number.parseInt(hStr, 10);
+  if (!w || !h) return '';
+  const g = gcd(w, h);
+  return `${w / g}:${h / g}`;
+}
+
+/** 档位显示名（精确尺寸分组标题） */
+const TIER_LABELS: Record<'1k' | '2k' | '4k', string> = {
+  '1k': '1K Fast',
+  '2k': '2K Recommended',
+  '4k': '4K Detail',
+};
+
+/** 档位显示名 */
+function tierLabelOf(tier: '1k' | '2k' | '4k'): string {
+  return TIER_LABELS[tier];
+}
+
+/** 当前模型后台声明的支持尺寸（未配置时为空数组 → 显示全部） */
+const modelSupportedSizes = computed(
+  () => store.currentModel?.supportedSizes ?? [],
+);
+
+/** 分辨率档位（模糊选择）：模型声明了 supportedSizes 时仅显示包含的档位 */
+const resolutionTierOptions = computed<
+  { label: string; value: '1k' | '2k' | '4k' | 'auto' }[]
+>(() => {
+  const supported = modelSupportedSizes.value;
+  if (supported.length === 0) return DEFAULT_TIER_OPTIONS;
+  const tiers = new Set<'1k' | '2k' | '4k'>();
+  for (const s of supported) {
+    const tier = tierOfSize(s);
+    if (tier) tiers.add(tier);
+  }
+  const list: { label: string; value: '1k' | '2k' | '4k' }[] = [];
+  if (tiers.has('1k')) list.push({ value: '1k', label: '1K' });
+  if (tiers.has('2k')) list.push({ value: '2k', label: '2K' });
+  if (tiers.has('4k')) list.push({ value: '4k', label: '4K' });
+  return [{ value: 'auto', label: '自动' }, ...list];
+});
+
+/** 比例快捷选择：模型声明了 supportedSizes 时按其包含的比例展示 */
+const quickRatioOptions = computed(() => {
+  const supported = modelSupportedSizes.value;
+  if (supported.length === 0) return DEFAULT_QUICK_RATIOS;
+  const ratios = new Set<string>();
+  for (const s of supported) {
+    const ratio = ratioOfSize(s);
+    if (ratio) ratios.add(ratio);
+  }
+  return [
+    { value: 'auto', label: '自动' },
+    ...[...ratios].map((r) => ({ value: r, label: r })),
+  ];
+});
 
 // Upload dialog
 const showUploadDialog = ref(false);
@@ -898,8 +999,47 @@ const sizeButtonText = computed(() => {
 /** 精确尺寸去重：同一档内仅保留长宽对中的一种（横版优先），并记录对调后的尺寸，
  * 避免 1280x848 / 848x1280 这类只是长宽互换的重复选项。
  */
-const compactTierSizes = computed(() =>
-  GPT_IMAGE_TIER_SIZES.map((g) => {
+const compactTierSizes = computed(() => {
+  // 后台声明了 supportedSizes：按档位分组展示支持项（代表项取横版/方形，竖版可对调）
+  const supported = modelSupportedSizes.value;
+  if (supported.length > 0) {
+    const groups: {
+      sizes: {
+        flippedSize: string;
+        name: string;
+        ratio: string;
+        size: string;
+      }[];
+      tier: '1k' | '2k' | '4k';
+      tierLabel: string;
+    }[] = [];
+    for (const size of supported) {
+      const tier = tierOfSize(size);
+      if (!tier) continue;
+      let group = groups.find((g) => g.tier === tier);
+      if (!group) {
+        group = { tier, tierLabel: tierLabelOf(tier), sizes: [] };
+        groups.push(group);
+      }
+      const [wStr, hStr] = size.split('x') as [string, string];
+      const w = Number.parseInt(wStr, 10);
+      const h = Number.parseInt(hStr, 10);
+      const horizontal = `${Math.max(w, h)}x${Math.min(w, h)}`;
+      const flipped = `${Math.min(w, h)}x${Math.max(w, h)}`;
+      // 同一档内长宽互换视为同一尺寸，仅保留横版代表项（竖版通过「对调长宽」获得）
+      if (group.sizes.some((s) => s.size === horizontal)) continue;
+      group.sizes.push({
+        name: horizontal,
+        ratio: ratioOfSize(size) || `${w}:${h}`,
+        size: horizontal,
+        flippedSize: flipped,
+      });
+    }
+    return groups;
+  }
+
+  // 未配置 supportedSizes：回退 30 档预置表（同一档内仅保留长宽对中的一种，横版优先）
+  return GPT_IMAGE_TIER_SIZES.map((g) => {
     const seen = new Set<string>();
     const sizes = g.sizes
       .map((s) => {
@@ -922,8 +1062,8 @@ const compactTierSizes = computed(() =>
         flippedSize: s.w >= s.h ? `${s.h}x${s.w}` : s.size,
       }));
     return { ...g, sizes };
-  }),
-);
+  });
+});
 
 /** 预览对调后的尺寸（不修改状态） */
 function swapPreview(size: string): string {
@@ -963,6 +1103,44 @@ watch(chatInput, () => {
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   });
 });
+
+// 模型切换时：当前精确尺寸/档位/比例若不在模型支持列表内，回退到合法默认值
+watch(
+  () => store.currentModel?.id,
+  () => {
+    const supported = modelSupportedSizes.value;
+    if (supported.length === 0) return;
+    const normKeys = supported.map((s) => normalizeSizeKey(s));
+    if (
+      store.exactSize &&
+      !normKeys.includes(normalizeSizeKey(store.exactSize))
+    ) {
+      store.exactSize = '';
+    }
+    const tiers = new Set<'1k' | '2k' | '4k'>();
+    const ratios = new Set<string>();
+    for (const s of supported) {
+      const tier = tierOfSize(s);
+      if (tier) tiers.add(tier);
+      const ratio = ratioOfSize(s);
+      if (ratio) ratios.add(ratio);
+    }
+    if (
+      store.resolutionTier !== 'auto' &&
+      !tiers.has(store.resolutionTier as '1k' | '2k' | '4k')
+    ) {
+      store.resolutionTier = 'auto';
+    }
+    if (
+      store.selectedAspectRatio !== 'auto' &&
+      store.selectedAspectRatio !== 'custom' &&
+      !ratios.has(store.selectedAspectRatio)
+    ) {
+      store.selectedAspectRatio = 'auto';
+      store.sizeSource = 'none';
+    }
+  },
+);
 
 // 新消息/生成状态变化时自动滚动到底部
 watch(
@@ -1210,7 +1388,7 @@ onUnmounted(() => {
                 <template v-else>{{ userAvatarText }}</template>
               </div>
             </div>
-            <div class="msg-time">{{ msg.time }}</div>
+            <div class="msg-time">{{ formatMsgTime(msg.time) }}</div>
           </div>
 
           <!-- AI message -->
@@ -1528,7 +1706,7 @@ onUnmounted(() => {
                 </div>
               </div>
               <div class="msg-time">
-                {{ msg.time }}
+                {{ formatMsgTime(msg.time) }}
                 <span v-if="msg.cost" class="msg-cost"
                   >本次消耗 ¥{{ formatPrice(msg.cost) }}</span
                 >
@@ -1908,11 +2086,20 @@ onUnmounted(() => {
 
             <div v-if="!isTextModel" class="toolbar-divider"></div>
 
-            <!-- Count（仅图片模型） -->
+            <!-- Count（仅图片模型）：渠道固定张数/禁用 n 时仅 1 张可选 -->
             <div v-if="!isTextModel" class="count-menu-area">
               <button
                 class="toolbar-btn"
-                :class="{ active: showCountMenu }"
+                :class="{
+                  active: showCountMenu,
+                  'is-disabled': store.countOptions.length <= 1,
+                }"
+                :disabled="store.countOptions.length <= 1"
+                :title="
+                  store.countOptions.length <= 1
+                    ? '该模型仅支持生成 1 张'
+                    : '生成数量'
+                "
                 @click="toggleCountMenu"
               >
                 {{ store.generateCount }} 张
@@ -1957,13 +2144,21 @@ onUnmounted(() => {
 
             <div v-if="!isTextModel" class="toolbar-divider"></div>
 
-            <!-- 生成质量（仅图片模型）：auto/low/medium/high，对应模型 quality 参数 -->
+            <!-- 生成质量（仅图片模型）：auto/low/medium/high，对应模型 quality 参数；渠道禁用/固定时置灰 -->
             <div v-if="!isTextModel" class="quality-menu-area">
               <button
                 class="toolbar-btn"
-                :class="{ active: showQualityMenu }"
+                :class="{
+                  active: showQualityMenu,
+                  'is-disabled': store.qualityDisabled,
+                }"
+                :disabled="store.qualityDisabled"
+                :title="
+                  store.qualityDisabled
+                    ? '该模型不支持画质设置（由渠道固定）'
+                    : '画质选择'
+                "
                 @click="toggleQualityMenu"
-                title="画质选择"
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -2025,10 +2220,16 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <div v-if="!isTextModel" class="toolbar-divider"></div>
+            <div
+              v-if="!isTextModel && !store.sizeDisabled"
+              class="toolbar-divider"
+            ></div>
 
-            <!-- Quick aspect ratio selector（仅图片模型） -->
-            <div v-if="!isTextModel" class="ratio-menu-area">
+            <!-- Quick aspect ratio selector（仅图片模型）；渠道禁用 size 时隐藏 -->
+            <div
+              v-if="!isTextModel && !store.sizeDisabled"
+              class="ratio-menu-area"
+            >
               <button
                 class="toolbar-btn"
                 :class="{ active: showRatioMenu }"
@@ -2430,9 +2631,7 @@ onUnmounted(() => {
                   {{
                     expandedTemplateCats.has(cat)
                       ? '收起'
-                      : `查看更多（${ 
-                        list.length - TEMPLATE_PREVIEW_LIMIT 
-                        }）`
+                      : `查看更多（${list.length - TEMPLATE_PREVIEW_LIMIT}）`
                   }}
                 </div>
               </div>
@@ -2863,6 +3062,13 @@ onUnmounted(() => {
   border: 1px solid var(--color-neon-dim);
   border-radius: 10px;
   transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.toolbar-btn.is-disabled {
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 0.45;
+  transform: none;
 }
 
 .msg-retry-btn:hover {
@@ -3810,6 +4016,13 @@ onUnmounted(() => {
   border: 1px solid var(--color-border);
   border-radius: 10px;
   transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.toolbar-btn.is-disabled {
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 0.45;
+  transform: none;
 }
 
 /* 模型按钮：限制最大宽度，长模型名省略号显示，悬浮看完整名称 */

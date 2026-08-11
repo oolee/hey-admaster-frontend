@@ -125,6 +125,47 @@ const modelGroups = computed(() => {
   return groups;
 });
 
+// ── 场景设计比例：按当前模型后台声明的 supportedSizes 动态过滤（未配置则显示全部）──
+/** 当前模型后台声明的支持尺寸（未配置时为空数组 → 显示全部比例） */
+const modelSupportedSizes = computed(
+  () => store.currentModel?.supportedSizes ?? [],
+);
+
+/** 最大公约数（用于简化宽高比） */
+function gcd(a: number, b: number): number {
+  let x = Math.abs(a);
+  let y = Math.abs(b);
+  while (y) {
+    [x, y] = [y, x % y];
+  }
+  return x || 1;
+}
+
+/** 尺寸 → 简化宽高比（如 1536x1024 → 3:2） */
+function ratioOfSize(size: string): string {
+  const [wStr, hStr] = size.split('x') as [string, string];
+  const w = Number.parseInt(wStr, 10);
+  const h = Number.parseInt(hStr, 10);
+  if (!w || !h) return '';
+  const g = gcd(w, h);
+  return `${w / g}:${h / g}`;
+}
+
+/** 场景设计比例可选项：模型声明了 supportedSizes 时仅显示其包含的比例 */
+const ratioOptions = computed(() => {
+  const supported = modelSupportedSizes.value;
+  if (supported.length === 0) return store.aspectRatioOptions;
+  const ratios = new Set<string>();
+  for (const s of supported) {
+    const ratio = ratioOfSize(s);
+    if (ratio) ratios.add(ratio);
+  }
+  return [
+    { value: 'auto', label: '自动' },
+    ...[...ratios].map((r) => ({ value: r, label: r })),
+  ];
+});
+
 // 自定义尺寸：解除设计类型锁定，以用户输入尺寸为准
 function selectCustomSize() {
   store.selectedAspectRatio = 'custom';
@@ -223,8 +264,8 @@ function resetSettings() {
           </div>
 
           <div class="settings-body">
-            <!-- ═══ 设计类型 ═══ -->
-            <section class="settings-section">
+            <!-- ═══ 设计类型（渠道禁用 size 时隐藏）═══ -->
+            <section v-if="!store.sizeDisabled" class="settings-section">
               <h3 class="settings-section-title">设计类型</h3>
               <div class="settings-type-grid">
                 <button
@@ -248,13 +289,13 @@ function resetSettings() {
               </div>
             </section>
 
-            <!-- ═══ 场景设计比例 ═══ -->
-            <section class="settings-section">
+            <!-- ═══ 场景设计比例（渠道禁用 size 时隐藏）═══ -->
+            <section v-if="!store.sizeDisabled" class="settings-section">
               <h3 class="settings-section-title">场景设计比例</h3>
               <!-- Preset ratios row (mutually exclusive with custom) -->
               <div class="ratio-grid">
                 <button
-                  v-for="r in store.aspectRatioOptions"
+                  v-for="r in ratioOptions"
                   :key="r.value"
                   class="ratio-btn"
                   :class="{ active: store.selectedAspectRatio === r.value }"
@@ -308,7 +349,16 @@ function resetSettings() {
                   v-for="q in qualityOptions"
                   :key="q.value"
                   class="settings-resolution-btn"
-                  :class="{ active: currentQuality === q.value }"
+                  :class="{
+                    active: currentQuality === q.value,
+                    'is-disabled': store.qualityDisabled,
+                  }"
+                  :disabled="store.qualityDisabled"
+                  :title="
+                    store.qualityDisabled
+                      ? '该模型不支持画质设置（由渠道固定）'
+                      : ''
+                  "
                   @click="currentQuality = q.value"
                 >
                   <span class="resolution-label">{{ q.label }}</span>
@@ -394,6 +444,7 @@ function resetSettings() {
                   <select
                     v-model.number="store.generateCount"
                     class="settings-select"
+                    :disabled="store.countOptions.length <= 1"
                   >
                     <option v-for="n in store.countOptions" :key="n" :value="n">
                       {{ n }} 张
@@ -861,6 +912,14 @@ function resetSettings() {
 .settings-resolution-btn:active {
   transform: translateY(0) scale(0.96);
   transition-duration: 0.06s;
+}
+
+.settings-resolution-btn.is-disabled,
+.settings-resolution-btn:disabled {
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 0.45;
+  transform: none;
 }
 
 .settings-resolution-btn.active {

@@ -1,5 +1,6 @@
 import type { AiGeneratedImage, RefImage } from '#/store/aiDesignStore';
 
+import { AiRequestParam } from '#/api/ai-design';
 import { useAiDesignStore } from '#/store/aiDesignStore';
 
 /** 从提示词中提取出的尺寸信息 */
@@ -350,16 +351,35 @@ export function useAiDesignGeneration() {
     const hasSize = !isText && hasExplicitSize();
     // 自动模式：从提示词提取物理尺寸（如 300×150cm），用于生产放样与比例匹配
     const extracted = !isText && !hasSize ? extractPromptSize(prompt) : null;
+    // 渠道/模型禁用或固定的参数：前端直接不传（后端映射器同样会按模型配置丢弃，双保险）
+    const disabledParams = current?.disabledRequestParams ?? 0;
+    const sizeDisabled = Boolean(disabledParams & AiRequestParam.Size);
+    const qualityDisabled = Boolean(disabledParams & AiRequestParam.Quality);
+    const countDisabled = Boolean(disabledParams & AiRequestParam.Count);
+    const fixedCount = store.modelParamProfile?.fixedCount ?? null;
+    const fixedQuality = store.modelParamProfile?.fixedQuality ?? null;
     const images = await store.generateImages({
       prompt,
       // 局部修改（带蒙版）：修改指令已完整包含在 prompt 中，不再复用上一次会话遗留的优化提示词
       optimizedPrompt: options.mask ? prompt : store.optimizedPrompt || null,
       model: modelName,
       channelId: current?.channelId ?? null,
-      size: isText ? null : buildSize(prompt),
-      count: isText ? 1 : (options.count ?? store.generateCount),
-      // 生成质量：auto / low / medium / high（对应模型 quality 参数，默认 auto 由模型自动选择）
-      quality: store.quality || 'auto',
+      // 尺寸被渠道禁用时不传（尺寸只能写进提示词）；Tier 档位模式仍走 sizeTier
+      size: isText || sizeDisabled ? null : buildSize(prompt),
+      sizeTier: isText || sizeDisabled ? null : store.resolutionTier,
+      // 渠道固定张数优先；禁用 n 时固定 1 张
+      count: isText
+        ? 1
+        : fixedCount && fixedCount > 0
+          ? fixedCount
+          : countDisabled
+            ? 1
+            : (options.count ?? store.generateCount),
+      // 生成质量：auto / low / medium / high（对应模型 quality 参数，默认 auto 由模型自动选择）；禁用/固定时不传前端值
+      quality:
+        isText || qualityDisabled
+          ? null
+          : fixedQuality || store.quality || 'auto',
       templateId: options.templateId ?? null,
       referenceImages: refImagesToPayload(options.referenceImages ?? []),
       mask: options.mask ? refImagesToPayload([options.mask])[0] : null,

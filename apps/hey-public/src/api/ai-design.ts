@@ -165,6 +165,8 @@ export interface AiGenerationInput {
   channelId?: null | string;
   /** 尺寸，如 1024x1024 */
   size?: null | string;
+  /** 模糊档位意图（1k/2k/4k/auto）：Tier 尺寸模式渠道据此映射 size 档位字面量（如 GPTeam gpt-image-2） */
+  sizeTier?: null | string;
   /** 物理尺寸（宽，cm）——用于生产制作时等比例放样 */
   physicalWidth?: null | number;
   /** 物理尺寸（高，cm） */
@@ -229,6 +231,24 @@ export enum AiModelCapability {
   Embedding = 128,
 }
 
+/** 请求参数能力位（Flags）：声明某参数在请求中被渠道/模型禁用（与后端 AiRequestParam 对齐） */
+export enum AiRequestParam {
+  None = 0,
+  Size = 1,
+  Quality = 2,
+  Count = 4,
+  ResponseFormat = 8,
+  Background = 16,
+  Moderation = 32,
+  OutputFormat = 64,
+  OutputCompression = 128,
+  PartialImages = 256,
+  Style = 512,
+  User = 1024,
+  Stream = 2048,
+  InputFidelity = 4096,
+}
+
 export enum AiModelType {
   Image = 0,
   Text = 1,
@@ -266,6 +286,14 @@ export interface AiModelOption {
   pricingUnit: number;
   /** 模型单价（与 pricingUnit 配套） */
   price: number;
+  /** 禁用的请求参数（Flags）：Size/Quality/Count 等，前端据此禁用/隐藏对应控件；0=全部支持 */
+  disabledRequestParams: number;
+  /** 单次最大生成张数（0=不限制），前端张数选项据此裁剪上限 */
+  maxImagesPerRequest: number;
+  /** 尺寸发送模式：0 直传 WxH、1 档位字面量（1k/2k/4k） */
+  sizeMode: number;
+  /** 请求参数适配策略 JSON（fixedCount/fixedQuality/sizeTierMap/defaultSizeTier...），空=无 */
+  paramProfileJson: null | string;
 }
 
 export interface AiTemplate {

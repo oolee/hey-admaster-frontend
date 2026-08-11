@@ -180,6 +180,10 @@ export interface AiChannelModelDto {
   disabledRequestParams: number;
   /** 后台配置的默认返回格式（url / b64_json），null=交给 Provider 默认（b64_json） */
   defaultResponseFormat?: null | string;
+  /** 尺寸发送模式：0=直传 WxH（Auto），1=档位字面量 1k/2k/4k（Tier） */
+  sizeMode: number;
+  /** 请求参数适配策略（JSON，见 AiRequestParamProfile） */
+  paramProfileJson?: null | string;
 }
 
 export interface AiChannelDto {
@@ -220,6 +224,10 @@ export interface CreateUpdateAiChannelModelDto {
   disabledRequestParams: number;
   /** 后台配置的默认返回格式（url / b64_json），null=交给 Provider 默认（b64_json） */
   defaultResponseFormat?: null | string;
+  /** 尺寸发送模式：0=直传 WxH（Auto），1=档位字面量 1k/2k/4k（Tier） */
+  sizeMode: number;
+  /** 请求参数适配策略（JSON，见 AiRequestParamProfile） */
+  paramProfileJson?: null | string;
 }
 
 export interface CreateUpdateAiChannelDto {
