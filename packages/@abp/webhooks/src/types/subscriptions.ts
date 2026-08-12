@@ -9,6 +9,7 @@ interface WebhookSubscriptionDto
   description?: string;
   headers?: Record<string, string>;
   isActive: boolean;
+  isStatic?: boolean;
   secret?: string;
   tenantId?: string;
   timeoutDuration?: number;
