@@ -1,9 +1,16 @@
+import { fileURLToPath, URL } from 'node:url';
+
 import { defineConfig } from '@vben/vite-config';
 
 export default defineConfig(async () => {
   return {
     application: {},
     vite: {
+      resolve: {
+        alias: {
+          '@': fileURLToPath(new URL('src', import.meta.url)),
+        },
+      },
       server: {
         proxy: {
           // Public API（首页 / 案例等公开接口）转发到 Admin Host（7188，已承载 api/app/public/*）

@@ -21,6 +21,10 @@ export const AiDesignPermissions = {
     Default: 'AiDesign.Billing',
     Manage: 'AiDesign.Billing.Manage',
   },
+  Orders: {
+    Default: 'AiDesign.Orders',
+    Manage: 'AiDesign.Orders.Manage',
+  },
 } as const;
 
 // ========== Types ==========
@@ -160,6 +164,16 @@ export const AiPricingUnitLabels: Record<number, string> = {
   [AiPricingUnit.PerImage]: '元/张',
   [AiPricingUnit.PerRequest]: '元/次',
   [AiPricingUnit.Per1MTokens]: '元/1M tokens',
+};
+
+export enum AiCostType {
+  Fixed = 0,
+  Tiered = 1,
+}
+
+export const AiCostTypeLabels: Record<number, string> = {
+  [AiCostType.Fixed]: '固定单价',
+  [AiCostType.Tiered]: '阶梯套餐',
 };
 
 export interface AiChannelModelDto {
@@ -395,6 +409,7 @@ export interface AiUsageRecordDto {
   tierKey?: null | string;
   pricingUnit: AiPricingUnit;
   amount: number;
+  costAmount: number;
   status: AiUsageRecordStatus;
   settledAt?: null | string;
   failReason?: null | string;
@@ -430,6 +445,183 @@ export interface AiUpdateBillingTierInput {
   minQuantity: number;
   maxQuantity?: null | number;
   unitPrice: number;
+  isActive: boolean;
+  remark?: null | string;
+}
+
+export enum AiQuotePricingMode {
+  PerItem = 0,
+  PerMeter = 1,
+  PerSquareMeter = 2,
+}
+
+export const AiQuotePricingModeLabels: Record<number, string> = {
+  [AiQuotePricingMode.PerItem]: '按件',
+  [AiQuotePricingMode.PerMeter]: '按宽度米',
+  [AiQuotePricingMode.PerSquareMeter]: '按面积㎡',
+};
+
+export enum AiOrderStatus {
+  Confirmed = 0,
+  InProduction = 1,
+  ReadyForInstall = 2,
+  Completed = 3,
+  Canceled = 4,
+}
+
+export const AiOrderStatusLabels: Record<number, string> = {
+  [AiOrderStatus.Confirmed]: '已确认',
+  [AiOrderStatus.InProduction]: '制作中',
+  [AiOrderStatus.ReadyForInstall]: '待安装',
+  [AiOrderStatus.Completed]: '已完成',
+  [AiOrderStatus.Canceled]: '已取消',
+};
+
+export interface AiOrderLineDto {
+  materialCode: string;
+  materialName: string;
+  widthCm: number;
+  heightCm: number;
+  quantity: number;
+  process?: null | string;
+  hit: boolean;
+  message?: null | string;
+  pricingMode?: null | number;
+  unitPrice: number;
+  lineUnitAmount: number;
+  lineAmount: number;
+  leadTimeDays: number;
+}
+
+export interface AiOrderDto {
+  id: string;
+  orderNo: string;
+  quoteId: string;
+  quoteNo: string;
+  contact?: null | string;
+  status: AiOrderStatus;
+  statusLabel?: null | string;
+  totalAmount: number;
+  remark?: null | string;
+  /** 支付状态：0 未支付 / 10 已支付 / 20 已取消 / 30 失败 / 40 已退款 */
+  paymentStatus: number;
+  paymentStatusLabel?: null | string;
+  /** 支付方式：1 钱包 / 2 充值码 / 3 微信 / 4 支付宝 / 80 演示 / 99 管理员收款 */
+  paymentMethod?: null | number;
+  paymentMethodLabel?: null | string;
+  paidAt?: null | string;
+  creationTime: string;
+  lines: AiOrderLineDto[];
+}
+
+export enum AiOrderPayMethod {
+  Wallet = 1,
+  RedeemCode = 2,
+  WeChat = 3,
+  Alipay = 4,
+  Demo = 80,
+  AdminAdjustment = 99,
+}
+
+export const AiOrderPaymentStatusLabels: Record<number, string> = {
+  0: '未支付',
+  5: '待支付',
+  10: '已支付',
+  20: '已取消',
+  30: '支付失败',
+  40: '已退款',
+};
+
+export interface AiUpdateOrderStatusInput {
+  status: AiOrderStatus;
+}
+
+export interface AiQuoteRuleDto {
+  id: string;
+  materialCode: string;
+  materialName: string;
+  widthMinCm?: null | number;
+  widthMaxCm?: null | number;
+  heightMinCm?: null | number;
+  heightMaxCm?: null | number;
+  process?: null | string;
+  pricingMode: AiQuotePricingMode;
+  unitPrice: number;
+  minAmount: number;
+  leadTimeDays: number;
+  isActive: boolean;
+  sortOrder: number;
+  remark?: null | string;
+  creationTime: string;
+}
+
+export interface AiCreateQuoteRuleInput {
+  materialCode: string;
+  materialName: string;
+  widthMinCm?: null | number;
+  widthMaxCm?: null | number;
+  heightMinCm?: null | number;
+  heightMaxCm?: null | number;
+  process?: null | string;
+  pricingMode: AiQuotePricingMode;
+  unitPrice: number;
+  minAmount: number;
+  leadTimeDays: number;
+  isActive: boolean;
+  sortOrder: number;
+  remark?: null | string;
+}
+
+export interface AiUpdateQuoteRuleInput {
+  materialName: string;
+  widthMinCm?: null | number;
+  widthMaxCm?: null | number;
+  heightMinCm?: null | number;
+  heightMaxCm?: null | number;
+  process?: null | string;
+  pricingMode: AiQuotePricingMode;
+  unitPrice: number;
+  minAmount: number;
+  leadTimeDays: number;
+  isActive: boolean;
+  sortOrder: number;
+  remark?: null | string;
+}
+export interface AiCostTierDto {
+  minQuantity: number;
+  maxQuantity?: null | number;
+  unitPrice: number;
+}
+
+export interface AiChannelCostDto {
+  id: string;
+  channelId: string;
+  channelName?: null | string;
+  model: string;
+  costType: AiCostType;
+  costUnit: AiPricingUnit;
+  unitCost: number;
+  tiers: AiCostTierDto[];
+  currency: string;
+  exchangeRate: number;
+  effectiveFrom?: null | string;
+  effectiveTo?: null | string;
+  isActive: boolean;
+  remark?: null | string;
+  creationTime: string;
+}
+
+export interface CreateUpdateAiChannelCostInput {
+  channelId: string;
+  model: string;
+  costType: AiCostType;
+  costUnit: AiPricingUnit;
+  unitCost: number;
+  tiers: AiCostTierDto[];
+  currency: string;
+  exchangeRate: number;
+  effectiveFrom?: null | string;
+  effectiveTo?: null | string;
   isActive: boolean;
   remark?: null | string;
 }
@@ -476,6 +668,9 @@ export interface AiDesignSettingsDto {
   gatewayExternalBaseUrl?: null | string;
   promptOptimizationEnabled?: boolean | null;
   promptOptimizationModel?: null | string;
+  guardEnabled?: boolean | null;
+  guardSensitiveWords?: null | string;
+  guardMaxSingleOrderAmount?: null | number;
 }
 
 export interface UpdateAiDesignSettingsInput {
@@ -496,6 +691,9 @@ export interface UpdateAiDesignSettingsInput {
   gatewayExternalBaseUrl?: null | string;
   promptOptimizationEnabled?: boolean | null;
   promptOptimizationModel?: null | string;
+  guardEnabled?: boolean | null;
+  guardSensitiveWords?: null | string;
+  guardMaxSingleOrderAmount?: null | number;
 }
 
 export interface PagedInput {
@@ -639,6 +837,72 @@ export function useAiDesignApi() {
   const deleteBillingTier = (id: string) =>
     request(`${BASE_URL}/billing-tiers/${id}`, { method: 'DELETE' });
 
+  // ---------- 广告物料报价规则（管理端，PRD §15 P0） ----------
+  const getQuoteRules = (input: PagedInput) =>
+    request<PagedResultDto<AiQuoteRuleDto>>(`${BASE_URL}/quote-rules`, {
+      method: 'GET',
+      params: input,
+    });
+
+  const createQuoteRule = (input: AiCreateQuoteRuleInput) =>
+    request<AiQuoteRuleDto>(`${BASE_URL}/quote-rules`, {
+      data: input,
+      method: 'POST',
+    });
+
+  const updateQuoteRule = (id: string, input: AiUpdateQuoteRuleInput) =>
+    request<AiQuoteRuleDto>(`${BASE_URL}/quote-rules/${id}`, {
+      data: input,
+      method: 'PUT',
+    });
+
+  const deleteQuoteRule = (id: string) =>
+    request(`${BASE_URL}/quote-rules/${id}`, { method: 'DELETE' });
+
+  // ---------- 生产订单（管理端，PRD §15 P1） ----------
+  const getOrders = (input: PagedInput) =>
+    request<PagedResultDto<AiOrderDto>>(`${BASE_URL}/orders/admin`, {
+      method: 'GET',
+      params: input,
+    });
+
+  const updateOrderStatus = (id: string, input: AiUpdateOrderStatusInput) =>
+    request<AiOrderDto>(`${BASE_URL}/orders/admin/${id}/status`, {
+      data: input,
+      method: 'PUT',
+    });
+
+  /** 标记订单已收款（线下微信/支付宝转账，管理员人工确认） */
+  const markOrderPaid = (id: string, remark?: string) =>
+    request<AiOrderDto>(`${BASE_URL}/orders/admin/${id}/mark-paid`, {
+      method: 'POST',
+      params: remark ? { remark } : undefined,
+    });
+  // ---------- 采购成本（管理端，PRD 17.5.4） ----------
+  const getChannelCosts = (input: PagedInput) =>
+    request<PagedResultDto<AiChannelCostDto>>(
+      `${BASE_URL}/billing/channel-costs`,
+      { method: 'GET', params: input },
+    );
+
+  const createChannelCost = (input: CreateUpdateAiChannelCostInput) =>
+    request<AiChannelCostDto>(`${BASE_URL}/billing/channel-costs`, {
+      data: input,
+      method: 'POST',
+    });
+
+  const updateChannelCost = (
+    id: string,
+    input: CreateUpdateAiChannelCostInput,
+  ) =>
+    request<AiChannelCostDto>(`${BASE_URL}/billing/channel-costs/${id}`, {
+      data: input,
+      method: 'PUT',
+    });
+
+  const deleteChannelCost = (id: string) =>
+    request(`${BASE_URL}/billing/channel-costs/${id}`, { method: 'DELETE' });
+
   // ---------- 充值码（管理端） ----------
   const getRedeemCodes = (input: PagedInput) =>
     request<PagedResultDto<AiRedeemCodeDto>>(
@@ -690,6 +954,17 @@ export function useAiDesignApi() {
     createBillingTier,
     updateBillingTier,
     deleteBillingTier,
+    getQuoteRules,
+    createQuoteRule,
+    updateQuoteRule,
+    deleteQuoteRule,
+    getOrders,
+    updateOrderStatus,
+    markOrderPaid,
+    getChannelCosts,
+    createChannelCost,
+    updateChannelCost,
+    deleteChannelCost,
     getRedeemCodes,
     generateRedeemCodes,
     disableRedeemCode,

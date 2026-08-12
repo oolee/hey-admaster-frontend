@@ -153,6 +153,36 @@ const [GatewayForm, gatewayFormApi] = useVbenForm({
   showDefaultActions: false,
 });
 
+// ── 分组6：内容守卫与费用确认（PRD 17.5.2 L2/L3）──
+const [GuardForm, guardFormApi] = useVbenForm({
+  commonConfig: { colon: true, controlClass: 'w-full' },
+  schema: [
+    {
+      component: 'Switch',
+      controlClass: 'w-auto',
+      fieldName: 'guardEnabled',
+      label: '启用内容守卫（敏感词拦截）',
+    },
+    {
+      component: 'InputTextArea',
+      componentProps: {
+        placeholder:
+          '逗号/顿号/分号分隔，如：违禁品,私聊；留空仅用内置基础词库',
+        rows: 2,
+      },
+      fieldName: 'guardSensitiveWords',
+      label: '自定义敏感词库',
+    },
+    {
+      component: 'InputNumber',
+      componentProps: { min: 0, precision: 2, step: 1 },
+      fieldName: 'guardMaxSingleOrderAmount',
+      label: '单次费用确认阈值（元，0=不拦截）',
+    },
+  ],
+  showDefaultActions: false,
+});
+
 // ── 分组5：提示词优化 ──
 const [PromptForm, promptFormApi] = useVbenForm({
   commonConfig: { colon: true, controlClass: 'w-full' },
@@ -181,6 +211,7 @@ const allFormApis = [
   storageFormApi,
   gatewayFormApi,
   promptFormApi,
+  guardFormApi,
 ];
 
 function setAllValues(values: Record<string, any>) {
@@ -188,10 +219,10 @@ function setAllValues(values: Record<string, any>) {
 }
 
 async function collectAllValues(): Promise<Record<string, any>> {
-  const [a, b, c, d, e] = await Promise.all(
+  const [a, b, c, d, e, f] = await Promise.all(
     allFormApis.map((api) => api.submitForm()),
   );
-  return { ...a, ...b, ...c, ...d, ...e };
+  return { ...a, ...b, ...c, ...d, ...e, ...f };
 }
 
 onMounted(async () => {
@@ -230,6 +261,9 @@ async function onSave() {
       gatewayExternalBaseUrl: values.gatewayExternalBaseUrl || null,
       promptOptimizationEnabled: values.promptOptimizationEnabled ?? false,
       promptOptimizationModel: values.promptOptimizationModel || null,
+      guardEnabled: values.guardEnabled ?? true,
+      guardSensitiveWords: values.guardSensitiveWords || null,
+      guardMaxSingleOrderAmount: values.guardMaxSingleOrderAmount,
     };
     const result = await updateSettings(input);
     setAllValues(result);
@@ -323,6 +357,30 @@ async function onSave() {
         >
           启用后，AI 设计页的「AI 优化提示词」会调用后台文本模型（如
           deepseek）把用户提示词与已选设计参数精简为一条简短有效的生图提示词；未启用或调用失败时回退本地结构化拼接。
+        </div>
+      </Card>
+
+      <!-- Card 6: 内容守卫与费用确认 -->
+      <Card class="shadow-sm lg:col-span-2" :bordered="true">
+        <template #title>
+          <div class="flex items-center gap-2">
+            <span
+              class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-rose-100 text-rose-700 text-sm font-bold dark:bg-rose-900/30 dark:text-rose-400"
+            >
+              G
+            </span>
+            <span class="font-semibold">内容守卫与费用确认</span>
+          </div>
+        </template>
+        <div class="grid gap-x-8 gap-y-1 md:grid-cols-3">
+          <GuardForm />
+        </div>
+        <div
+          class="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-xs text-rose-700 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-300"
+        >
+          内容守卫：用户提示词命中敏感词时直接拦截（内置基础词库 +
+          上方自定义词库）。费用确认：单次预估费用超过阈值时，C
+          端需用户点击「确认并生成」才继续（0 表示不拦截）。
         </div>
       </Card>
 

@@ -24,6 +24,24 @@ const routes: RouteRecordRaw[] = [
         component: () => import('#/views/ai-management/billing-tier/index.vue'),
       },
       {
+        meta: { title: '自动报价规则' },
+        name: 'AiDesignQuoteRules',
+        path: '/ai-management/quote-rules',
+        component: () => import('#/views/ai-management/quote-rule/index.vue'),
+      },
+      {
+        meta: { title: '订单管理' },
+        name: 'AiDesignOrders',
+        path: '/ai-management/orders',
+        component: () => import('#/views/ai-management/order/index.vue'),
+      },
+      {
+        meta: { title: '采购成本' },
+        name: 'AiDesignChannelCosts',
+        path: '/ai-management/channel-costs',
+        component: () => import('#/views/ai-management/channel-cost/index.vue'),
+      },
+      {
         meta: { title: '对话历史' },
         name: 'AiDesignSessions',
         path: '/ai-management/sessions',
@@ -51,8 +69,7 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '充值码管理' },
         name: 'AiDesignRedeemCodes',
         path: '/ai-management/redeem-codes',
-        component: () =>
-          import('#/views/ai-management/redeem-code/index.vue'),
+        component: () => import('#/views/ai-management/redeem-code/index.vue'),
       },
       {
         meta: { title: '模块设置' },

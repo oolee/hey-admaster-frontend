@@ -1,0 +1,217 @@
+$ pnpm vite --mode development
+[2m01:07:00[22m [33m[1m[vite][22m[39m [33m[2m(client)[22m[39m [2m[console.warn] [22m[Vue warn]: Invalid prop: type check failed for prop "seed". Expected Number with value NaN, got String with value "417d2870-d8dd-80e7-6d15-3a22da98f2d3". 
+  at <ArtCanvas variant="poster" seed="417d2870-d8dd-80e7-6d15-3a22da98f2d3" > 
+  at <RouterLink to="/cases/417d2870-d8dd-80e7-6d15-3a22da98f2d3" class="case-card" > 
+  at <RevealOnScroll key="417d2870-d8dd-80e7-6d15-3a22da98f2d3" delay=0 > 
+  at <HomeView onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > key="/" > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="page" mode="out-in" > 
+  at <RouterView > 
+  at <App>
+[2m01:07:00[22m [33m[1m[vite][22m[39m [33m[2m(client)[22m[39m [2m[console.warn] [22m[Vue warn]: Invalid prop: type check failed for prop "seed". Expected Number with value NaN, got String with value "c65e3665-3e18-5e5d-cbb1-3a22da98f2d3". 
+  at <ArtCanvas variant="poster" seed="c65e3665-3e18-5e5d-cbb1-3a22da98f2d3" > 
+  at <RouterLink to="/cases/c65e3665-3e18-5e5d-cbb1-3a22da98f2d3" class="case-card" > 
+  at <RevealOnScroll key="c65e3665-3e18-5e5d-cbb1-3a22da98f2d3" delay=80 > 
+  at <HomeView onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > key="/" > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="page" mode="out-in" > 
+  at <RouterView > 
+  at <App>
+[2m01:07:00[22m [33m[1m[vite][22m[39m [33m[2m(client)[22m[39m [2m[console.warn] [22m[Vue warn]: Invalid prop: type check failed for prop "seed". Expected Number with value NaN, got String with value "998a1da1-e938-61b8-a91c-3a22da98f2d3". 
+  at <ArtCanvas variant="poster" seed="998a1da1-e938-61b8-a91c-3a22da98f2d3" > 
+  at <RouterLink to="/cases/998a1da1-e938-61b8-a91c-3a22da98f2d3" class="case-card" > 
+  at <RevealOnScroll key="998a1da1-e938-61b8-a91c-3a22da98f2d3" delay=160 > 
+  at <HomeView onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > key="/" > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="page" mode="out-in" > 
+  at <RouterView > 
+  at <App>
+[2m01:07:00[22m [33m[1m[vite][22m[39m [33m[2m(client)[22m[39m [2m[console.warn] [22m[Vue warn]: Invalid prop: type check failed for prop "seed". Expected Number with value NaN, got String with value "be98f17d-0015-2f8b-bf61-3a22da98f2d3". 
+  at <ArtCanvas variant="poster" seed="be98f17d-0015-2f8b-bf61-3a22da98f2d3" > 
+  at <RouterLink to="/cases/be98f17d-0015-2f8b-bf61-3a22da98f2d3" class="case-card" > 
+  at <RevealOnScroll key="be98f17d-0015-2f8b-bf61-3a22da98f2d3" delay=240 > 
+  at <HomeView onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > key="/" > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="page" mode="out-in" > 
+  at <RouterView > 
+  at <App>
+[2m02:04:49[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+
+[31m[PARSE_ERROR] [0mInvalid Unicode escape sequence
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/stores/workspace.ts:89:22 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m89 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249ma[0m[38;5;249md[0m[38;5;249md[0m[38;5;249mC[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249mr[0m[38;5;249ms[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249m,[0m[38;5;249m\[0mn[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mm[0m[38;5;249mo[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249mC[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249mr[0m[38;5;249ms[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249m,[0m
+ [38;5;240m   │[0m                      ┬  
+ [38;5;240m   │[0m                      ╰── 
+[38;5;246m────╯[0m
+
+  Plugin: [35mvite:oxc[39m
+  File: [36mI:/Dotnet/Solutions/Hey.AdMaster/hey-admaster-frontend/apps/hey-public/src/stores/workspace.ts[39m
+[2m02:04:49[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+
+[31m[PARSE_ERROR] [0mInvalid Unicode escape sequence
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/stores/workspace.ts:89:22 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m89 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249ma[0m[38;5;249md[0m[38;5;249md[0m[38;5;249mC[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249mr[0m[38;5;249ms[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249m,[0m[38;5;249m\[0mn[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mm[0m[38;5;249mo[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249mC[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249mr[0m[38;5;249ms[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249m,[0m
+ [38;5;240m   │[0m                      ┬  
+ [38;5;240m   │[0m                      ╰── 
+[38;5;246m────╯[0m
+
+  Plugin: [35mvite:oxc[39m
+  File: [36mI:/Dotnet/Solutions/Hey.AdMaster/hey-admaster-frontend/apps/hey-public/src/stores/workspace.ts[39m
+[2m02:04:49[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+
+[31m[PARSE_ERROR] [0mInvalid Unicode escape sequence
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/stores/workspace.ts:89:22 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m89 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249ma[0m[38;5;249md[0m[38;5;249md[0m[38;5;249mC[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249mr[0m[38;5;249ms[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249m,[0m[38;5;249m\[0mn[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mm[0m[38;5;249mo[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249mC[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249mr[0m[38;5;249ms[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249m,[0m
+ [38;5;240m   │[0m                      ┬  
+ [38;5;240m   │[0m                      ╰── 
+[38;5;246m────╯[0m
+
+  Plugin: [35mvite:oxc[39m
+  File: [36mI:/Dotnet/Solutions/Hey.AdMaster/hey-admaster-frontend/apps/hey-public/src/stores/workspace.ts[39m
+[2m02:04:49[22m [31m[1m[vite][22m[39m [31mInternal server error: Transform failed with 1 error:
+
+[31m[PARSE_ERROR] [0mInvalid Unicode escape sequence
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/stores/workspace.ts:89:22 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m89 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249ma[0m[38;5;249md[0m[38;5;249md[0m[38;5;249mC[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249mr[0m[38;5;249ms[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249m,[0m[38;5;249m\[0mn[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mm[0m[38;5;249mo[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249mC[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249mr[0m[38;5;249ms[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249m,[0m
+ [38;5;240m   │[0m                      ┬  
+ [38;5;240m   │[0m                      ╰── 
+[38;5;246m────╯[0m
+[39m
+  Plugin: [35mvite:oxc[39m
+  File: [36mI:/Dotnet/Solutions/Hey.AdMaster/hey-admaster-frontend/apps/hey-public/src/stores/workspace.ts[39m
+      at transformWithOxc (file:///I:/Dotnet/Solutions/Hey.AdMaster/hey-admaster-frontend/node_modules/.pnpm/vite@8.1.5_@types+node@26.1_6da28db19f75d9fb546bdb19eb1ae9b8/node_modules/vite/dist/node/chunks/node.js:4033:19)
+      at TransformPluginContext.transform (file:///I:/Dotnet/Solutions/Hey.AdMaster/hey-admaster-frontend/node_modules/.pnpm/vite@8.1.5_@types+node@26.1_6da28db19f75d9fb546bdb19eb1ae9b8/node_modules/vite/dist/node/chunks/node.js:4104:26)
+      at file:///I:/Dotnet/Solutions/Hey.AdMaster/hey-admaster-frontend/node_modules/.pnpm/vite-plugin-inspect@11.4.1__8d952d84a73e57e2893fe90d13619a75/node_modules/vite-plugin-inspect/dist/shared/vite-plugin-inspect.Fv_Ybe1U.mjs:403:26
+      at plugin.<computed> (file:///I:/Dotnet/Solutions/Hey.AdMaster/hey-admaster-frontend/node_modules/.pnpm/vite-plugin-inspect@11.4.1__8d952d84a73e57e2893fe90d13619a75/node_modules/vite-plugin-inspect/dist/shared/vite-plugin-inspect.Fv_Ybe1U.mjs:387:14)
+      at EnvironmentPluginContainer.transform (file:///I:/Dotnet/Solutions/Hey.AdMaster/hey-admaster-frontend/node_modules/.pnpm/vite@8.1.5_@types+node@26.1_6da28db19f75d9fb546bdb19eb1ae9b8/node_modules/vite/dist/node/chunks/node.js:30201:51)
+      at async loadAndTransform (file:///I:/Dotnet/Solutions/Hey.AdMaster/hey-admaster-frontend/node_modules/.pnpm/vite@8.1.5_@types+node@26.1_6da28db19f75d9fb546bdb19eb1ae9b8/node_modules/vite/dist/node/chunks/node.js:20124:26)
+      at async viteTransformMiddleware (file:///I:/Dotnet/Solutions/Hey.AdMaster/hey-admaster-frontend/node_modules/.pnpm/vite@8.1.5_@types+node@26.1_6da28db19f75d9fb546bdb19eb1ae9b8/node_modules/vite/dist/node/chunks/node.js:24604:20)
+[2m02:04:49[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m [2m[console.error] [22m[vite] Failed to reload /src/components/workspace/TaskModelBar.vue. This could be due to syntax errors or importing non-existent modules. (see errors above)
+[2m02:04:49[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m [2m[console.error] [22m[vite] Failed to reload /src/views/WorkspaceView.vue. This could be due to syntax errors or importing non-existent modules. (see errors above)
+[2m02:04:49[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m [2m[console.error] [22m[vite] Failed to reload /src/components/workspace/ConversationList.vue. This could be due to syntax errors or importing non-existent modules. (see errors above)
+[2m02:12:09[22m [31m[1m[vite][22m[39m [31mInternal server error: [vue/compiler-sfc] Expecting Unicode escape sequence \uXXXX. (21:9)
+
+I:/Dotnet/Solutions/Hey.AdMaster/hey-admaster-frontend/apps/hey-public/src/views/WorkspaceView.vue
+19 |  import SkillPicker from '@/components/workspace/SkillPicker.vue';
+20 |  import TaskModelBar from '@/components/workspace/TaskModelBar.vue';
+21 |  import {\n  SKILL_COLORS,\n  SKILLS,\n  applyServerModels,\n  validateSkillInput,\n} from '@/skills/registry';
+   |           ^
+22 |  import { useUserStore } from '@/stores/user';
+23 |  import { useWorkspaceStore } from '@/stores/workspace';[39m
+  Plugin: [35mvite:vue[39m
+  File: [36mI:/Dotnet/Solutions/Hey.AdMaster/hey-admaster-frontend/apps/hey-public/src/views/WorkspaceView.vue[39m:21:9
+[33m  18 |  import MessageBubble from '@/components/workspace/MessageBubble.vue';
+  19 |  import SkillPicker from '@/components/workspace/SkillPicker.vue';
+  20 |  import TaskModelBar from '@/components/workspace/TaskModelBar.vue';
+     |                                                       ^
+  21 |  import {\n  SKILL_COLORS,\n  SKILLS,\n  applyServerModels,\n  validateSkillInput,\n} from '@/skills/registry';
+  22 |  import { useUserStore } from '@/stores/user';[39m
+      at constructor (I:\Dotnet\Solutions\Hey.AdMaster\hey-admaster-frontend\node_modules\.pnpm\@babel+parser@7.29.7\node_modules\@babel\parser\lib\index.js:365:19)
+      at TypeScriptParserMixin.raise (I:\Dotnet\Solutions\Hey.AdMaster\hey-admaster-frontend\node_modules\.pnpm\@babel+parser@7.29.7\node_modules\@babel\parser\lib\index.js:6616:19)
+      at TypeScriptParserMixin.readWord1 (I:\Dotnet\Solutions\Hey.AdMaster\hey-admaster-frontend\node_modules\.pnpm\@babel+parser@7.29.7\node_modules\@babel\parser\lib\index.js:6576:16)
+      at TypeScriptParserMixin.readWord (I:\Dotnet\Solutions\Hey.AdMaster\hey-admaster-frontend\node_modules\.pnpm\@babel+parser@7.29.7\node_modules\@babel\parser\lib\index.js:6596:23)
+      at TypeScriptParserMixin.getTokenFromCode (I:\Dotnet\Solutions\Hey.AdMaster\hey-admaster-frontend\node_modules\.pnpm\@babel+parser@7.29.7\node_modules\@babel\parser\lib\index.js:6315:14)
+      at TypeScriptParserMixin.getTokenFromCode (I:\Dotnet\Solutions\Hey.AdMaster\hey-admaster-frontend\node_modules\.pnpm\@babel+parser@7.29.7\node_modules\@babel\parser\lib\index.js:10004:11)
+      at TypeScriptParserMixin.nextToken (I:\Dotnet\Solutions\Hey.AdMaster\hey-admaster-frontend\node_modules\.pnpm\@babel+parser@7.29.7\node_modules\@babel\parser\lib\index.js:5799:10)
+      at TypeScriptParserMixin.next (I:\Dotnet\Solutions\Hey.AdMaster\hey-admaster-frontend\node_modules\.pnpm\@babel+parser@7.29.7\node_modules\@babel\parser\lib\index.js:5709:10)
+      at TypeScriptParserMixin.eat (I:\Dotnet\Solutions\Hey.AdMaster\hey-admaster-frontend\node_modules\.pnpm\@babel+parser@7.29.7\node_modules\@babel\parser\lib\index.js:5713:12)
+      at TypeScriptParserMixin.expect (I:\Dotnet\Solutions\Hey.AdMaster\hey-admaster-frontend\node_modules\.pnpm\@babel+parser@7.29.7\node_modules\@babel\parser\lib\index.js:6915:15)
+[2m02:12:09[22m [33m[1m[vite][22m[39m [33m[2m(client)[22m[39m [2m[console.warn] [22m[VUE_ROUTER_R0010] Uncaught error during route navigation
+╰▶ fix: Register an error handler with `router.onError()` to handle navigation errors.
+[2m02:12:09[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m [2m[console.error] [22mTypeError: Failed to fetch dynamically imported module: http://localhost:7668/src/views/WorkspaceView.vue?t=1786557889170
+[2m02:12:09[22m [33m[1m[vite][22m[39m [33m[2m(client)[22m[39m [2m[console.warn] [22m[VUE_ROUTER_R0011] Unexpected error when starting the router:
+╰▶ fix: Inspect the actual cause; a navigation guard or async component likely threw during the initial navigation.
+[2m02:12:47[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+
+[31m[PARSE_ERROR] [0mInvalid Unicode escape sequence
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/stores/workspace.ts:89:22 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m89 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249ma[0m[38;5;249md[0m[38;5;249md[0m[38;5;249mC[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249mr[0m[38;5;249ms[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249m,[0m[38;5;249m\[0mn[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mm[0m[38;5;249mo[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249mC[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249mr[0m[38;5;249ms[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249m,[0m
+ [38;5;240m   │[0m                      ┬  
+ [38;5;240m   │[0m                      ╰── 
+[38;5;246m────╯[0m
+
+  Plugin: [35mvite:oxc[39m
+  File: [36mI:/Dotnet/Solutions/Hey.AdMaster/hey-admaster-frontend/apps/hey-public/src/stores/workspace.ts[39m
+[2m02:12:47[22m [31m[1m[vite][22m[39m [31mInternal server error: Transform failed with 1 error:
+
+[31m[PARSE_ERROR] [0mInvalid Unicode escape sequence
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/stores/workspace.ts:89:22 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m89 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249ma[0m[38;5;249md[0m[38;5;249md[0m[38;5;249mC[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249mr[0m[38;5;249ms[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249m,[0m[38;5;249m\[0mn[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mm[0m[38;5;249mo[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249mC[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249mr[0m[38;5;249ms[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249m,[0m
+ [38;5;240m   │[0m                      ┬  
+ [38;5;240m   │[0m                      ╰── 
+[38;5;246m────╯[0m
+[39m
+  Plugin: [35mvite:oxc[39m
+  File: [36mI:/Dotnet/Solutions/Hey.AdMaster/hey-admaster-frontend/apps/hey-public/src/stores/workspace.ts[39m
+      at transformWithOxc (file:///I:/Dotnet/Solutions/Hey.AdMaster/hey-admaster-frontend/node_modules/.pnpm/vite@8.1.5_@types+node@26.1_6da28db19f75d9fb546bdb19eb1ae9b8/node_modules/vite/dist/node/chunks/node.js:4033:19)
+      at TransformPluginContext.transform (file:///I:/Dotnet/Solutions/Hey.AdMaster/hey-admaster-frontend/node_modules/.pnpm/vite@8.1.5_@types+node@26.1_6da28db19f75d9fb546bdb19eb1ae9b8/node_modules/vite/dist/node/chunks/node.js:4104:26)
+      at file:///I:/Dotnet/Solutions/Hey.AdMaster/hey-admaster-frontend/node_modules/.pnpm/vite-plugin-inspect@11.4.1__8d952d84a73e57e2893fe90d13619a75/node_modules/vite-plugin-inspect/dist/shared/vite-plugin-inspect.Fv_Ybe1U.mjs:403:26
+      at plugin.<computed> (file:///I:/Dotnet/Solutions/Hey.AdMaster/hey-admaster-frontend/node_modules/.pnpm/vite-plugin-inspect@11.4.1__8d952d84a73e57e2893fe90d13619a75/node_modules/vite-plugin-inspect/dist/shared/vite-plugin-inspect.Fv_Ybe1U.mjs:387:14)
+      at EnvironmentPluginContainer.transform (file:///I:/Dotnet/Solutions/Hey.AdMaster/hey-admaster-frontend/node_modules/.pnpm/vite@8.1.5_@types+node@26.1_6da28db19f75d9fb546bdb19eb1ae9b8/node_modules/vite/dist/node/chunks/node.js:30201:51)
+      at async loadAndTransform (file:///I:/Dotnet/Solutions/Hey.AdMaster/hey-admaster-frontend/node_modules/.pnpm/vite@8.1.5_@types+node@26.1_6da28db19f75d9fb546bdb19eb1ae9b8/node_modules/vite/dist/node/chunks/node.js:20124:26)
+      at async viteTransformMiddleware (file:///I:/Dotnet/Solutions/Hey.AdMaster/hey-admaster-frontend/node_modules/.pnpm/vite@8.1.5_@types+node@26.1_6da28db19f75d9fb546bdb19eb1ae9b8/node_modules/vite/dist/node/chunks/node.js:24604:20)
+[2m02:12:47[22m [33m[1m[vite][22m[39m [33m[2m(client)[22m[39m [2m[console.warn] [22m[VUE_ROUTER_R0010] Uncaught error during route navigation
+╰▶ fix: Register an error handler with `router.onError()` to handle navigation errors.
+[2m02:12:47[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m [2m[console.error] [22mTypeError: Failed to fetch dynamically imported module: http://localhost:7668/src/views/WorkspaceView.vue?t=1786558367153
+[2m02:12:47[22m [33m[1m[vite][22m[39m [33m[2m(client)[22m[39m [2m[console.warn] [22m[VUE_ROUTER_R0011] Unexpected error when starting the router:
+╰▶ fix: Inspect the actual cause; a navigation guard or async component likely threw during the initial navigation.
+[2m02:19:32[22m [33m[1m[vite][22m[39m [33m[2m(client)[22m[39m [2m[console.warn] [22m[Vue warn]: Unhandled error during execution of mounted hook 
+  at <ProfileView onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > key="/profile" > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="page" mode="out-in" > 
+  at <RouterView key=1 > 
+  at <App>
+[2m02:19:32[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m [31m[Unhandled rejection] [1mError[22m: HTTP 401
+[39m > request src/api/request.ts:80:10
+    78 |        throw new Error('请求超时，请稍后重试');
+    79 |      }
+    80 |      throw new Error(error instanceof Error ? error.message : '请求失败', {
+       |            ^
+    81 |        cause: error,
+    82 |      });
+ > load src/views/ProfileView.vue:72:14
+
+[2m02:19:35[22m [33m[1m[vite][22m[39m [33m[2m(client)[22m[39m [2m[console.warn] [22m[Vue warn]: Unhandled error during execution of mounted hook 
+  at <ProfileView onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > key="/profile" > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="page" mode="out-in" > 
+  at <RouterView key=1 > 
+  at <App>
+[2m02:19:35[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m [31m[Unhandled rejection] [1mError[22m: HTTP 401
+[39m > request src/api/request.ts:80:10
+    78 |        throw new Error('请求超时，请稍后重试');
+    79 |      }
+    80 |      throw new Error(error instanceof Error ? error.message : '请求失败', {
+       |            ^
+    81 |        cause: error,
+    82 |      });
+ > load src/views/ProfileView.vue:72:14
+
+[2m02:19:49[22m [33m[1m[vite][22m[39m [33m[2m(client)[22m[39m [2m[console.warn] [22m[Vue warn]: Unhandled error during execution of mounted hook 
+  at <ProfileView onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > key="/profile" > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="page" mode="out-in" > 
+  at <RouterView key=1 > 
+  at <App>
+[2m02:19:49[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m [31m[Unhandled rejection] [1mError[22m: Failed to fetch
+[39m > request src/api/request.ts:80:10
+    78 |        throw new Error('请求超时，请稍后重试');
+    79 |      }
+    80 |      throw new Error(error instanceof Error ? error.message : '请求失败', {
+       |            ^
+    81 |        cause: error,
+    82 |      });
+ > load src/views/ProfileView.vue:72:14
+
+
+[43m[30m WARN [39m[49m Port 5320 is already in use. Mock server cannot start. Please free the port and try again.
+
+
+[43m[30m WARN [39m[49m Port 5320 is already in use. Mock server cannot start. Please free the port and try again.
+

@@ -1,15 +1,14 @@
-import { bootstrap } from './bootstrap';
+import { createApp } from 'vue';
 
-function removeGlobalLoading() {
-  document.querySelector('#__app-loading__')?.remove();
-  document
-    .querySelectorAll('[data-app-loading^="inject"]')
-    .forEach((element) => element.remove());
-}
+import { createPinia } from 'pinia';
 
-async function initApplication() {
-  await bootstrap();
-  removeGlobalLoading();
-}
+import App from './App.vue';
+import router from './router';
 
-initApplication();
+import './styles/tokens.css';
+import './styles/base.css';
+
+const app = createApp(App);
+app.use(createPinia());
+app.use(router);
+app.mount('#app');

@@ -41,6 +41,18 @@ const columns: VxeGridPropTypes.Columns<AiUsageRecordDto> = [
   { field: 'unitPrice', title: '单价', width: 90 },
   { field: 'amount', title: '金额', width: 100, slots: { default: 'amount' } },
   {
+    field: 'costAmount',
+    title: '采购成本',
+    width: 100,
+    slots: { default: 'cost' },
+  },
+  {
+    field: 'grossProfit',
+    title: '毛利',
+    width: 100,
+    slots: { default: 'gross' },
+  },
+  {
     field: 'status',
     title: '状态',
     width: 100,
@@ -120,6 +132,24 @@ const statusMeta: Record<number, { color: string; label: string }> = {
     <template #amount="{ row }">
       <span class="font-semibold text-orange-600 dark:text-orange-400">
         ¥{{ row.amount }}
+      </span>
+    </template>
+    <template #cost="{ row }">
+      {{ row.costAmount > 0 ? `¥${row.costAmount}` : '—' }}
+    </template>
+    <template #gross="{ row }">
+      <span
+        :class="
+          row.costAmount > 0
+            ? 'font-semibold text-green-600 dark:text-green-400'
+            : 'text-gray-400'
+        "
+      >
+        {{
+          row.costAmount > 0
+            ? `¥${(row.amount - row.costAmount).toFixed(2)}`
+            : '—'
+        }}
       </span>
     </template>
     <template #status="{ row }">
