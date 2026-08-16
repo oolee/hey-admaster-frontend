@@ -122,7 +122,7 @@ function onUpdate(row: AiAgentChannelDto) {
     name: row.name,
     providerType: row.providerType,
     baseUrl: row.baseUrl ?? '',
-    apiKey: '',
+    apiKey: row.apiKeyMasked ?? '',
     model: row.model,
     enabled: row.enabled,
     priority: row.priority,
@@ -140,11 +140,16 @@ async function onSave() {
   }
   saving.value = true;
   try {
+    // 没变化（仍是脱敏掩码）→ 不提交 ApiKey，后端保持不变
+    const input = { ...form };
+    if (input.apiKey?.includes('****')) {
+      input.apiKey = '';
+    }
     if (editingId.value) {
-      await updateChannel(editingId.value, { ...form });
+      await updateChannel(editingId.value, input);
       message.success('渠道已更新');
     } else {
-      await createChannel({ ...form });
+      await createChannel(input);
       message.success('渠道已创建');
     }
     modalOpen.value = false;
