@@ -8,7 +8,10 @@ import type {
 
 import { computed, ref } from 'vue';
 
+import type { WorkflowDefinitionInput } from '@/api/agent';
+
 import { aiExecute } from '@/api/engine';
+import { runWorkflow } from '@/api/agent';
 import {
   nodeMeta as _nodeMeta,
   canConnect,
@@ -267,6 +270,16 @@ export const useCanvasStore = defineStore('canvas', () => {
     };
   }
 
+  /** 画布节点类型 → 能力 ID（后端注册表；未映射的类型暂跳过，后续能力化后补充） */
+  const NODE_TO_CAPABILITY: Record<string, string> = {
+    'image-gen': 'image-gen.v1',
+    'image-gen-mode': 'image-gen.v1',
+    'image-edit': 'image-edit.v1',
+    chat: 'chat.v1',
+    'prompt-optimize': 'chat.v1',
+    'reverse-prompt': 'chat.v1',
+  };
+
   const SAVE_KEY = 'draft-main';
   async function saveToDB(): Promise<boolean> {
     saveState.value = 'saving';
@@ -318,24 +331,74 @@ export const useCanvasStore = defineStore('canvas', () => {
     return nodes.value.some((n) => n.id === id);
   }
 
+  /** 画布 → 后端工作流定义（§10 阶段 2 DAG：节点 + 依赖边） */
+  function toWorkflowDefinition(): WorkflowDefinitionInput {
+    const def: WorkflowDefinitionInput = {
+      id: `canvas-${Date.now()}`,
+      displayName: '画布工作流',
+      nodes: nodes.value
+        .filter((n) => NODE_TO_CAPABILITY[n.type])
+        .map((n) => ({
+          id: n.id,
+          kind: 'capability',
+          capabilityId: NODE_TO_CAPABILITY[n.type],
+          params: { ...n.params },
+        })),
+    };
+    for (const node of def.nodes) {
+      node.dependsOn = edges.value
+        .filter((e) => e.to === node.id)
+        .map((e) => e.from);
+    }
+    return def;
+  }
+
+  /** 后端 CanonicalResult → 画布节点 result */
+  function applyRunContext(context: Record<string, unknown> | undefined): void {
+    if (!context) return;
+    for (const node of nodes.value) {
+      const ctx = context[`node:${node.id}`] as
+        | undefined
+        | { artifacts?: Array<{ kind: number; uri: string; text?: string }> };
+      const artifacts = ctx?.artifacts;
+      if (!artifacts?.length) continue;
+      const image = artifacts.find((a) => a.kind === 1);
+      const text = artifacts.find((a) => a.kind === 0);
+      if (image) {
+        node.result = { url: image.uri, images: [{ url: image.uri }] } as never;
+      } else if (text?.text) {
+        node.result = { text: text.text } as never;
+      }
+    }
+  }
+
   async function runFlow(): Promise<void> {
     if (running.value) return;
     if (nodes.value.length === 0) return;
     running.value = true;
-    const order = topoOrder();
     try {
-      for (const id of order) {
-        const node = nodes.value.find((n) => n.id === id);
-        if (!node) continue;
-        setNodeStatus(id, 'running');
-        runProgress.value = `运行中：${node.label}`;
-        node.result = await aiExecute(node);
-        setNodeStatus(id, 'done');
+      const definition = toWorkflowDefinition();
+      if (definition.nodes.length === 0) {
+        runProgress.value = '没有可映射到后端能力的节点';
+        return;
       }
-      runProgress.value = '运行完成 ✓';
+      nodes.value.forEach((n) => setNodeStatus(n.id, 'running'));
+      runProgress.value = '提交到 Agent Runtime…';
+      const result = await runWorkflow({
+        definition,
+        prompt: '画布工作流',
+        idempotencyKey: `canvas-${Date.now()}`,
+      });
+      applyRunContext(result.context);
+      const done = result.status === 3; // Succeeded
+      nodes.value.forEach((n) => setNodeStatus(n.id, done ? 'done' : 'error'));
+      runProgress.value = done
+        ? '运行完成 ✓'
+        : result.status === 2
+          ? `已在 checkpoint 暂停（令牌 ${result.checkpointToken?.slice(0, 8)}…）`
+          : `工作流状态：${result.status}`;
     } catch (error) {
       runProgress.value = `运行出错：${error instanceof Error ? error.message : String(error)}`;
-      // 出错节点标红
       nodes.value.forEach((n) => {
         if (n.status === 'running') n.status = 'error';
       });

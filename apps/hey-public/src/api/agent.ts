@@ -225,6 +225,45 @@ export function fetchPlatformPrices(): Promise<ListResult<PlatformPriceDto>> {
   return unwrap<ListResult<PlatformPriceDto>>('/ai-agent/pricing-rules/platform');
 }
 
+/* ---------- 工作流（§10 阶段 2 DAG） ---------- */
+
+export interface WorkflowNodeInput {
+  id: string;
+  kind: string;
+  capabilityId?: string;
+  params?: Record<string, unknown>;
+  prompt?: string;
+  dependsOn?: string[];
+}
+
+export interface WorkflowDefinitionInput {
+  id: string;
+  displayName: string;
+  version?: string;
+  nodes: WorkflowNodeInput[];
+}
+
+export interface WorkflowRunResult {
+  runId: string;
+  status: number;
+  checkpointToken?: string;
+  events: AgentEvent[];
+  context?: Record<string, unknown>;
+}
+
+/** 运行工作流（命名模板或内联 DAG）；checkpoint 返回续跑令牌（§12 R1） */
+export function runWorkflow(input: {
+  workflowId?: string;
+  definition?: WorkflowDefinitionInput;
+  prompt?: string;
+  idempotencyKey?: string;
+}): Promise<WorkflowRunResult> {
+  return unwrap<WorkflowRunResult>('/ai-agent/workflows/run', {
+    method: 'POST',
+    body: input,
+  });
+}
+
 export function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
   return unwrap<AgentRunResult>('/ai-agent/run', {
     method: 'POST',
