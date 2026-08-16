@@ -132,12 +132,6 @@ catalogs:
     '@tiptap/vue-3':
       specifier: ^3.28.0
       version: 3.28.0
-    '@tresjs/cientos':
-      specifier: ^5.7.0
-      version: 5.8.1
-    '@tresjs/core':
-      specifier: ^5.8.0
-      version: 5.8.3
     '@tsdown/css':
       specifier: ^0.22.13
       version: 0.22.13
@@ -992,58 +986,6 @@ importers:
       lucide-vue-next:
         specifier: 'catalog:'
         version: 0.469.0(vue@3.5.40(typescript@6.0.3))
-      ofetch:
-        specifier: 'catalog:'
-        version: 1.5.1
-      pinia:
-        specifier: ^4.0.2
-        version: 4.0.2(@vue/devtools-api@8.1.5)(typescript@6.0.3)(vue@3.5.40(typescript@6.0.3))
-      three:
-        specifier: 'catalog:'
-        version: 0.170.0
-      vue:
-        specifier: ^3.5.40
-        version: 3.5.40(typescript@6.0.3)
-      vue-router:
-        specifier: 'catalog:'
-        version: 5.2.0(@vue/compiler-sfc@3.5.40)(esbuild@0.28.1)(pinia@4.0.2(@vue/devtools-api@8.1.5)(typescript@6.0.3)(vue@3.5.40(typescript@6.0.3)))(rolldown@1.2.0)(rollup@4.62.2)(vite@8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(less@4.8.0(supports-color@10.2.2))(sass-embedded@1.100.0)(sass@1.101.6)(terser@5.49.0)(yaml@2.9.0))(vue@3.5.40(typescript@6.0.3))
-    devDependencies:
-      '@types/three':
-        specifier: 'catalog:'
-        version: 0.170.0
-
-  apps/hey-public-b1:
-    dependencies:
-      '@hey/ai':
-        specifier: workspace:*
-        version: link:../../packages/@hey/ai
-      '@hey/core':
-        specifier: workspace:*
-        version: link:../../packages/@hey/core
-      '@hey/invitation':
-        specifier: workspace:*
-        version: link:../../packages/@hey/invitation
-      '@hey/public':
-        specifier: workspace:*
-        version: link:../../packages/@hey/public
-      '@hey/shared-ui':
-        specifier: workspace:*
-        version: link:../../packages/@hey/shared-ui
-      '@iconify/vue':
-        specifier: 'catalog:'
-        version: 5.0.1(vue@3.5.40(typescript@6.0.3))
-      '@tresjs/cientos':
-        specifier: 'catalog:'
-        version: 5.8.1(@tresjs/core@5.8.3(three@0.170.0)(vue@3.5.40(typescript@6.0.3)))(three@0.170.0)(vue@3.5.40(typescript@6.0.3))
-      '@tresjs/core':
-        specifier: 'catalog:'
-        version: 5.8.3(three@0.170.0)(vue@3.5.40(typescript@6.0.3))
-      '@vben/styles':
-        specifier: workspace:*
-        version: link:../../packages/styles
-      gsap:
-        specifier: 'catalog:'
-        version: 3.15.0
       ofetch:
         specifier: 'catalog:'
         version: 1.5.1
@@ -6427,9 +6369,6 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  '@pmndrs/pointer-events@6.6.30':
-    resolution: {integrity: sha512-YD2jWdgEqqAWJNOOZ1WZMunUby8jwuQyOMk8zbeqC39R4nkZnGvu1Pa5EMGbV1zd2vZTxXDxYcAVxtQuhVwf3g==}
-
   '@pnpm/config.env-replace@1.1.0':
     resolution: {integrity: sha512-htyl8TWnKL7K/ESFa1oW2UB5lVDxuF5DpM7tBi6Hu2LNL3mWkIzNLG6N4zoCUP1lCKNxWy/3iu8mS8MvToGd6w==}
     engines: {node: '>=12.22.0'}
@@ -7331,19 +7270,6 @@ packages:
       '@tiptap/pm': 3.28.0
       vue: ^3.5.40
 
-  '@tresjs/cientos@5.8.1':
-    resolution: {integrity: sha512-2VbM2+Tok3LVDCWkPisGo+nq6ppHxxSt+jhCRrQAqT8YxEbifAETefW9gdHwad9qYy1jCRyrounN2fwtuLhf9A==}
-    peerDependencies:
-      '@tresjs/core': 5.8.3
-      three: '>=0.133'
-      vue: ^3.5.40
-
-  '@tresjs/core@5.8.3':
-    resolution: {integrity: sha512-1I5Y/qJ1z5JnObUwtkCnKFiCQw2cS2tp0KH18FgBQAD6quQ87eGzHrWThrdcuv6RFAgwuRTpTH7qBNWmtW3tSQ==}
-    peerDependencies:
-      three: '>=0.133'
-      vue: ^3.5.40
-
   '@trickfilm400/rollup-plugin-off-main-thread@3.0.0-pre1':
     resolution: {integrity: sha512-/67zpWDBLV+oYAEL682s1ktXL0HgqX76f6gaVGkGnVZlBbm1zd0v4Bz8MFF2GGhoX9rvfq3KSQHubFHwa6w6/Q==}
     engines: {node: '>=12'}
@@ -7417,9 +7343,6 @@ packages:
 
   '@types/deep-eql@4.0.2':
     resolution: {integrity: sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw==}
-
-  '@types/draco3d@1.4.10':
-    resolution: {integrity: sha512-AX22jp8Y7wwaBgAixaSvkoG4M/+PlAcm3Qs4OW8yT9DM4xUpWKeFhLueTAyZF39pviAdcDdeJoACapiAceqNcw==}
 
   '@types/esrecurse@4.3.1':
     resolution: {integrity: sha512-xJBAbDifo5hpffDBuHl0Y8ywswbiAp/Wi7Y/GtAgSlZyIABppyurxVueOPE8LUQOxdlgi6Zqce7uoEpqNTeiUw==}
@@ -7498,9 +7421,6 @@ packages:
 
   '@types/nprogress@0.2.3':
     resolution: {integrity: sha512-k7kRA033QNtC+gLc4VPlfnue58CM1iQLgn1IMAU8VPHGOj7oIHPp9UlhedEnD/Gl8evoCjwkZjlBORtZ3JByUA==}
-
-  '@types/offscreencanvas@2019.7.3':
-    resolution: {integrity: sha512-ieXiYmgSRXUDeOntE1InxjWyvEelZGP63M+cGuquuRLuIKKT1osnkXjxev9B7d1nXSug5vpunx+gNlbVxMlC9A==}
 
   '@types/pako@2.0.4':
     resolution: {integrity: sha512-VWDCbrLeVXJM9fihYodcLiIv0ku+AlOa/TQ1SvYOaBuyrSKgEcro95LJyIsJ4vSo6BXIxOKxiJAat04CmST9Fw==}
@@ -8617,12 +8537,6 @@ packages:
     resolution: {integrity: sha512-8WB3Jcas3swSvjIeA2yvCJ+Miyz5l1ZmB6HFb9R1317dt9LCQoswg/BGrmAmkWVEszSrrg4RwmO46qIm2OEnSA==}
     engines: {node: '>=16'}
 
-  camera-controls@3.1.2:
-    resolution: {integrity: sha512-xkxfpG2ECZ6Ww5/9+kf4mfg1VEYAoe9aDSY+IwF0UEs7qEzwy0aVRfs2grImIECs/PoBtWFrh7RXsQkwG922JA==}
-    engines: {node: '>=22.0.0', npm: '>=10.5.1'}
-    peerDependencies:
-      three: '>=0.126.1'
-
   caniuse-lite@1.0.30001806:
     resolution: {integrity: sha512-72Cuvd95zbSYPKq6Fhg8eDJRlzgWDf7/mtoZv6Qe/DYNCEBdNxoA3+rZAU2ZhGCpZlns3EssFavaZomckT5Uuw==}
 
@@ -9224,9 +9138,6 @@ packages:
     resolution: {integrity: sha512-IrPdXQsk2BbzvCBGBOTmmSH5SodmqZNt4ERAZDmW4CT+tL8VtvinqywuANaFu4bOMWki16nqf0e4oC0QIaDr/g==}
     engines: {node: '>=10'}
 
-  draco3d@1.5.7:
-    resolution: {integrity: sha512-m6WCKt/erDXcw+70IJXnG7M3awwQPAsZvJGX5zY7beBqpELw6RDGkYVU0W43AFxye4pDZ5i2Lbyc/NNGqwjUVQ==}
-
   dts-resolver@3.0.0:
     resolution: {integrity: sha512-1T1f+z+4tl9XD+m+0HBgWoL/nm0bOIffyWaUuUSBlFg/86IWvfx+wjNaO/ybU0AJzG9/Mi5hBUgGV6zCmWEN7Q==}
     engines: {node: ^22.18.0 || >=24.0.0}
@@ -9675,9 +9586,6 @@ packages:
 
   fetch-cookie@2.2.0:
     resolution: {integrity: sha512-h9AgfjURuCgA2+2ISl8GbavpUdR+WGAM2McW/ovn4tVccegp8ZqCKWSBR8uRdM8dDNlx5WdKRWxBYUwteLDCNQ==}
-
-  fflate@0.6.10:
-    resolution: {integrity: sha512-IQrh3lEPM93wVCEczc9SaAOvkmcoQn/G8Bo1e8ZPlY3X3bnAxWaBdvTdvM1hP62iZp0BXWDy4vTAy4fF0+Dlpg==}
 
   fflate@0.8.3:
     resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
@@ -11509,9 +11417,6 @@ packages:
     resolution: {integrity: sha512-KBDEIpLrvpv16pp3K0Fw+UCoZfopFjjgeB+0tA/aaThfEE74kKDLrgg603YvOWJyg3+WYtyq3xYsQWsIyZlPqQ==}
     engines: {node: ^10 || ^12 || >=14}
 
-  potpack@1.0.2:
-    resolution: {integrity: sha512-choctRBIV9EMT9WGAZHn3V7t0Z2pMQyl0EZE6pFc/6ml3ssw7Dlf/oAOvFwjm1HVsqfQN8GfeFyJ+d8tRzqueQ==}
-
   powershell-utils@0.1.0:
     resolution: {integrity: sha512-dM0jVuXJPsDN6DvRpea484tCUaMiXWjuCn++HGTqUWzGDjv5tZkEZldAJ/UMlqRYGFrD/etByo4/xOuC/snX2A==}
     engines: {node: '>=20'}
@@ -11647,10 +11552,6 @@ packages:
 
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
-
-  radashi@12.9.1:
-    resolution: {integrity: sha512-HCvrL1Ag7qnyH11UiSWQaEIiizJ7kldHjBw63aELoum7C8nQrSLqotLDuKKvoRPtO0w8azCzUQcL3yrU3lBksw==}
-    engines: {node: '>=16.0.0'}
 
   radix3@1.1.2:
     resolution: {integrity: sha512-b484I/7b8rDEdSDKckSSBA8knMpcdsXudlE/LNL639wFoHKwLbEkQFZHWEYwDC0wa0FKUcCY+GAF73Z7wxNVFA==}
@@ -12220,17 +12121,6 @@ packages:
   standard-as-callback@2.1.0:
     resolution: {integrity: sha512-qoRRSyROncaz1z0mvYqIE4lCd9p2R90i6GxW3uZv5ucSu8tU7B5HXUP1gG8pVZsYNVaXjk8ClXHPttLyxAL48A==}
 
-  stats-gl@4.1.0:
-    resolution: {integrity: sha512-A0aw+njfFtowIJ5tCbCxKBRR7oflVmGEjdXfMI7IAc/fDTdms4eIKSaLDWL222XCrfQdT49VE19JgKGDQmz0yw==}
-    peerDependencies:
-      three: '*'
-    peerDependenciesMeta:
-      three:
-        optional: true
-
-  stats.js@0.17.0:
-    resolution: {integrity: sha512-hNKz8phvYLPEcRkeG1rsGmV5ChMjKDAWU7/OJJdDErPBNChQXxCo3WZurGpnWc6gZhAzEPFad1aVgyOANH1sMw==}
-
   statuses@2.0.2:
     resolution: {integrity: sha512-DvEy55V3DB7uknRo+4iOGT5fP1slR8wQohVdknigZPMpMstaKJQWhwiYBACJE3Ul2pTnATihhBYnRhZQHGBiRw==}
     engines: {node: '>= 0.8'}
@@ -12533,28 +12423,6 @@ packages:
 
   theme-colors@0.1.0:
     resolution: {integrity: sha512-6gTEHQqWlQNiOEGHCSSQmU//E5SnXHJ4H7oHQOD8x77CvNYNQAmt73dqR71mzw5ULV87zaHLxK5pIBnsToFuZw==}
-
-  three-custom-shader-material@6.4.0:
-    resolution: {integrity: sha512-dIbkwX1P4DcHMOZrywW+/TDp5qJhlyU6NP/2kmHw91UqC+TrK4JSBtAV3qGc6UnkqSOmR1i0O+Yz5EnTp2aQ1g==}
-    peerDependencies:
-      '@react-three/fiber': '>=8.0'
-      react: '>=18.0'
-      three: '>=0.159'
-    peerDependenciesMeta:
-      '@react-three/fiber':
-        optional: true
-      react:
-        optional: true
-
-  three-mesh-bvh@0.9.10:
-    resolution: {integrity: sha512-UOlTgPIeqUURcwaG8knxvBaruwZlC4X3/WSHEFO7rYvMVv/YNUrkfFEszvfj36pXV88dCHoHNnIp0PifkirnTQ==}
-    peerDependencies:
-      three: '>= 0.159.0'
-
-  three-stdlib@2.36.1:
-    resolution: {integrity: sha512-XyGQrFmNQ5O/IoKm556ftwKsBg11TIb301MB5dWNicziQBEs2g3gtOYIf7pFiLa0zI2gUwhtCjv9fmjnxKZ1Cg==}
-    peerDependencies:
-      three: '>=0.128.0'
 
   three@0.170.0:
     resolution: {integrity: sha512-FQK+LEpYc0fBD+J8g6oSEyyNzjp+Q7Ks1C568WWaoMRLW+TkNNWmenWeGgJjV105Gd+p/2ql1ZcjYvNiPZBhuQ==}
@@ -16082,8 +15950,6 @@ snapshots:
     dependencies:
       playwright: 1.61.1
 
-  '@pmndrs/pointer-events@6.6.30': {}
-
   '@pnpm/config.env-replace@1.1.0': {}
 
   '@pnpm/constants@1001.3.1': {}
@@ -16806,31 +16672,6 @@ snapshots:
       '@tiptap/extension-bubble-menu': 3.28.0(@tiptap/core@3.28.0(@tiptap/pm@3.28.0))(@tiptap/pm@3.28.0)
       '@tiptap/extension-floating-menu': 3.28.0(@floating-ui/dom@1.8.0)(@tiptap/core@3.28.0(@tiptap/pm@3.28.0))(@tiptap/pm@3.28.0)
 
-  '@tresjs/cientos@5.8.1(@tresjs/core@5.8.3(three@0.170.0)(vue@3.5.40(typescript@6.0.3)))(three@0.170.0)(vue@3.5.40(typescript@6.0.3))':
-    dependencies:
-      '@tresjs/core': 5.8.3(three@0.170.0)(vue@3.5.40(typescript@6.0.3))
-      '@vueuse/core': 14.3.0(vue@3.5.40(typescript@6.0.3))
-      camera-controls: 3.1.2(three@0.170.0)
-      stats-gl: 4.1.0(three@0.170.0)
-      stats.js: 0.17.0
-      three: 0.170.0
-      three-custom-shader-material: 6.4.0(three@0.170.0)
-      three-mesh-bvh: 0.9.10(three@0.170.0)
-      three-stdlib: 2.36.1(three@0.170.0)
-      vue: 3.5.40(typescript@6.0.3)
-    transitivePeerDependencies:
-      - '@react-three/fiber'
-      - react
-
-  '@tresjs/core@5.8.3(three@0.170.0)(vue@3.5.40(typescript@6.0.3))':
-    dependencies:
-      '@pmndrs/pointer-events': 6.6.30
-      '@vue/devtools-api': 8.1.5
-      '@vueuse/core': 14.3.0(vue@3.5.40(typescript@6.0.3))
-      radashi: 12.9.1
-      three: 0.170.0
-      vue: 3.5.40(typescript@6.0.3)
-
   '@trickfilm400/rollup-plugin-off-main-thread@3.0.0-pre1':
     dependencies:
       ejs: 3.1.10
@@ -16893,8 +16734,6 @@ snapshots:
       '@types/tern': 0.23.9
 
   '@types/deep-eql@4.0.2': {}
-
-  '@types/draco3d@1.4.10': {}
 
   '@types/esrecurse@4.3.1': {}
 
@@ -16977,8 +16816,6 @@ snapshots:
       undici-types: 8.3.0
 
   '@types/nprogress@0.2.3': {}
-
-  '@types/offscreencanvas@2019.7.3': {}
 
   '@types/pako@2.0.4': {}
 
@@ -18265,10 +18102,6 @@ snapshots:
 
   camelcase@8.0.0: {}
 
-  camera-controls@3.1.2(three@0.170.0):
-    dependencies:
-      three: 0.170.0
-
   caniuse-lite@1.0.30001806: {}
 
   canvg@3.0.11:
@@ -18855,8 +18688,6 @@ snapshots:
   dotenv@17.4.2: {}
 
   dotenv@8.6.0: {}
-
-  draco3d@1.5.7: {}
 
   dts-resolver@3.0.0(oxc-resolver@11.24.2):
     optionalDependencies:
@@ -19452,8 +19283,6 @@ snapshots:
     dependencies:
       set-cookie-parser: 2.7.2
       tough-cookie: 4.1.4
-
-  fflate@0.6.10: {}
 
   fflate@0.8.3: {}
 
@@ -21401,8 +21230,6 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  potpack@1.0.2: {}
-
   powershell-utils@0.1.0: {}
 
   prelude-ls@1.2.1: {}
@@ -21556,8 +21383,6 @@ snapshots:
   querystringify@2.2.0: {}
 
   queue-microtask@1.2.3: {}
-
-  radashi@12.9.1: {}
 
   radix3@1.1.2: {}
 
@@ -22201,12 +22026,6 @@ snapshots:
 
   standard-as-callback@2.1.0: {}
 
-  stats-gl@4.1.0(three@0.170.0):
-    optionalDependencies:
-      three: 0.170.0
-
-  stats.js@0.17.0: {}
-
   statuses@2.0.2: {}
 
   std-env@4.2.0: {}
@@ -22596,24 +22415,6 @@ snapshots:
       utrie: 1.0.2
 
   theme-colors@0.1.0: {}
-
-  three-custom-shader-material@6.4.0(three@0.170.0):
-    dependencies:
-      three: 0.170.0
-
-  three-mesh-bvh@0.9.10(three@0.170.0):
-    dependencies:
-      three: 0.170.0
-
-  three-stdlib@2.36.1(three@0.170.0):
-    dependencies:
-      '@types/draco3d': 1.4.10
-      '@types/offscreencanvas': 2019.7.3
-      '@types/webxr': 0.5.24
-      draco3d: 1.5.7
-      fflate: 0.6.10
-      potpack: 1.0.2
-      three: 0.170.0
 
   three@0.170.0: {}
 
