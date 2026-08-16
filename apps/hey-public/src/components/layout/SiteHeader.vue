@@ -10,7 +10,9 @@ import {
   Bell,
   ChevronDown,
   Command,
+  LayoutDashboard,
   Menu,
+  PenTool,
   User as UserIcon,
 } from 'lucide-vue-next';
 
@@ -136,6 +138,20 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
                   @click="userOpen = false"
                 >
                   <Command :size="15" /> AI 工作台
+                </router-link>
+                <router-link
+                  to="/admin-demo"
+                  class="pop-link"
+                  @click="userOpen = false"
+                >
+                  <LayoutDashboard :size="15" /> AdminDemo
+                </router-link>
+                <router-link
+                  to="/workspace/canvas"
+                  class="pop-link"
+                  @click="userOpen = false"
+                >
+                  <PenTool :size="15" /> 无限画布
                 </router-link>
                 <button
                   class="pop-link pop-danger"

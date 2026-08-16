@@ -9,6 +9,7 @@ export default defineConfig(async () => {
       resolve: {
         alias: {
           '@': fileURLToPath(new URL('src', import.meta.url)),
+          '@admin-demo': fileURLToPath(new URL('src/admin-demo', import.meta.url)),
         },
       },
       server: {
@@ -42,6 +43,14 @@ export default defineConfig(async () => {
             target: 'http://localhost:5320',
             changeOrigin: true,
             ws: false,
+          },
+
+          // AI 治理产物静态文件（原图 + WebP 预览，AiAgent.LocalFileStorageGateway 落盘目录）
+          // 保留 /ai-agent-images 前缀以匹配后端静态文件请求路径
+          '^/ai-agent-images': {
+            target: 'https://localhost:7188',
+            changeOrigin: true,
+            secure: false,
           },
 
           // 其余 /api/** 转发到真实 ABP 后端（保留 /api 前缀，匹配 ABP 控制器路由）

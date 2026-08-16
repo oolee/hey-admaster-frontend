@@ -1,6 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router';
 
 import { createRouter, createWebHistory } from 'vue-router';
+import { adminDemoRoutes } from '@/admin-demo/routes';
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -129,6 +130,14 @@ const routes: RouteRecordRaw[] = [
     name: 'profile',
     component: () => import('@/views/auth/ProfileView.vue'),
     meta: { layout: 'workspace', requiresAuth: false },
+  },
+  {
+    path: '/admin-demo',
+    name: 'admin-demo',
+    component: () => import('@/admin-demo/layout/AdminLayout.vue'),
+    meta: { layout: 'workspace', title: 'AdminDemo' },
+    redirect: '/admin-demo/dashboard',
+    children: adminDemoRoutes,
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ];

@@ -53,6 +53,7 @@
     "dev:play": "pnpm -F @vben/playground run dev",
     "dev:admin": "pnpm -F @hey/admin run dev",
     "dev:public": "pnpm -F @hey/app-public run dev",
+    "dev:public2": "pnpm -F @hey/app-public2 run dev",
     "dev:invitation": "pnpm -F @hey/app-invitation run dev",
     "format": "vsh lint --format",
     "lint": "vsh lint",
