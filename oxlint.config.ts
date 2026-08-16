@@ -8,8 +8,8 @@ export default defineConfig({
     ...oxlintConfig.rules,
     // @abp 框架代码中存在动态 delete，不修改第三方代码
     'typescript/no-dynamic-delete': 'off',
-    // 项目中使用 confirm/prompt/alert 作为简单交互，不强制替换为自定义 UI
-    'eslint/no-alert': 'off',
+    // 统一提示系统已落地（apps/hey-public/src/utils/prompt.ts + PromptHost.vue）：禁止原生 confirm/alert
+    'eslint/no-alert': 'error',
     // @abp 框架中 emit 重载签名无法合并
     'typescript/unified-signatures': 'off',
     // @abp 框架中的 console.log 调试代码，不修改第三方代码

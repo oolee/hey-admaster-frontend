@@ -24,9 +24,10 @@
 
 ## UI 风格（anti-AI-slop）
 
-- hey-public：霓虹玻璃风——`--color-neon`、`glass-card`、`btn-neon-filled`；新页面保持项目内一致，不要用 antd/shadcn 默认观感。
-- 组件参考：`src/features/ai-design/AiChatPanel.vue`、`src/styles/*`。
-- 新 UI 视觉方向先参考本地 `frontend-design` 技能与现有页面，避免模板味。
+- hey-public 是**独立设计体系**：只用自身令牌与组件（`src/styles/tokens.css`、`src/components/ui/*`），**与 hey-admin 的 vben 框架完全独立**，禁止混用 vben/antd 组件与观感。
+- 霓虹玻璃风：`--color-*` 令牌 + `BaseModal` 弹层范式（surface + 边框 + 模糊遮罩 + 弹簧动效）+ `BaseButton` 变体按钮；组件参考 `src/components/ui/*`、`src/components/workspace/*`。
+- **提示一律走统一提示系统**：`prompt.confirm()` / `prompt.alert()`（`src/utils/prompt.ts` + `PromptHost.vue`），**禁止原生 confirm/alert**（oxlint `eslint/no-alert` 已强制）；短提示用 `src/utils/toast`。
+- 新 UI 视觉方向先读 `frontend-design` 技能（WorkBuddy 插件 frontend-design-pro；仓库摘要 `skills/frontend-design/SKILL.md`）再对照现有页面定稿，避免模板味。
 
 ## TypeScript 细节（易踩坑）
 

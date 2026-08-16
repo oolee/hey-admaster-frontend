@@ -267,6 +267,36 @@ export const deleteConversation = (id: string) =>
     method: 'DELETE',
   });
 
+/* ---------- 会话消息落库（ai-agent run 结果写入，刷新后历史可见） ---------- */
+export interface V2AppendArtifactImage {
+  url: string;
+  previewUrl?: string;
+}
+
+export interface V2AppendArtifact {
+  type: string;
+  label?: string;
+  images?: V2AppendArtifactImage[];
+}
+
+export const appendConversationMessage = (
+  conversationId: string,
+  payload: {
+    artifact?: V2AppendArtifact;
+    content: string;
+    model?: string;
+    role: 'ai' | 'user';
+    task?: string;
+  },
+) =>
+  request<ApiResponse<V2ChatMessage>>(
+    `/conversations/${conversationId}/messages`,
+    {
+      method: 'POST',
+      body: payload,
+    },
+  );
+
 /* ---------- 工作台：模型目录 / 统一生成 / 图片资产 ---------- */
 export interface V2ModelInfo {
   id: string;

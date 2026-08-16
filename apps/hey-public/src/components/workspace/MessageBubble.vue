@@ -1,19 +1,27 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import type { ArtifactActionDef } from '@/skills/artifacts';
 
-import ArtCanvas from '@/components/ui/ArtCanvas.vue';
+import type { Component } from 'vue';
+
+import { computed } from 'vue';
+
 import Badge from '@/components/ui/Badge.vue';
-import { toast } from '@/utils/toast';
+import {
+  artifactViewers,
+  fallbackViewer,
+  resolveArtifactActions,
+} from '@/skills/artifacts';
+import { useAgentStore } from '@/stores/agent';
 import {
   Check,
   ClipboardCopy,
   Copy,
   Download,
   ExternalLink,
-  FileCode,
-  Globe,
-  Image as ImageIcon,
+  Link,
   RefreshCw,
+  Sparkles,
+  Wand2,
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -22,68 +30,39 @@ const props = defineProps({
 
 const emit = defineEmits(['action']);
 
+const agent = useAgentStore();
+
 const isUser = computed(() => props.message.role === 'user');
 
-const artifactMeta = computed(() => {
-  const m = props.message;
-  if (!m.artifact) return null;
-  switch (m.artifact.type) {
-    case 'code': {
-      return { label: '代码片段', icon: FileCode, tone: 'success' };
-    }
-    case 'image': {
-      return { label: '图像生成', icon: ImageIcon, tone: 'accent' };
-    }
-    case 'ppt': {
-      return { label: 'HTML 动效 PPT', icon: FileCode, tone: 'ai' };
-    }
-    case 'web': {
-      return { label: '网页预览', icon: Globe, tone: 'ai' };
-    }
-    default: {
-      return { label: m.artifact.type, icon: ImageIcon, tone: 'neutral' };
-    }
-  }
+/** 产物渲染器：注册表按 type 分发，未知类型走兜底 viewer（§19.4 档一） */
+const viewerComponent = computed<Component>(() => {
+  const type = props.message.artifact?.type as string | undefined;
+  if (!type) return fallbackViewer;
+  return (
+    artifactViewers[type as keyof typeof artifactViewers] ?? fallbackViewer
+  );
 });
 
-function copy() {
-  toast.success('提示词已复制');
-}
-function download() {
-  toast.info('已发起下载');
-}
-function retry() {
-  emit('action', { type: 'retry' });
-}
+/** 产物操作按钮：插件声明（按 kind）+ 内核通用操作（§19.2） */
+const actionDefs = computed<ArtifactActionDef[]>(() => {
+  const type = props.message.artifact?.type as string | undefined;
+  if (!type) return [];
+  return resolveArtifactActions(type, agent.capabilities);
+});
 
-const copied = ref(false);
-async function copyImage() {
-  /* 真机可通过 navigator.clipboard.write 复制真实图片；
-     这里把生成内容文字（提示词 + 元数据）复制到剪贴板，
-     演示模式下给出明确反馈，让用户感知能力可用 */
-  try {
-    const meta = props.message.artifact;
-    const text = [
-      `Hey 19 AI 生成图像`,
-      meta?.label ? `类型：${meta.label}` : null,
-      props.message.content ? `说明：${props.message.content}` : null,
-      props.message.cost ? `消耗：${props.message.cost} 积分` : null,
-    ]
-      .filter(Boolean)
-      .join('\n');
-    if (navigator.clipboard && text) {
-      await navigator.clipboard.writeText(text);
-      copied.value = true;
-      setTimeout(() => (copied.value = false), 1600);
-      toast.success('图像信息已复制到剪贴板');
-    } else {
-      toast.info('当前环境不支持剪贴板');
-    }
-  } catch (error) {
-    toast.error(
-      `复制失败：${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
+const actionIcons: Record<string, Component> = {
+  'clipboard-copy': ClipboardCopy,
+  copy: Copy,
+  download: Download,
+  'refresh-cw': RefreshCw,
+  wand2: Wand2,
+  link: Link,
+  'external-link': ExternalLink,
+  check: Check,
+};
+
+function actionIcon(name: string): Component {
+  return actionIcons[name] ?? Sparkles;
 }
 </script>
 
@@ -106,94 +85,19 @@ async function copyImage() {
         <p v-if="message.content" class="msg-text">{{ message.content }}</p>
         <span v-if="message.streaming" class="caret"></span>
 
-        <!-- 图像产物 -->
-        <div
-          v-if="message.artifact?.type === 'image'"
-          class="artifact artifact-image"
-        >
-          <template v-if="message.artifact.images?.length">
-            <img
-              v-for="img in message.artifact.images"
-              :key="img.url"
-              :src="img.url"
-              class="artifact-img"
-              alt="AI 生成图像"
-            />
-          </template>
-          <ArtCanvas
-            v-else
-            variant="poster"
-            :seed="message.id"
-            :label="message.content"
-          />
-        </div>
-
-        <!-- PPT 产物（带 HTML 预览） -->
-        <div
-          v-else-if="message.artifact?.type === 'ppt'"
-          class="artifact artifact-ppt"
-        >
-          <div class="ppt-frame">
-            <iframe
-              v-if="message.artifact.html"
-              :srcdoc="message.artifact.html"
-              sandbox="allow-scripts"
-              loading="lazy"
-              class="ppt-iframe"
-            ></iframe>
-          </div>
-          <div class="artifact-bar">
-            <Badge tone="ai">
-              {{ message.artifact.pages || 5 }} 页 · 自动动效
-            </Badge>
-            <button class="t-btn" @click="download">
-              <Download :size="14" /> 导出
-            </button>
-          </div>
-        </div>
-
-        <!-- 网页产物 -->
-        <div
-          v-else-if="message.artifact?.type === 'web'"
-          class="artifact artifact-web"
-        >
-          <div class="web-frame">
-            <iframe
-              v-if="message.artifact.html"
-              :srcdoc="message.artifact.html"
-              sandbox="allow-scripts"
-              class="web-iframe"
-              loading="lazy"
-            ></iframe>
-          </div>
-          <div class="artifact-bar">
-            <Badge tone="ai">单页响应式</Badge>
-            <button class="t-btn" @click="download">
-              <Download :size="14" />
-            </button>
-            <button
-              class="t-btn"
-              @click="
-                emit('action', { type: 'open', url: message.artifact.url })
-              "
-            >
-              <ExternalLink :size="14" /> 新窗口
-            </button>
-          </div>
-        </div>
-
-        <!-- 代码产物 -->
-        <div
-          v-else-if="message.artifact?.type === 'code'"
-          class="artifact artifact-code"
-        >
-          <pre><code>{{ message.artifact.code }}</code></pre>
-        </div>
+        <!-- 产物渲染：注册表按 type 分发（未知类型兜底，不会看不见） -->
+        <component
+          :is="viewerComponent"
+          v-if="message.artifact"
+          :artifact="message.artifact"
+          :message-id="message.id"
+          class="artifact"
+        />
       </div>
 
-      <!-- 提示操作（图片产物的标签 + 工具按钮右对齐到「继续」chips 之后） -->
+      <!-- 操作区：消息自带 quick chips + 注册表产物操作（§19.2） -->
       <div
-        v-if="message.actions?.length || message.artifact?.type === 'image'"
+        v-if="message.actions?.length || actionDefs.length"
         class="msg-actions"
       >
         <button
@@ -204,28 +108,27 @@ async function copyImage() {
         >
           {{ a }}
         </button>
-        <template v-if="message.artifact?.type === 'image'">
+        <template v-if="actionDefs.length">
           <span class="msg-spacer"></span>
-          <span class="msg-artifact-label">
-            {{ message.artifact.label || '图像' }}
+          <span v-if="message.artifact?.label" class="msg-artifact-label">
+            {{ message.artifact.label }}
           </span>
           <div class="artifact-tools">
             <button
+              v-for="a in actionDefs"
+              :key="a.id"
               class="t-btn"
-              :title="copied ? '已复制' : '复制图像信息'"
-              @click="copyImage"
+              :title="a.label"
+              @click="
+                emit('action', {
+                  type: a.id,
+                  action: a,
+                  artifact: message.artifact,
+                  message,
+                })
+              "
             >
-              <Check v-if="copied" :size="14" />
-              <ClipboardCopy v-else :size="14" />
-            </button>
-            <button class="t-btn" title="下载" @click="download">
-              <Download :size="14" />
-            </button>
-            <button class="t-btn" title="复制提示词" @click="copy">
-              <Copy :size="14" />
-            </button>
-            <button class="t-btn" title="重新生成" @click="retry">
-              <RefreshCw :size="14" />
+              <component :is="actionIcon(a.icon)" :size="14" />
             </button>
           </div>
         </template>
@@ -332,35 +235,13 @@ async function copyImage() {
   animation: breathe 1s infinite;
 }
 
-/* 产物容器 */
+/* 产物容器（viewer 根节点） */
 .artifact {
   margin-top: var(--sp-3);
   overflow: hidden;
   background: var(--color-bg-deep);
   border: 1px solid var(--color-border);
   border-radius: var(--r-lg);
-}
-
-.artifact-img {
-  display: block;
-  width: 100%;
-  max-width: 480px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--r-md);
-}
-
-.artifact-image {
-  position: relative;
-  aspect-ratio: 16/10;
-}
-
-.artifact-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  background: var(--color-surface);
-  border-top: 1px solid var(--color-border);
 }
 
 .artifact-tools {
@@ -385,40 +266,6 @@ async function copyImage() {
 .t-btn:hover {
   color: var(--color-text-1);
   border-color: var(--color-border-strong);
-}
-
-.ppt-frame,
-.web-frame {
-  width: 100%;
-  background: #fff;
-}
-
-.ppt-iframe {
-  display: block;
-  width: 100%;
-  aspect-ratio: 16/9;
-  border: 0;
-}
-
-.web-iframe {
-  display: block;
-  width: 100%;
-  height: 380px;
-  border: 0;
-}
-
-.artifact-code pre {
-  padding: var(--sp-4);
-  margin: 0;
-  overflow-x: auto;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--color-text-1);
-}
-
-.artifact-code code {
-  background: transparent;
 }
 
 .msg-actions {

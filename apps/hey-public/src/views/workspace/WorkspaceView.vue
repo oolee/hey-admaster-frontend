@@ -1,10 +1,16 @@
 <script setup lang="ts">
+import type { V2AppendArtifact } from '@/api';
+import type { ArtifactActionDef } from '@/skills/artifacts';
 import type { SkillId, SkillInfo } from '@/skills/registry';
 
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { fetchConversations } from '@/api';
+import {
+  appendConversationMessage,
+  createConversation,
+  fetchConversations,
+} from '@/api';
 import {
   AgentArtifactKind,
   AgentErrorCodeLabel,
@@ -63,7 +69,11 @@ const emptyHints = computed(() => {
   const example = store.task?.example;
   return example
     ? [example, '帮我写一段春节营销文案', '推荐 3 个适合咖啡店的品牌名']
-    : ['帮我写一段春节营销文案', '推荐 3 个适合咖啡店的品牌名', '输入 / 触发技能'];
+    : [
+        '帮我写一段春节营销文案',
+        '推荐 3 个适合咖啡店的品牌名',
+        '输入 / 触发技能',
+      ];
 });
 
 const currentSkillColor = computed(
@@ -217,26 +227,16 @@ const mockHistory: Record<string, MockMsg[]> = {
 // 初始历史加载
 const convId = computed(() => store.activeConvId ?? 'c1');
 
-const initialMessages = computed(() => {
-  return (
-    mockHistory[convId.value] || [
-      {
-        id: 'm0',
-        role: 'ai',
-        task: store.taskType,
-        model: 'Auto',
-        content:
-          '你好，我是 Hey 19 AI 创意助手。\n\n告诉我你想做什么 —— 文案、海报、改图、PPT 还是网页？我会根据你的任务智能选择最合适的模型。',
-        actions: ['看看示例', '帮助文档'],
-      },
-    ]
-  );
-});
+// 每个会话的初始内容：仅历史 mock 演示会话（c1~c6）保留兜底；
+// 新建/后端会话无消息时返回空数组 → 显示空态（“今天想创作点什么？”）
+const initialMessages = computed(() => mockHistory[convId.value] ?? []);
 
 watch(
   () => store.activeConvId,
-  (id) => {
-    if (id) delete store.messagesByConv[id];
+  (id, prevId) => {
+    // 切换会话时清掉“上一个”会话的本地缓存（下次选中重新拉取）；
+    // 不清“当前”会话——新建会话首次发送时刚追加的消息不能被误删
+    if (prevId) delete store.messagesByConv[prevId];
     scrollBottom();
   },
   { immediate: true },
@@ -335,6 +335,33 @@ async function send() {
     }),
   );
 
+  // 空对话不落库：本地临时会话（local-*）首次发送时才创建后端会话，换取真实 id
+  let targetConvId = convId.value;
+  if (targetConvId.startsWith('local-')) {
+    try {
+      const res = await createConversation({
+        title: text.slice(0, 30) || '新对话',
+        task: taskType,
+        model: 'auto',
+      });
+      const conv = res.data;
+      store.upgradeLocalConversation(targetConvId, {
+        id: conv.id,
+        title: conv.title,
+        time: conv.time,
+        type: conv.type,
+        active: false,
+        preview: conv.preview,
+        pinned: !!conv.pinned,
+        task: conv.task,
+        model: conv.model,
+      });
+      targetConvId = conv.id;
+    } catch {
+      /* 未登录/后端不可用：保持本地临时会话，不落库 */
+    }
+  }
+
   prompt.value = '';
   const userMsg = {
     id: `u${Date.now()}`,
@@ -343,7 +370,12 @@ async function send() {
     task: taskType,
     attachments: attachFiles.map((a) => ({ name: a.name, note: a.note })),
   };
-  store.appendMessage(convId.value, userMsg);
+  store.appendMessage(targetConvId, userMsg);
+  void persistMessage(targetConvId, {
+    role: 'user',
+    content: finalPrompt,
+    task: taskType,
+  });
   attachments.value = [];
   scrollBottom();
 
@@ -357,7 +389,7 @@ async function send() {
     model: 'Auto',
     cost: 0,
   };
-  store.appendMessage(convId.value, aiMsg);
+  store.appendMessage(targetConvId, aiMsg);
   scrollBottom();
 
   try {
@@ -393,7 +425,7 @@ async function send() {
     );
 
     if (imageArtifact) {
-      store.updateLastMessage(convId.value, {
+      store.updateLastMessage(targetConvId, {
         artifact: {
           type: 'image',
           label: 'AI 生成的图像',
@@ -402,23 +434,69 @@ async function send() {
       });
     }
     if (textArtifact?.text) {
-      store.updateLastMessage(convId.value, { content: textArtifact.text });
+      store.updateLastMessage(targetConvId, { content: textArtifact.text });
     }
 
-    store.updateLastMessage(convId.value, {
+    store.updateLastMessage(targetConvId, {
       streaming: false,
       cost: result.usage?.chargedAmount ?? 0,
       actions: getActions(taskType),
     });
+    // 模型名：ModelSelected 事件（后端枚举序列化为数值 1）里的桥 id；未知则 Auto
+    const modelEvent = run.events?.find((ev) => Number(ev.type) === 1);
+    const modelName =
+      typeof modelEvent?.data === 'string' ? modelEvent.data : 'Auto';
+    void persistMessage(targetConvId, {
+      role: 'ai',
+      content: imageArtifact ? '已生成 1 张图片' : (textArtifact?.text ?? ''),
+      task: taskType,
+      model: modelName,
+      artifact: imageArtifact
+        ? {
+            type: 'image',
+            label: 'AI 生成的图像',
+            images: [
+              {
+                url: imageArtifact.uri,
+                previewUrl: imageArtifact.previewUri ?? undefined,
+              },
+            ],
+          }
+        : undefined,
+    });
     toast.success('生成完成');
   } catch (error) {
-    store.updateLastMessage(convId.value, { streaming: false });
+    store.updateLastMessage(targetConvId, { streaming: false });
+    void persistMessage(targetConvId, {
+      role: 'ai',
+      content: `生成失败：${error instanceof Error ? error.message : String(error)}`,
+      task: taskType,
+      model: 'Auto',
+    });
     toast.error(
       `生成失败：${error instanceof Error ? error.message : String(error)}`,
     );
   } finally {
     generating.value = false;
     scrollBottom();
+  }
+}
+
+/** 消息落库（ai-agent run 结果写入会话；失败仅本地展示，不阻断对话） */
+async function persistMessage(
+  convId: string,
+  msg: {
+    artifact?: V2AppendArtifact;
+    content: string;
+    model?: string;
+    role: 'ai' | 'user';
+    task?: string;
+  },
+): Promise<void> {
+  try {
+    await appendConversationMessage(convId, msg);
+  } catch {
+    /* 未登录/后端不可用：仅本地展示，不落库 */
   }
 }
 
@@ -593,16 +671,152 @@ function pickFromSlash(skill: SkillInfo) {
   if (rest) send();
 }
 
-function onAction(action: { label: string; type: string }) {
-  const { type, label } = action;
+/* ===== 产物操作执行（§19.2 三层） ===== */
+
+interface ArtifactActionPayload {
+  type: string;
+  label?: string;
+  action?: ArtifactActionDef;
+  artifact?: unknown;
+  message?: unknown;
+}
+
+function onAction(payload: ArtifactActionPayload) {
+  const { type, label } = payload;
+
   if (type === 'quick') {
-    prompt.value = label;
+    prompt.value = label ?? '';
     send();
-  } else if (type === 'retry') {
-    toast.info('重新生成中…');
-  } else if (type === 'open') {
-    window.open(label, '_blank');
+    return;
   }
+  if (type === 'retry') {
+    toast.info('重新生成中…');
+    return;
+  }
+
+  const artifact = payload.artifact as
+    | undefined
+    | { images?: Array<{ url: string }>; uri?: string; url?: string };
+  const uri = artifactUrl(artifact);
+
+  switch (type) {
+    case 'copy': {
+      copyArtifactInfo(payload.message, artifact);
+      return;
+    }
+    case 'copy-link': {
+      if (!uri) {
+        toast.info('暂无链接');
+        return;
+      }
+      void copyText(uri).then(() => toast.success('链接已复制'));
+      return;
+    }
+    case 'download': {
+      if (uri) {
+        window.open(uri, '_blank');
+        toast.info('已发起下载');
+      } else {
+        toast.info('已发起下载');
+      }
+      return;
+    }
+    case 'edit': {
+      startEdit(artifact);
+      return;
+    }
+    case 'open': {
+      window.open(uri ?? label ?? '', '_blank');
+      return;
+    }
+    case 'regenerate': {
+      regenerateLast();
+      return;
+    }
+    default: {
+      toast.info(`操作「${type}」待实现`);
+    }
+  }
+}
+
+/** 取产物可访问地址：uri / url / images[0].url */
+function artifactUrl(
+  artifact:
+    | undefined
+    | { images?: Array<{ url: string }>; uri?: string; url?: string },
+): string | undefined {
+  if (!artifact) return undefined;
+  return artifact.uri ?? artifact.url ?? artifact.images?.[0]?.url;
+}
+
+async function copyText(text: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    /* 剪贴板不可用忽略 */
+  }
+}
+
+/** 复制图像信息（提示词 + 元数据） */
+function copyArtifactInfo(
+  message: unknown,
+  artifact?: { images?: Array<{ url: string }>; uri?: string; url?: string },
+) {
+  const msg = message as
+    | undefined
+    | { artifact?: { label?: string }; content?: string; cost?: number };
+  const text = [
+    'Hey 19 AI 生成图像',
+    msg?.artifact?.label ? `类型：${msg.artifact.label}` : null,
+    msg?.content ? `说明：${msg.content}` : null,
+    msg?.cost ? `消耗：${msg.cost} 积分` : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
+  void copyText(text).then(() => toast.success('图像信息已复制到剪贴板'));
+}
+
+/** 重新生成：取当前会话最后一条用户消息重发（能力回环） */
+function regenerateLast() {
+  const list = store.messagesByConv[convId.value];
+  const lastUser = [...(list ?? [])]
+    .toReversed()
+    .find((m) => m.role === 'user');
+  if (!lastUser?.content) {
+    toast.info('没有可重新生成的消息');
+    return;
+  }
+  prompt.value = lastUser.content;
+  send();
+}
+
+/** 改图：产物作为资源引用 → 切 image-edit 技能（能力回环，§19.2 第 3 层） */
+function startEdit(artifact?: {
+  images?: Array<{ url: string }>;
+  uri?: string;
+  url?: string;
+}) {
+  const uri = artifactUrl(artifact);
+  if (!uri) {
+    toast.info('没有可编辑的图片');
+    return;
+  }
+  store.taskType = 'image-edit';
+  attSeed += 1;
+  attachments.value.push({
+    id: `att-${Date.now()}-${attSeed}`,
+    url: toAbsoluteUrl(uri),
+    name: `ref-${Date.now()}.png`,
+    note: '',
+    type: 'image',
+  });
+  inputEl.value?.focus();
+  toast.info('已切换到改图：请描述要修改的内容');
+}
+
+/** 相对产物地址转绝对（走当前站点，Vite proxy 转发到后端） */
+function toAbsoluteUrl(uri: string): string {
+  return /^https?:\/\//.test(uri) ? uri : `${window.location.origin}${uri}`;
 }
 
 function toggleTemplate() {
@@ -617,7 +831,15 @@ const messages = computed(() => {
   return store.messagesByConv[convId.value] || initialMessages.value;
 });
 
+/* 未登录/令牌失效：提示并跳登录（request.ts 已广播 hey19:unauthorized） */
+function onUnauthorized() {
+  if (router.currentRoute.value.path === '/auth') return;
+  toast.error('请先登录后使用工作台');
+  router.push({ path: '/auth', query: { redirect: '/workspace' } });
+}
+
 onMounted(async () => {
+  window.addEventListener('hey19:unauthorized', onUnauthorized);
   // 拉取 Agent 目录（能力/模型桥），后端不可用时回退本地兜底技能清单
   await agent.refresh();
 
@@ -633,6 +855,10 @@ onMounted(async () => {
   scrollBottom();
   inputEl.value?.focus();
 });
+
+onUnmounted(() =>
+  window.removeEventListener('hey19:unauthorized', onUnauthorized),
+);
 </script>
 
 <template>

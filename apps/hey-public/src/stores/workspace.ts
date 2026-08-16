@@ -19,8 +19,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const messagesByConv = ref<Record<string, V2ChatMessage[]>>({});
 
   /** 当前技能（元数据驱动；taskType 未命中时回退到清单首个技能） */
-  const task = computed<SkillInfo | undefined>(() =>
-    agent.skills.find((t) => t.id === taskType.value) ?? agent.skills[0],
+  const task = computed<SkillInfo | undefined>(
+    () => agent.skills.find((t) => t.id === taskType.value) ?? agent.skills[0],
   );
 
   function setConversations(list: V2Conversation[]): void {
@@ -67,6 +67,17 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
+  /** 本地临时会话升级为后端会话（首次发送消息落库时调用） */
+  function upgradeLocalConversation(oldId: string, conv: V2Conversation): void {
+    const idx = conversations.value.findIndex((c) => c.id === oldId);
+    if (idx === -1) return;
+    const pending = messagesByConv.value[oldId];
+    delete messagesByConv.value[oldId];
+    conversations.value[idx] = { ...conv };
+    if (activeConvId.value === oldId) activeConvId.value = conv.id;
+    if (pending && pending.length > 0) messagesByConv.value[conv.id] = pending;
+  }
+
   return {
     taskType,
     sidebarCollapsed,
@@ -83,6 +94,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     selectConv,
     addConversation,
     removeConversation,
+    upgradeLocalConversation,
     toggleConvPanel() {
       convPanelOpen.value = !convPanelOpen.value;
     },

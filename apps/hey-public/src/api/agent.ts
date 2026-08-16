@@ -108,7 +108,7 @@ export interface AgentEvent {
 export interface AgentRunInput {
   message: string;
   capabilityId?: null | string;
-  history: Array<{ content: string; role: string; }>;
+  history: Array<{ content: string; role: string }>;
   resourceRefs: string[];
   mask?: null | unknown;
   params: Record<string, unknown>;
@@ -131,6 +131,25 @@ export interface ParamSpec {
   memory: 0 | 1; // Transient | Sticky
 }
 
+export const ArtifactActionTarget = {
+  Generic: 0,
+  Client: 1,
+  Capability: 2,
+} as const;
+export type ArtifactActionTarget =
+  (typeof ArtifactActionTarget)[keyof typeof ArtifactActionTarget];
+
+export interface ArtifactActionDeclaration {
+  kind: AgentArtifactKind;
+  id: string;
+  label: string;
+  icon: string;
+  target: ArtifactActionTarget;
+  capabilityId?: null | string;
+  needsResourceRef: boolean;
+  order: number;
+}
+
 export interface CapabilityManifest {
   id: string;
   displayName: string;
@@ -143,6 +162,7 @@ export interface CapabilityManifest {
   description: string;
   usageExample: string;
   slashCommand: string;
+  artifactActions: ArtifactActionDeclaration[];
 }
 
 export interface ModelBridgeManifest {
@@ -179,7 +199,7 @@ interface ListResult<T> {
 
 async function unwrap<T>(
   url: string,
-  options?: { body?: unknown; method?: 'GET' | 'POST'; },
+  options?: { body?: unknown; method?: 'GET' | 'POST' },
 ): Promise<T> {
   const env = await request<AbpEnvelope<T>>(url, options);
   if (env.code && env.code !== '0') {

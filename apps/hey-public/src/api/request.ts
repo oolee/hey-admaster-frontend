@@ -68,7 +68,15 @@ async function request<T = unknown>(
         credentials: 'include',
         signal: ctrl.signal,
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        if (res.status === 401) {
+          // 未登录/令牌失效：清除本地凭证并广播，页面据此跳登录
+          localStorage.removeItem('hey19-v2-token');
+          localStorage.removeItem('hey19-v2-user');
+          window.dispatchEvent(new Event('hey19:unauthorized'));
+        }
+        throw new Error(`HTTP ${res.status}`);
+      }
       return (await res.json()) as T;
     } finally {
       if (timer) clearTimeout(timer);

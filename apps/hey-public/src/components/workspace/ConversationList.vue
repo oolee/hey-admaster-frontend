@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 
-import {
-  createConversation,
-  deleteConversation,
-  fetchChatMessages,
-} from '@/api';
+import { deleteConversation, fetchChatMessages } from '@/api';
 import { useWorkspaceStore } from '@/stores/workspace';
+import { prompt } from '@/utils/prompt';
 import { toast } from '@/utils/toast';
 import {
   ImagePlus,
@@ -54,6 +51,8 @@ const filteredConvs = computed(() => {
 
 async function selectConv(id: string) {
   store.selectConv(id);
+  /* 本地临时会话（未落库）没有后端消息 */
+  if (id.startsWith('local-')) return;
   /* 拉取真实消息历史（已加载过的会话跳过） */
   if (!store.messagesByConv[id]?.length) {
     try {
@@ -78,47 +77,38 @@ async function selectConv(id: string) {
   if (isMobile.value) store.closeConvPanel();
 }
 
-async function newChat() {
-  try {
-    const res = await createConversation({
-      title: '新对话',
-      task: 'chat',
-      model: 'auto',
-    });
-    const conv = res.data;
-    const newConv = {
-      id: conv.id,
-      title: conv.title,
-      time: conv.time,
-      pinned: !!conv.pinned,
-      type: conv.type,
-      active: false,
-      preview: conv.preview,
-      task: conv.task,
-      model: conv.model,
-    };
-    store.addConversation(newConv);
-    toast.success('已开始新对话');
-    if (isMobile.value) store.closeConvPanel();
-  } catch {
-    /* 未登录或后端不可用：本地临时会话 */
-    const id = `local-${Date.now()}`;
-    store.addConversation({
-      id,
-      title: '新对话',
-      time: '刚刚',
-      type: 'chat',
-      active: false,
-      preview: '对话',
-    });
-    toast.info('演示模式：新对话未同步到服务器');
-  }
+function newChat() {
+  /* 新对话不落库：仅本地临时会话（local-*）；发送首条消息时才创建后端会话（空对话不入库） */
+  const id = `local-${Date.now()}`;
+  store.addConversation({
+    id,
+    title: '新对话',
+    time: '刚刚',
+    type: 'chat',
+    active: false,
+    preview: '新对话',
+    task: 'chat',
+    model: 'auto',
+  });
+  toast.info('新对话（发送首条消息后保存）');
+  if (isMobile.value) store.closeConvPanel();
 }
 
 async function deleteConv(id: string, e: MouseEvent) {
   e.stopPropagation();
+  const isLocal = id.startsWith('local-');
+  /* 已落库会话删除不可恢复，需用户确认；本地临时会话（未入库）直接删除 */
+  if (!isLocal) {
+    const ok = await prompt.confirm({
+      title: '删除会话',
+      message: '删除后无法恢复，是否确认删除该会话？',
+      confirmText: '删除',
+      danger: true,
+    });
+    if (!ok) return;
+  }
   try {
-    await deleteConversation(id);
+    if (!isLocal) await deleteConversation(id);
   } catch {
     /* 后端不可用时本地删除 */
   }

@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 
 import SiteFooter from '@/components/layout/SiteFooter.vue';
 import SiteHeader from '@/components/layout/SiteHeader.vue';
+import PromptHost from '@/components/ui/PromptHost.vue';
 import ToastHost from '@/components/ui/ToastHost.vue';
 import { useThemeStore } from '@/stores/theme';
 
@@ -36,6 +37,7 @@ const layout = computed(() => route.meta.layout || 'site');
     </template>
 
     <ToastHost />
+    <PromptHost />
   </div>
 </template>
 

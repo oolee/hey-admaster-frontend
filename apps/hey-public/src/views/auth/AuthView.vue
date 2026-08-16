@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import BaseButton from '@/components/ui/BaseButton.vue';
 import BaseInput from '@/components/ui/BaseInput.vue';
@@ -9,6 +9,7 @@ import { toast } from '@/utils/toast';
 import { ArrowLeft, Eye, EyeOff, Sparkles, Wand2 } from 'lucide-vue-next';
 
 const router = useRouter();
+const route = useRoute();
 const user = useUserStore();
 
 const mode = ref('login');
@@ -44,7 +45,11 @@ async function submit() {
       await user.register({ ...form.value });
       toast.success('注册成功，已赠送 50 积分');
     }
-    router.push('/workspace');
+    router.push(
+      typeof route.query.redirect === 'string' && route.query.redirect
+        ? route.query.redirect
+        : '/workspace',
+    );
   } catch (error) {
     toast.error(
       (error instanceof Error ? error.message : String(error)) || '操作失败',
