@@ -29,6 +29,12 @@ const routes: RouteRecordRaw[] = [
         path: '/ai-agent/plugins',
         component: () => import('#/views/ai-agent/plugins/index.vue'),
       },
+      {
+        meta: { title: '渠道管理' },
+        name: 'AiAgentChannels',
+        path: '/ai-agent/channels',
+        component: () => import('#/views/ai-agent/channels/index.vue'),
+      },
     ],
   },
 ];

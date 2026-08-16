@@ -23,6 +23,12 @@ export const AgentQuantitySourceLabel: Record<number, string> = {
   3: '字节',
 };
 
+export const AiAgentChannelProviderTypeLabel: Record<number, string> = {
+  0: 'DashScope',
+  1: 'OpenAI 兼容',
+  2: 'Mock',
+};
+
 // ---------- 类型（对齐后端 Domain.Shared） ----------
 
 export interface ParamSpecDto {
@@ -71,6 +77,36 @@ export interface ListResultDto<T> {
   totalCount: number;
 }
 
+export interface AiAgentChannelDto {
+  id: string;
+  name: string;
+  providerType: number;
+  baseUrl?: null | string;
+  enabled: boolean;
+  priority: number;
+  weight: number;
+  timeoutSeconds: number;
+  model: string;
+  description?: null | string;
+  hasApiKey: boolean;
+  creationTime: string;
+  lastModificationTime?: null | string;
+}
+
+export interface CreateUpdateAiAgentChannelDto {
+  name: string;
+  providerType: number;
+  baseUrl: string;
+  /** 明文 ApiKey，写入时加密；编辑留空表示不修改 */
+  apiKey: string;
+  model: string;
+  enabled: boolean;
+  priority: number;
+  weight: number;
+  timeoutSeconds: number;
+  description: string;
+}
+
 // ---------- API ----------
 
 export function useAiAgentApi() {
@@ -92,5 +128,39 @@ export function useAiAgentApi() {
       method: 'GET',
     });
 
-  return { getCapabilities, getModelBridges, getPlugins };
+  const getChannels = () =>
+    request<ListResultDto<AiAgentChannelDto>>(`${BASE_URL}/channels`, {
+      method: 'GET',
+    });
+
+  const createChannel = (input: CreateUpdateAiAgentChannelDto) =>
+    request<AiAgentChannelDto>(`${BASE_URL}/channels`, {
+      method: 'POST',
+      data: input,
+    });
+
+  const updateChannel = (id: string, input: CreateUpdateAiAgentChannelDto) =>
+    request<AiAgentChannelDto>(`${BASE_URL}/channels/${id}`, {
+      method: 'PUT',
+      data: input,
+    });
+
+  const deleteChannel = (id: string) =>
+    request<void>(`${BASE_URL}/channels/${id}`, { method: 'DELETE' });
+
+  const setChannelEnabled = (id: string, enabled: boolean) =>
+    request<AiAgentChannelDto>(`${BASE_URL}/channels/${id}/enabled/${enabled}`, {
+      method: 'PUT',
+    });
+
+  return {
+    getCapabilities,
+    getModelBridges,
+    getPlugins,
+    getChannels,
+    createChannel,
+    updateChannel,
+    deleteChannel,
+    setChannelEnabled,
+  };
 }
