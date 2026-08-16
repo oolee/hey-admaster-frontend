@@ -246,7 +246,7 @@ async function onProbe() {
       </div>
       <div class="form-row">
         <label>BaseUrl</label>
-        <Input v-model:value="form.baseUrl" placeholder="留空用供应商默认" />
+        <Input v-model:value="form.baseUrl" placeholder="完整地址（含 /v1），如 https://api.apiyi.com/v1，留空用供应商默认" />
       </div>
       <div class="form-row">
         <label>ApiKey</label>
