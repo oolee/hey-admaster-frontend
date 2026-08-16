@@ -57,6 +57,7 @@ const attachments = ref<Attachment[]>([]);
 const fileInput = ref<HTMLInputElement | null>(null);
 let attSeed = 0;
 const showSlashHint = ref(false); // / 命令提示面板
+const highlightIndex = ref(-1); // 斜杠面板键盘高亮下标
 
 const emptyHints = computed(() => {
   const example = store.task?.example;
@@ -547,6 +548,32 @@ function addAttachmentFile(file: File) {
 function onPromptInput() {
   const v = prompt.value;
   showSlashHint.value = v.trim().startsWith('/');
+  highlightIndex.value = -1; // 每次输入重置高亮
+}
+
+function onComposerKeydown(e: KeyboardEvent) {
+  const list = slashMatches.value;
+  // 面板未展开：Enter 发送（保持原有行为）
+  if (list.length === 0) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+    return;
+  }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    highlightIndex.value = (highlightIndex.value + 1) % list.length;
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    highlightIndex.value =
+      highlightIndex.value <= 0 ? list.length - 1 : highlightIndex.value - 1;
+  } else if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    const idx = highlightIndex.value >= 0 ? highlightIndex.value : 0;
+    const target = list[idx];
+    if (target) pickFromSlash(target);
+  }
 }
 
 function pickFromSlash(skill: SkillInfo) {
@@ -742,13 +769,15 @@ onMounted(async () => {
                 >
                   <p class="slash-title">技能命令</p>
                   <button
-                    v-for="s in slashMatches"
+                    v-for="(s, index) in slashMatches"
                     :key="s.id"
                     class="slash-item"
+                    :class="{ active: highlightIndex === index }"
                     :style="{
                       '--sh': s.color.hue,
                       '--sl': s.color.light,
                     }"
+                    @mouseenter="highlightIndex = index"
                     @click="pickFromSlash(s)"
                   >
                     <span class="slash-icon"
@@ -770,7 +799,7 @@ onMounted(async () => {
                     ? '描述你想对图片做的修改…或粘贴截图（Ctrl+V）'
                     : '描述你的设计需求，或输入 / 触发技能…'
                 "
-                @keydown.enter.exact.prevent="send"
+                @keydown="onComposerKeydown"
                 @input="onPromptInput"
                 @paste="onPaste"
               ></textarea>
@@ -1286,6 +1315,10 @@ onMounted(async () => {
 }
 
 .slash-item:hover {
+  background: var(--sl);
+}
+
+.slash-item.active {
   background: var(--sl);
 }
 
