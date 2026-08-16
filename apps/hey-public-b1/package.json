@@ -1,0 +1,36 @@
+{
+  "name": "@hey/app-public2",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm vite build --mode production",
+    "build:analyze": "pnpm vite build --mode analyze",
+    "dev": "pnpm vite --mode development",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit --skipLibCheck"
+  },
+  "imports": {
+    "#/*": "./src/*"
+  },
+  "dependencies": {
+    "@hey/ai": "workspace:*",
+    "@hey/core": "workspace:*",
+    "@hey/invitation": "workspace:*",
+    "@hey/public": "workspace:*",
+    "@hey/shared-ui": "workspace:*",
+    "@iconify/vue": "catalog:",
+    "@tresjs/cientos": "catalog:",
+    "@tresjs/core": "catalog:",
+    "@vben/styles": "workspace:*",
+    "gsap": "catalog:",
+    "ofetch": "catalog:",
+    "pinia": "catalog:",
+    "three": "catalog:",
+    "vue": "catalog:",
+    "vue-router": "catalog:"
+  },
+  "devDependencies": {
+    "@types/three": "catalog:"
+  }
+}
