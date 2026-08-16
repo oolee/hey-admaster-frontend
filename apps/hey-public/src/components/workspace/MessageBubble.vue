@@ -126,28 +126,6 @@ async function copyImage() {
             :seed="message.id"
             :label="message.content"
           />
-          <div class="artifact-bar">
-            <Badge tone="accent">{{ message.artifact.label || '图像' }}</Badge>
-            <div class="artifact-tools">
-              <button
-                class="t-btn"
-                :title="copied ? '已复制' : '复制图像信息'"
-                @click="copyImage"
-              >
-                <Check v-if="copied" :size="14" />
-                <ClipboardCopy v-else :size="14" />
-              </button>
-              <button class="t-btn" title="下载" @click="download">
-                <Download :size="14" />
-              </button>
-              <button class="t-btn" title="复制提示词" @click="copy">
-                <Copy :size="14" />
-              </button>
-              <button class="t-btn" title="重新生成" @click="retry">
-                <RefreshCw :size="14" />
-              </button>
-            </div>
-          </div>
         </div>
 
         <!-- PPT 产物（带 HTML 预览） -->
@@ -213,8 +191,11 @@ async function copyImage() {
         </div>
       </div>
 
-      <!-- 提示操作 -->
-      <div v-if="message.actions?.length" class="msg-actions">
+      <!-- 提示操作（图片产物的标签 + 工具按钮右对齐到「继续」chips 之后） -->
+      <div
+        v-if="message.actions?.length || message.artifact?.type === 'image'"
+        class="msg-actions"
+      >
         <button
           v-for="a in message.actions"
           :key="a"
@@ -223,6 +204,31 @@ async function copyImage() {
         >
           {{ a }}
         </button>
+        <template v-if="message.artifact?.type === 'image'">
+          <span class="msg-spacer"></span>
+          <span class="msg-artifact-label">
+            {{ message.artifact.label || '图像' }}
+          </span>
+          <div class="artifact-tools">
+            <button
+              class="t-btn"
+              :title="copied ? '已复制' : '复制图像信息'"
+              @click="copyImage"
+            >
+              <Check v-if="copied" :size="14" />
+              <ClipboardCopy v-else :size="14" />
+            </button>
+            <button class="t-btn" title="下载" @click="download">
+              <Download :size="14" />
+            </button>
+            <button class="t-btn" title="复制提示词" @click="copy">
+              <Copy :size="14" />
+            </button>
+            <button class="t-btn" title="重新生成" @click="retry">
+              <RefreshCw :size="14" />
+            </button>
+          </div>
+        </template>
       </div>
 
       <!-- 上传的图片 -->
@@ -419,7 +425,18 @@ async function copyImage() {
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-2);
+  align-items: center;
   margin-top: var(--sp-2);
+}
+
+.msg-spacer {
+  flex: 1;
+}
+
+.msg-artifact-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-3);
 }
 
 .mini-chip {
