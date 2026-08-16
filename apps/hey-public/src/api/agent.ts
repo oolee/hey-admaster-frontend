@@ -175,6 +175,16 @@ export interface ModelBridgeManifest {
   priority: number;
 }
 
+export interface PlatformPriceDto {
+  id: string;
+  capabilityId: string;
+  kind: number;
+  conditions: Record<string, string>;
+  unitPrice: number;
+  priority: number;
+  enabled: boolean;
+}
+
 export interface PluginManifest {
   id: string;
   name: string;
@@ -209,6 +219,11 @@ async function unwrap<T>(
 }
 
 /* ---------- 运行时入口 ---------- */
+
+/** 平台价规则（§16.2 事前透明，用户侧明码标价；不含渠道成本） */
+export function fetchPlatformPrices(): Promise<ListResult<PlatformPriceDto>> {
+  return unwrap<ListResult<PlatformPriceDto>>('/ai-agent/pricing-rules/platform');
+}
 
 export function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
   return unwrap<AgentRunResult>('/ai-agent/run', {

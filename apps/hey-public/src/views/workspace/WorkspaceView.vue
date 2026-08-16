@@ -437,15 +437,16 @@ async function send() {
       store.updateLastMessage(targetConvId, { content: textArtifact.text });
     }
 
-    store.updateLastMessage(targetConvId, {
-      streaming: false,
-      cost: result.usage?.chargedAmount ?? 0,
-      actions: getActions(taskType),
-    });
-    // 模型名：ModelSelected 事件（后端枚举序列化为数值 1）里的桥 id；未知则 Auto
+    // 模型名：ModelSelected 事件（后端枚举序列化为数值 1）里的桥 id；未知则 Auto（§8 事后透明）
     const modelEvent = run.events?.find((ev) => Number(ev.type) === 1);
     const modelName =
       typeof modelEvent?.data === 'string' ? modelEvent.data : 'Auto';
+    store.updateLastMessage(targetConvId, {
+      streaming: false,
+      cost: result.usage?.chargedAmount ?? 0,
+      model: modelName,
+      actions: getActions(taskType),
+    });
     void persistMessage(targetConvId, {
       role: 'ai',
       content: imageArtifact ? '已生成 1 张图片' : (textArtifact?.text ?? ''),

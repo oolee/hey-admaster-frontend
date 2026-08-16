@@ -33,6 +33,8 @@ const currentSkill = computed<SkillInfo>(
     agent.skills[0] ??
     FALLBACK_SKILL,
 );
+/** 当前技能基础平台价（§16.2 事前透明，明码标价） */
+const basePrice = computed(() => agent.basePriceOf(currentSkill.value.id));
 const skillColor = computed(() => currentSkill.value.color);
 
 /* 拖动位置（持久化到 localStorage），null = 默认 ws-top 位置 */
@@ -180,6 +182,9 @@ function toggle() {
         ><component :is="currentSkill.icon" :size="14"
       /></span>
       <span class="fd-skill-name">{{ currentSkill.name }}</span>
+      <span v-if="basePrice" class="fd-price" title="基础价（参数档位可能影响价格）">
+        {{ basePrice }} 积分起
+      </span>
       <ChevronDown :size="13" class="fd-chev" :class="{ open }" />
     </button>
 
@@ -206,7 +211,12 @@ function toggle() {
             >
               <span class="fd-si"><component :is="s.icon" :size="16" /></span>
               <span class="fd-sn">
-                <span class="fd-sn-name">{{ s.name }}</span>
+                <span class="fd-sn-name">
+                  {{ s.name }}
+                  <span v-if="agent.basePriceOf(s.id)" class="fd-price">
+                    {{ agent.basePriceOf(s.id) }} 积分起
+                  </span>
+                </span>
                 <span class="fd-sn-desc">{{ s.desc }}</span>
               </span>
               <Check
@@ -456,5 +466,16 @@ function toggle() {
   .fd-trigger {
     padding: 0 8px;
   }
+}
+
+.fd-price {
+  margin-left: 6px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  border-radius: var(--r-full);
+  white-space: nowrap;
 }
 </style>

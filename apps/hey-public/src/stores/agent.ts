@@ -1,9 +1,13 @@
-import type { CapabilityManifest, ModelBridgeManifest } from '@/api/agent';
+import type {
+  CapabilityManifest,
+  ModelBridgeManifest,
+  PlatformPriceDto,
+} from '@/api/agent';
 import type { SkillInfo } from '@/skills/registry';
 
 import { computed, ref } from 'vue';
 
-import { fetchCapabilities, fetchModelBridges } from '@/api/agent';
+import { fetchCapabilities, fetchModelBridges, fetchPlatformPrices } from '@/api/agent';
 import { defineStore } from 'pinia';
 
 import { SKILLS, skillFromCapability } from '@/skills/registry';
@@ -15,20 +19,34 @@ import { SKILLS, skillFromCapability } from '@/skills/registry';
 export const useAgentStore = defineStore('agent', () => {
   const capabilities = ref<CapabilityManifest[]>([]);
   const modelBridges = ref<ModelBridgeManifest[]>([]);
+  const prices = ref<PlatformPriceDto[]>([]);
   const loaded = ref(false);
 
   async function refresh(): Promise<void> {
     try {
-      const [caps, bridges] = await Promise.all([
+      const [caps, bridges, priceRes] = await Promise.all([
         fetchCapabilities(),
         fetchModelBridges(),
+        fetchPlatformPrices().catch(() => null),
       ]);
       capabilities.value = caps.items ?? [];
       modelBridges.value = bridges.items ?? [];
+      prices.value = priceRes?.items ?? [];
       loaded.value = true;
     } catch {
       // 后端不可用/未登录：保留本地兜底清单，不抛
     }
+  }
+
+  /** 能力的基础平台价（无条件规则优先，否则取最高优先级；§16.2 事前透明） */
+  function basePriceOf(capabilityId: string): number | undefined {
+    const candidates = prices.value.filter((p) => p.capabilityId === capabilityId);
+    if (candidates.length === 0) return undefined;
+    const unconditional = candidates.find(
+      (c) => Object.keys(c.conditions ?? {}).length === 0,
+    );
+    if (unconditional) return unconditional.unitPrice;
+    return candidates.toSorted((a, b) => b.priority - a.priority)[0]?.unitPrice;
   }
 
   /**
@@ -64,9 +82,11 @@ export const useAgentStore = defineStore('agent', () => {
   return {
     capabilities,
     modelBridges,
+    prices,
     skills,
     loaded,
     refresh,
+    basePriceOf,
     capabilityById,
     bridgesByCapability,
   };
