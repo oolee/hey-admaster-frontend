@@ -7,7 +7,6 @@ import {
   LayoutTemplate,
   MessageCircle,
   Mic,
-  PencilRuler,
   Presentation,
   Video,
 } from 'lucide-vue-next';
@@ -62,8 +61,8 @@ function makeSkill(s: Omit<SkillInfo, 'color'>): SkillInfo {
 
 /* =====================================================
    本地兜底技能清单：仅在后端注册表不可用时使用（离线/演示）。
-   阶段 1-2 把 image-gen / image-edit / ppt / web / canvas 落成真能力后，
-   这些兜底项会被后端 fetchCapabilities() 的元数据自然取代，逐步删除。
+   image-gen / image-edit 已落成真能力（后端注册表），从兜底删除（§8 收尾）；
+   ppt / web / canvas 尚未落成真能力，保留兜底。
    ===================================================== */
 export const SKILLS: SkillInfo[] = [
   makeSkill({
@@ -83,24 +82,6 @@ export const SKILLS: SkillInfo[] = [
     desc: '专业知识问答与解释',
     example: '解释一下差异化和定位的区别',
     modality: M.Text,
-  }),
-  makeSkill({
-    id: 'image-gen',
-    name: '文生图',
-    slash: '/image',
-    icon: ImagePlus,
-    desc: '文字描述生成图片',
-    example: '生成一张奶茶店开业海报',
-    modality: M.Image,
-  }),
-  makeSkill({
-    id: 'image-edit',
-    name: '改图',
-    slash: '/edit',
-    icon: PencilRuler,
-    desc: '上传图片 + 描述修改',
-    example: '把照片背景换成海边日落',
-    modality: M.Image,
   }),
   makeSkill({
     id: 'ppt',
