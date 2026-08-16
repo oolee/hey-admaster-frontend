@@ -1,9 +1,12 @@
 import type { CapabilityManifest, ModelBridgeManifest } from '@/api/agent';
+import type { SkillInfo } from '@/skills/registry';
 
 import { computed, ref } from 'vue';
 
 import { fetchCapabilities, fetchModelBridges } from '@/api/agent';
 import { defineStore } from 'pinia';
+
+import { SKILLS, skillFromCapability } from '@/skills/registry';
 
 /**
  * Agent 目录 store（对齐 AI-AGENT-DESIGN-v1.md §2 注册表）：
@@ -28,6 +31,16 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
+  /**
+   * 技能清单（元数据驱动）：后端返回了能力就用后端清单映射，
+   * 否则回退到本地兜底 SKILLS（离线/演示）。颜色由 Modality 派生（能力光谱）。
+   */
+  const skills = computed<SkillInfo[]>(() =>
+    capabilities.value.length > 0
+      ? capabilities.value.map(skillFromCapability)
+      : SKILLS,
+  );
+
   /** capabilityId → manifest */
   const capabilityById = computed(() => {
     const map = new Map<string, CapabilityManifest>();
@@ -51,6 +64,7 @@ export const useAgentStore = defineStore('agent', () => {
   return {
     capabilities,
     modelBridges,
+    skills,
     loaded,
     refresh,
     capabilityById,

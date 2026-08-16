@@ -1,27 +1,16 @@
 <script setup lang="ts">
-import type { ModelInfo, SkillId, SkillInfo } from '@/skills/registry';
+import type { SkillInfo } from '@/skills/registry';
 
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
-import {
-  MODELS,
-  modelsForSkill,
-  SKILL_COLORS,
-  SKILLS,
-} from '@/skills/registry';
+import { useAgentStore } from '@/stores/agent';
 import { useWorkspaceStore } from '@/stores/workspace';
 import { toast } from '@/utils/toast';
-import {
-  Check,
-  ChevronDown,
-  Cpu,
-  GripVertical,
-  Sparkles,
-} from 'lucide-vue-next';
+import { Check, ChevronDown, GripVertical, Sparkles } from 'lucide-vue-next';
 
 const store = useWorkspaceStore();
+const agent = useAgentStore();
 const open = ref(false);
-const tab = ref('skill');
 const wrap = ref<HTMLElement | null>(null);
 const dragging = ref(false);
 let dragOffset = { x: 0, y: 0 };
@@ -32,30 +21,19 @@ const FALLBACK_SKILL: SkillInfo = {
   slash: '/chat',
   icon: Sparkles,
   desc: '智能对话助手',
-  capabilities: ['text'],
-  defaultModel: 'auto',
-  costHint: '按 token 计费',
-  validate: () => null,
+  example: '',
+  modality: 0,
+  color: { hue: '#6c7a89', light: 'rgba(108,122,137,0.14)' },
 };
-const FALLBACK_MODEL: ModelInfo = {
-  id: 'auto',
-  label: 'Auto 自动',
-  vendor: 'auto',
-  modality: 'any',
-  code: false,
-  price: 0,
-};
-const currentSkill = computed(
+
+/* 当前技能（元数据驱动）—— 模型已 auto 隐藏，不再有模型选择 */
+const currentSkill = computed<SkillInfo>(
   () =>
-    SKILLS.find((s) => s.id === store.taskType) ?? SKILLS[0] ?? FALLBACK_SKILL,
+    agent.skills.find((s) => s.id === store.taskType) ??
+    agent.skills[0] ??
+    FALLBACK_SKILL,
 );
-const currentModel = computed(
-  () => MODELS.find((m) => m.id === store.model) ?? MODELS[0] ?? FALLBACK_MODEL,
-);
-const skillColor = computed(
-  () => SKILL_COLORS[currentSkill.value.id] || SKILL_COLORS.chat,
-);
-const availableModels = computed(() => modelsForSkill(store.taskType));
+const skillColor = computed(() => currentSkill.value.color);
 
 /* 拖动位置（持久化到 localStorage），null = 默认 ws-top 位置 */
 const pos = ref<{ dock: boolean; x: null | number; y: null | number }>({
@@ -169,13 +147,7 @@ onBeforeUnmount(() => {
 });
 
 function setSkill(id: string) {
-  store.taskType = id as SkillId;
-  tab.value = 'skill';
-  open.value = false;
-}
-function setModel(id: string) {
-  store.model = id;
-  tab.value = 'skill';
+  store.taskType = id;
   open.value = false;
 }
 function toggle() {
@@ -208,8 +180,6 @@ function toggle() {
         ><component :is="currentSkill.icon" :size="14"
       /></span>
       <span class="fd-skill-name">{{ currentSkill.name }}</span>
-      <span class="fd-sep">·</span>
-      <span class="fd-model-name">{{ currentModel.label }}</span>
       <ChevronDown :size="13" class="fd-chev" :class="{ open }" />
     </button>
 
@@ -221,33 +191,17 @@ function toggle() {
           class="fd-dropdown"
           :style="dropdownStyle"
         >
-          <div class="fd-tabs">
+          <div class="fd-skill-list">
             <button
-              class="fd-tab"
-              :class="{ on: tab === 'skill' }"
-              @click="tab = 'skill'"
-            >
-              <Sparkles :size="13" /> 技能
-            </button>
-            <button
-              class="fd-tab"
-              :class="{ on: tab === 'model' }"
-              @click="tab = 'model'"
-            >
-              <Cpu :size="13" /> 模型
-            </button>
-          </div>
-
-          <div v-if="tab === 'skill'" class="fd-skill-list">
-            <button
-              v-for="s in SKILLS.filter((x) => !x.experimental)"
+              v-for="s in agent.skills.filter((x) => !x.experimental)"
               :key="s.id"
               class="fd-skill-item"
               :class="{ active: store.taskType === s.id }"
               :style="{
-                '--sh': SKILL_COLORS[s.id].hue,
-                '--sl': SKILL_COLORS[s.id].light,
+                '--sh': s.color.hue,
+                '--sl': s.color.light,
               }"
+              :title="`${s.desc}${s.example ? `\n示例：${s.example}` : ''}`"
               @click="setSkill(s.id)"
             >
               <span class="fd-si"><component :is="s.icon" :size="16" /></span>
@@ -261,54 +215,28 @@ function toggle() {
                 class="fd-check"
               />
             </button>
-            <p class="fd-exp-title">实验技能</p>
-            <button
-              v-for="s in SKILLS.filter((x) => x.experimental)"
-              :key="s.id"
-              class="fd-skill-item experimental"
-              :style="{
-                '--sh': SKILL_COLORS[s.id].hue,
-                '--sl': SKILL_COLORS[s.id].light,
-              }"
-              @click="setSkill(s.id)"
-            >
-              <span class="fd-si"><component :is="s.icon" :size="16" /></span>
-              <span class="fd-sn">
-                <span class="fd-sn-name"
-                  >{{ s.name }} <span class="fd-beta">Beta</span></span
-                >
-                <span class="fd-sn-desc">{{ s.desc }}</span>
-              </span>
-            </button>
-          </div>
-
-          <div v-else class="fd-model-list">
-            <button
-              v-for="m in availableModels"
-              :key="m.id"
-              class="fd-model-item"
-              :class="{ active: store.model === m.id }"
-              @click="setModel(m.id)"
-            >
-              <span class="fd-mi"><Cpu :size="14" /></span>
-              <span class="fd-mn">
-                <span class="fd-mn-name">{{ m.label }}</span>
-                <span class="fd-mn-meta">
-                  {{ m.vendor }} ·
-                  {{
-                    m.modality === 'image'
-                      ? '图像'
-                      : m.modality === 'multimodal'
-                        ? '多模态'
-                        : m.modality === 'any'
-                          ? '任意'
-                          : '文本'
-                  }}
-                  <span v-if="m.price"> · {{ m.price }} 积分</span>
+            <template v-if="agent.skills.some((x) => x.experimental)">
+              <p class="fd-exp-title">实验技能</p>
+              <button
+                v-for="s in agent.skills.filter((x) => x.experimental)"
+                :key="s.id"
+                class="fd-skill-item experimental"
+                :style="{
+                  '--sh': s.color.hue,
+                  '--sl': s.color.light,
+                }"
+                :title="`${s.desc}${s.example ? `\n示例：${s.example}` : ''}`"
+                @click="setSkill(s.id)"
+              >
+                <span class="fd-si"><component :is="s.icon" :size="16" /></span>
+                <span class="fd-sn">
+                  <span class="fd-sn-name"
+                    >{{ s.name }} <span class="fd-beta">Beta</span></span
+                  >
+                  <span class="fd-sn-desc">{{ s.desc }}</span>
                 </span>
-              </span>
-              <Check v-if="store.model === m.id" :size="14" class="fd-check" />
-            </button>
+              </button>
+            </template>
           </div>
         </div>
       </Transition>
@@ -401,18 +329,6 @@ function toggle() {
   color: var(--sh);
 }
 
-.fd-sep {
-  color: var(--color-text-3);
-}
-
-.fd-model-name {
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--color-text-2);
-  white-space: nowrap;
-}
-
 .fd-chev {
   flex-shrink: 0;
   color: var(--color-text-3);
@@ -426,7 +342,7 @@ function toggle() {
 /* dropdown：通过 Teleport 到 body 避免 overflow 裁剪 */
 .fd-dropdown {
   z-index: 41;
-  width: 320px;
+  width: 300px;
   overflow: hidden;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -434,43 +350,7 @@ function toggle() {
   box-shadow: var(--shadow-lg);
 }
 
-.fd-tabs {
-  display: flex;
-  background: var(--color-surface-2);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.fd-tab {
-  display: inline-flex;
-  flex: 1;
-  gap: 4px;
-  align-items: center;
-  justify-content: center;
-  padding: 0.65rem;
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-text-3);
-  transition: all var(--dur-fast) ease;
-}
-
-.fd-tab.on {
-  position: relative;
-  color: var(--color-text-1);
-  background: var(--color-surface);
-}
-
-.fd-tab.on::after {
-  position: absolute;
-  right: 0;
-  bottom: -1px;
-  left: 0;
-  height: 2px;
-  content: '';
-  background: var(--color-accent);
-}
-
-.fd-skill-list,
-.fd-model-list {
+.fd-skill-list {
   max-height: 360px;
   padding: 6px;
   overflow-y: auto;
@@ -557,56 +437,6 @@ function toggle() {
   background: linear-gradient(90deg, var(--sl), transparent);
 }
 
-.fd-model-item {
-  display: flex;
-  gap: var(--sp-3);
-  align-items: center;
-  width: 100%;
-  padding: 0.6rem 0.8rem;
-  margin-bottom: 2px;
-  text-align: left;
-  border-radius: var(--r-md);
-  transition: background var(--dur-fast) ease;
-}
-
-.fd-model-item:hover {
-  background: var(--color-surface-2);
-}
-
-.fd-model-item.active {
-  background: var(--color-accent-soft);
-}
-
-.fd-model-item.active .fd-check {
-  color: var(--color-accent);
-}
-
-.fd-mi {
-  flex-shrink: 0;
-  color: var(--color-text-3);
-}
-
-.fd-model-item.active .fd-mi {
-  color: var(--color-accent);
-}
-
-.fd-mn {
-  flex: 1;
-  min-width: 0;
-}
-
-.fd-mn-name {
-  display: block;
-  font-size: var(--text-sm);
-  font-weight: 600;
-}
-
-.fd-mn-meta {
-  display: block;
-  font-size: var(--text-xs);
-  color: var(--color-text-3);
-}
-
 .fd-check {
   color: var(--color-text-3);
 }
@@ -623,14 +453,6 @@ function toggle() {
 }
 
 @media (max-width: 768px) {
-  .fd-model-name {
-    display: none;
-  }
-
-  .fd-sep {
-    display: none;
-  }
-
   .fd-trigger {
     padding: 0 8px;
   }

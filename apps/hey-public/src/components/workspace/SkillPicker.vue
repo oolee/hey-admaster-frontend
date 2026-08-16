@@ -4,11 +4,13 @@ import type { SkillInfo } from '@/skills/registry';
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 
 import Badge from '@/components/ui/Badge.vue';
-import { SKILLS } from '@/skills/registry';
+import { useAgentStore } from '@/stores/agent';
 import { toast } from '@/utils/toast';
 import { FileUp, Plus, ScanLine, X } from 'lucide-vue-next';
 
 const emit = defineEmits(['select', 'close']);
+
+const agent = useAgentStore();
 
 const open = ref(false);
 const btnRef = ref<HTMLElement | null>(null);
@@ -90,31 +92,35 @@ function choose(skill: SkillInfo) {
           <p class="pp-group">技能库</p>
           <div class="skill-grid">
             <button
-              v-for="s in SKILLS.filter((x) => !x.experimental)"
+              v-for="s in agent.skills.filter((x) => !x.experimental)"
               :key="s.id"
               class="skill-item"
+              :title="`${s.desc}${s.example ? `\n示例：${s.example}` : ''}`"
               @click="choose(s)"
             >
-              <span class="skill-icon"
+              <span class="skill-icon" :style="{ color: s.color.hue }"
                 ><component :is="s.icon" :size="16"
               /></span>
               <span class="skill-name">{{ s.name }}</span>
             </button>
           </div>
 
-          <p class="pp-group">实验技能</p>
-          <button
-            v-for="s in SKILLS.filter((x) => x.experimental)"
-            :key="s.id"
-            class="skill-item experimental"
-            @click="choose(s)"
-          >
-            <span class="skill-icon"
-              ><component :is="s.icon" :size="16"
-            /></span>
-            <span class="skill-name">{{ s.name }}</span>
-            <Badge tone="warning" class="beta">Beta</Badge>
-          </button>
+          <template v-if="agent.skills.some((x) => x.experimental)">
+            <p class="pp-group">实验技能</p>
+            <button
+              v-for="s in agent.skills.filter((x) => x.experimental)"
+              :key="s.id"
+              class="skill-item experimental"
+              :title="`${s.desc}${s.example ? `\n示例：${s.example}` : ''}`"
+              @click="choose(s)"
+            >
+              <span class="skill-icon" :style="{ color: s.color.hue }"
+                ><component :is="s.icon" :size="16"
+              /></span>
+              <span class="skill-name">{{ s.name }}</span>
+              <Badge tone="warning" class="beta">Beta</Badge>
+            </button>
+          </template>
 
           <p class="pp-group">添加文件</p>
           <button class="action-row" @click="emit('select', 'file')">

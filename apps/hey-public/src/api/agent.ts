@@ -139,6 +139,9 @@ export interface CapabilityManifest {
   quantitySource: AgentQuantitySource;
   paramSchema: ParamSpec[];
   resourceHints: { supportsMask: boolean; supportsMultiImage: boolean };
+  description: string;
+  usageExample: string;
+  slashCommand: string;
 }
 
 export interface ModelBridgeManifest {

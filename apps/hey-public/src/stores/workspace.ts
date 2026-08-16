@@ -1,17 +1,16 @@
 import type { V2ChatMessage, V2Conversation } from '@/api';
-import type { ModelInfo, SkillId, SkillInfo } from '@/skills/registry';
+import type { SkillId, SkillInfo } from '@/skills/registry';
 
 import { computed, ref } from 'vue';
 
-import { MODELS, SKILLS as TASK_TYPES } from '@/skills/registry';
+import { useAgentStore } from '@/stores/agent';
 // 工作台数据 store
 import { defineStore } from 'pinia';
 
-export { MODELS, TASK_TYPES };
-
 export const useWorkspaceStore = defineStore('workspace', () => {
+  const agent = useAgentStore();
+
   const taskType = ref<SkillId>('chat');
-  const model = ref('auto');
   const sidebarCollapsed = ref(false);
   const templateDrawer = ref(true);
   const convPanelOpen = ref(false); // 小屏会话抽屉
@@ -19,11 +18,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const activeConvId = ref<null | string>(null);
   const messagesByConv = ref<Record<string, V2ChatMessage[]>>({});
 
-  const activeModel = computed<ModelInfo | undefined>(
-    () => MODELS.find((m) => m.id === model.value) || MODELS[0],
-  );
+  /** 当前技能（元数据驱动；taskType 未命中时回退到清单首个技能） */
   const task = computed<SkillInfo | undefined>(() =>
-    TASK_TYPES.find((t) => t.id === taskType.value),
+    agent.skills.find((t) => t.id === taskType.value) ?? agent.skills[0],
   );
 
   function setConversations(list: V2Conversation[]): void {
@@ -72,14 +69,12 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   return {
     taskType,
-    model,
     sidebarCollapsed,
     templateDrawer,
     convPanelOpen,
     conversations,
     activeConvId,
     messagesByConv,
-    activeModel,
     task,
     setConversations,
     ensureMessages,

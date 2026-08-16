@@ -4,7 +4,7 @@ import type { SkillId, SkillInfo } from '@/skills/registry';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { fetchConversations, fetchModels } from '@/api';
+import { fetchConversations } from '@/api';
 import {
   AgentArtifactKind,
   AgentErrorCodeLabel,
@@ -17,12 +17,7 @@ import ConversationList from '@/components/workspace/ConversationList.vue';
 import MessageBubble from '@/components/workspace/MessageBubble.vue';
 import SkillPicker from '@/components/workspace/SkillPicker.vue';
 import TaskModelBar from '@/components/workspace/TaskModelBar.vue';
-import {
-  applyServerModels,
-  SKILL_COLORS,
-  SKILLS,
-  validateSkillInput,
-} from '@/skills/registry';
+import { useAgentStore } from '@/stores/agent';
 import { useUserStore } from '@/stores/user';
 import { useWorkspaceStore } from '@/stores/workspace';
 import { toast } from '@/utils/toast';
@@ -42,6 +37,7 @@ import {
 const router = useRouter();
 const store = useWorkspaceStore();
 const user = useUserStore();
+const agent = useAgentStore();
 
 const scrollBox = ref<HTMLElement | null>(null);
 const inputEl = ref<HTMLInputElement | null>(null);
@@ -62,40 +58,35 @@ const fileInput = ref<HTMLInputElement | null>(null);
 let attSeed = 0;
 const showSlashHint = ref(false); // / 命令提示面板
 
-const suggestions = {
-  chat: ['帮我写一段春节营销文案', '推荐 3 个适合咖啡店的品牌名'],
-  qa: ['什么是品牌资产模型？', '解释一下差异化和定位的区别'],
-  'image-gen': ['帮我生成一张 80×180cm 普者黑旅游海报', '设计奶茶店开业主视觉'],
-  'image-edit': ['把这张照片的背景换成海边日落', '把 Logo 改成蓝色调'],
-  ppt: ['生成 5 页《2026 营销趋势》HTML 动效 PPT', '做一个 Q3 复盘汇报 PPT'],
-  web: ['做一个奶茶店单页网页', '生成 SaaS 产品官网首页'],
-  canvas: ['在无限画布上设计门头 / 美陈造型'],
-};
-
-const emptyHints = computed(
-  () => suggestions[store.taskType] || suggestions.chat,
-);
+const emptyHints = computed(() => {
+  const example = store.task?.example;
+  return example
+    ? [example, '帮我写一段春节营销文案', '推荐 3 个适合咖啡店的品牌名']
+    : ['帮我写一段春节营销文案', '推荐 3 个适合咖啡店的品牌名', '输入 / 触发技能'];
+});
 
 const currentSkillColor = computed(
-  () => SKILL_COLORS[store.taskType] || SKILL_COLORS.chat,
+  () =>
+    store.task?.color ?? { hue: '#6c7a89', light: 'rgba(108,122,137,0.14)' },
 );
 const slashMatches = computed(() => {
   if (!showSlashHint.value) return [];
   const q = prompt.value.trim().toLowerCase();
   if (!q.startsWith('/')) return [];
   const search = q.slice(1).trim(); // 去掉 "/" 与首尾空白
-  if (!search) return SKILLS.slice(0, 6); // 仅 "/" 显示所有
-  // 多字段模糊匹配：slash 命令 / 技能名 / 描述 / 标签
-  return SKILLS.filter((s) => {
-    const fields = [
-      s.slash.toLowerCase(),
-      s.name.toLowerCase(),
-      s.id.toLowerCase(),
-      s.desc.toLowerCase(),
-      ...(s.capabilities || []),
-    ].join(' ');
-    return fields.includes(search);
-  }).slice(0, 6);
+  if (!search) return agent.skills.slice(0, 6); // 仅 "/" 显示所有
+  // 多字段模糊匹配：slash 命令 / 技能名 / 描述
+  return agent.skills
+    .filter((s) => {
+      const fields = [
+        s.slash.toLowerCase(),
+        s.name.toLowerCase(),
+        s.id.toLowerCase(),
+        s.desc.toLowerCase(),
+      ].join(' ');
+      return fields.includes(search);
+    })
+    .slice(0, 6);
 });
 
 interface MockMsg {
@@ -232,7 +223,7 @@ const initialMessages = computed(() => {
         id: 'm0',
         role: 'ai',
         task: store.taskType,
-        model: store.activeModel?.label ?? 'Auto',
+        model: 'Auto',
         content:
           '你好，我是 Hey 19 AI 创意助手。\n\n告诉我你想做什么 —— 文案、海报、改图、PPT 还是网页？我会根据你的任务智能选择最合适的模型。',
         actions: ['看看示例', '帮助文档'],
@@ -313,17 +304,6 @@ async function send() {
   if (attachments.value.length > 0 && taskType === 'image-gen')
     taskType = 'image-edit';
 
-  // 技能 × 模型 × 输入 校验
-  const model = store.activeModel;
-  const skill = SKILLS.find((s) => s.id === taskType);
-  const vError = validateSkillInput(taskType, store.model, {
-    attachments: attachments.value,
-  });
-  if (vError) {
-    toast.error(vError);
-    return;
-  }
-
   // 生成带附件备注的完整 prompt（GPT-image-2 引用描述）
   let finalPrompt = text;
   if (
@@ -373,7 +353,7 @@ async function send() {
     content: '',
     streaming: true,
     task: taskType,
-    model: store.activeModel?.label ?? 'Auto',
+    model: 'Auto',
     cost: 0,
   };
   store.appendMessage(convId.value, aiMsg);
@@ -606,15 +586,8 @@ const messages = computed(() => {
 });
 
 onMounted(async () => {
-  // 拉取服务端模型目录（Auto + 渠道模型合并）
-  try {
-    const res = await fetchModels();
-    if (res.code === 0 && res.data?.models?.length) {
-      applyServerModels(res.data.models);
-    }
-  } catch {
-    /* 保留本地兜底模型清单 */
-  }
+  // 拉取 Agent 目录（能力/模型桥），后端不可用时回退本地兜底技能清单
+  await agent.refresh();
 
   // 拉取真实会话列表（未登录/失败时保留空态）
   try {
@@ -693,7 +666,7 @@ onMounted(async () => {
           <div v-if="!messages.length" class="chat-empty">
             <div class="empty-orb"><Sparkles :size="28" /></div>
             <h2>今天想创作点什么？</h2>
-            <p>{{ store.task?.name }}模式 · {{ store.activeModel?.label }}</p>
+            <p>{{ store.task?.name }}模式</p>
             <div class="suggestions">
               <button
                 v-for="s in emptyHints"
@@ -773,8 +746,8 @@ onMounted(async () => {
                     :key="s.id"
                     class="slash-item"
                     :style="{
-                      '--sh': SKILL_COLORS[s.id].hue,
-                      '--sl': SKILL_COLORS[s.id].light,
+                      '--sh': s.color.hue,
+                      '--sl': s.color.light,
                     }"
                     @click="pickFromSlash(s)"
                   >
@@ -835,7 +808,7 @@ onMounted(async () => {
                     }"
                   >
                     <Sparkles :size="12" />
-                    {{ store.task?.name }} · {{ store.activeModel?.label }}
+                    {{ store.task?.name }}
                   </span>
                 </div>
                 <div class="composer-send">
