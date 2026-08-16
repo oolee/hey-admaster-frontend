@@ -27,7 +27,7 @@ const tree = ref<DocsNode[]>([]);
 const content = ref<DocsContent | null>(null);
 const toc = ref<TocItem[]>([]);
 const loading = ref(false);
-const error = ref('');
+const errorMsg = ref('');
 const activePath = ref('');
 const expanded = ref<Set<string>>(new Set());
 
@@ -36,12 +36,15 @@ async function loadTree() {
     const raw = await request<any>('/docs/tree');
     tree.value = raw?.result ?? raw ?? [];
     // 默认展开第一层目录
-    tree.value.filter((n) => n.type === 'dir').forEach((n) => expanded.value.add(n.path));
+    tree.value
+      .filter((n) => n.type === 'dir')
+      .forEach((n) => expanded.value.add(n.path));
     // 默认打开第一篇文档
     const first = firstDoc(tree.value);
     if (first) await openDoc(first.path);
   } catch (error) {
-    error.value = error instanceof Error ? error.message : '加载文档目录失败';
+    errorMsg.value =
+      error instanceof Error ? error.message : '加载文档目录失败';
   }
 }
 
@@ -63,17 +66,18 @@ function toggleDir(node: DocsNode) {
 
 async function openDoc(path: string) {
   loading.value = true;
-  error.value = '';
+  errorMsg.value = '';
   activePath.value = path;
   try {
-    content.value = (await request<any>(
+    const raw = await request<any>(
       `/docs/content?path=${encodeURIComponent(path)}`,
-    ))?.result ?? null;
+    );
+    content.value = raw?.result ?? null;
     await nextTick();
     buildToc();
     highlightCode();
   } catch (error) {
-    error.value = error instanceof Error ? error.message : '加载文档失败';
+    errorMsg.value = error instanceof Error ? error.message : '加载文档失败';
   } finally {
     loading.value = false;
   }
@@ -103,11 +107,13 @@ function highlightCode() {
   // 动态加载 highlight.js（CDN，避免前端依赖安装）
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = 'https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github-dark.min.css';
+  link.href =
+    'https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github-dark.min.css';
   document.head.append(link);
   const script = document.createElement('script');
-  script.src = 'https://cdn.jsdelivr.net/npm/highlight.js@11/lib/highlight.min.js';
-  script.onload = () => w.hljs?.highlightAll();
+  script.src =
+    'https://cdn.jsdelivr.net/npm/highlight.js@11/lib/highlight.min.js';
+  script.addEventListener('load', () => w.hljs?.highlightAll());
   document.head.append(script);
 }
 
@@ -129,7 +135,9 @@ onMounted(loadTree);
         <template v-for="node in tree" :key="node.path">
           <li v-if="node.type === 'dir'" class="tree-dir">
             <button class="tree-dir-btn" @click="toggleDir(node)">
-              <span class="tree-arrow">{{ expanded.has(node.path) ? '▾' : '▸' }}</span>
+              <span class="tree-arrow">{{
+                expanded.has(node.path) ? '▾' : '▸'
+              }}</span>
               {{ node.name }}
             </button>
             <ul v-if="expanded.has(node.path)" class="tree-children">
@@ -191,7 +199,7 @@ onMounted(loadTree);
         </span>
       </div>
       <div v-if="loading" class="docs-loading">加载中…</div>
-      <div v-else-if="error" class="docs-error">{{ error }}</div>
+      <div v-else-if="errorMsg" class="docs-error">{{ errorMsg }}</div>
       <div v-else-if="content" class="docs-content" v-html="content.html"></div>
       <div v-else class="docs-empty">从左侧选择文档</div>
     </main>
@@ -218,10 +226,10 @@ onMounted(loadTree);
 .docs-shell {
   display: grid;
   grid-template-columns: 260px 1fr 220px;
-  min-height: calc(100vh - var(--header-height, 64px));
-  max-width: 1400px;
-  margin: 0 auto;
   gap: 0;
+  max-width: 1400px;
+  min-height: calc(100vh - var(--header-height, 64px));
+  margin: 0 auto;
 }
 
 /* 侧栏与目录：玻璃卡片 */
@@ -231,12 +239,12 @@ onMounted(loadTree);
   top: calc(var(--header-height, 64px) + 16px);
   align-self: start;
   max-height: calc(100vh - var(--header-height, 64px) - 32px);
-  overflow-y: auto;
   padding: 1.25rem;
   margin: 1rem;
-  border-radius: var(--radius-lg, 16px);
-  background: var(--glass-bg, rgba(15, 46, 44, 0.55));
+  overflow-y: auto;
+  background: var(--glass-bg, rgb(15 46 44 / 55%));
   border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg, 16px);
   backdrop-filter: blur(12px);
 }
 
@@ -245,48 +253,48 @@ onMounted(loadTree);
   margin-bottom: 0.75rem;
   font-size: var(--text-xs);
   font-weight: 700;
+  color: var(--color-text-3);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--color-text-3);
 }
 
 .docs-tree {
-  list-style: none;
-  margin: 0;
   padding: 0;
+  margin: 0;
+  list-style: none;
 }
 
 .tree-children {
-  list-style: none;
-  margin: 0;
   padding-left: 0.85rem;
+  margin: 0;
+  list-style: none;
 }
 
 .tree-dir-btn,
 .tree-file-btn {
   display: flex;
-  align-items: center;
   gap: 0.4rem;
+  align-items: center;
   width: 100%;
   padding: 0.35rem 0.5rem;
-  border: none;
-  background: none;
-  color: var(--color-text-2);
   font-size: var(--text-sm);
+  color: var(--color-text-2);
   text-align: left;
   cursor: pointer;
+  background: none;
+  border: none;
   border-radius: var(--radius-sm, 6px);
 }
 
 .tree-dir-btn:hover,
 .tree-file-btn:hover {
   color: var(--color-accent, #2fe6c8);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgb(255 255 255 / 4%);
 }
 
 .tree-file-btn.active {
   color: var(--color-accent, #2fe6c8);
-  background: rgba(47, 230, 200, 0.1);
+  background: rgb(47 230 200 / 10%);
 }
 
 .tree-arrow {
@@ -296,8 +304,8 @@ onMounted(loadTree);
 
 /* 主内容 */
 .docs-main {
-  padding: 1.5rem 2rem;
   min-width: 0;
+  padding: 1.5rem 2rem;
 }
 
 .docs-crumbs {
@@ -336,11 +344,13 @@ onMounted(loadTree);
 .docs-content :deep(h1) {
   font-size: 1.8rem;
 }
+
 .docs-content :deep(h2) {
+  padding-bottom: 0.3em;
   font-size: 1.4rem;
   border-bottom: 1px solid var(--color-border);
-  padding-bottom: 0.3em;
 }
+
 .docs-content :deep(h3) {
   font-size: 1.15rem;
 }
@@ -354,43 +364,45 @@ onMounted(loadTree);
 }
 
 .docs-content :deep(code) {
+  padding: 0.15em 0.4em;
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 0.9em;
-  background: rgba(255, 255, 255, 0.06);
-  padding: 0.15em 0.4em;
+  background: rgb(255 255 255 / 6%);
   border-radius: 4px;
 }
 
 .docs-content :deep(pre) {
   padding: 1rem;
-  border-radius: var(--radius-md, 10px);
-  background: #0d1117;
-  overflow-x: auto;
   margin: 1em 0;
+  overflow-x: auto;
+  background: #0d1117;
+  border-radius: var(--radius-md, 10px);
 }
 
 .docs-content :deep(pre code) {
-  background: none;
   padding: 0;
   color: #e6edf3;
+  background: none;
 }
 
 .docs-content :deep(table) {
-  border-collapse: collapse;
   width: 100%;
   margin: 1em 0;
+  border-collapse: collapse;
 }
+
 .docs-content :deep(th),
 .docs-content :deep(td) {
-  border: 1px solid var(--color-border);
   padding: 0.5em 0.75em;
   text-align: left;
+  border: 1px solid var(--color-border);
 }
+
 .docs-content :deep(blockquote) {
-  margin: 1em 0;
   padding: 0.5em 1em;
+  margin: 1em 0;
+  background: rgb(255 255 255 / 3%);
   border-left: 3px solid var(--color-accent, #2fe6c8);
-  background: rgba(255, 255, 255, 0.03);
 }
 
 /* 右侧目录 */
@@ -401,6 +413,7 @@ onMounted(loadTree);
   color: var(--color-text-2);
   text-decoration: none;
 }
+
 .docs-toc a:hover {
   color: var(--color-accent, #2fe6c8);
 }
@@ -409,14 +422,17 @@ onMounted(loadTree);
   .docs-shell {
     grid-template-columns: 220px 1fr;
   }
+
   .docs-toc {
     display: none;
   }
 }
+
 @media (max-width: 768px) {
   .docs-shell {
     grid-template-columns: 1fr;
   }
+
   .docs-sidebar {
     position: static;
     max-height: none;
