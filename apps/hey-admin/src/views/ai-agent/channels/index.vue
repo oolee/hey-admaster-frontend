@@ -276,6 +276,16 @@ async function toggleModelEnabled(m: AiAgentChannelModelDto, checked: boolean) {
   await setChannelModelEnabled(m.id, checked);
   message.success(checked ? '已启用' : '已停用');
 }
+
+function parseSizes(json: null | string | undefined): string[] {
+  if (!json) return [];
+  try {
+    const arr = JSON.parse(json);
+    return Array.isArray(arr) ? arr.map(String) : [];
+  } catch {
+    return [];
+  }
+}
 </script>
 
 <template>
@@ -388,37 +398,45 @@ async function toggleModelEnabled(m: AiAgentChannelModelDto, checked: boolean) {
     <p v-else-if="!channelModels.length" class="muted">
       暂无模型 · 回列表点「刷新」自动获取
     </p>
-    <table v-else class="model-table">
-      <thead>
-        <tr>
-          <th>模型</th>
-          <th>别名</th>
-          <th>状态</th>
-          <th>优先级</th>
-          <th>单价(元)</th>
-          <th>操作</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="m in channelModels" :key="m.id">
-          <td class="mono">{{ m.modelName }}</td>
-          <td>{{ m.displayName || '—' }}</td>
-          <td>
-            <Switch
-              v-model:checked="m.enabled"
-              size="small"
-              @change="(c) => toggleModelEnabled(m, c as boolean)"
-            />
-          </td>
-          <td>{{ m.priority }}</td>
-          <td>{{ m.pricePerImage }}</td>
-          <td>
-            <Button type="link" @click="openModelEdit(m)">编辑</Button>
-            <Button danger type="link" @click="removeModel(m)">删除</Button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div v-else class="model-grid">
+      <article
+        v-for="m in channelModels"
+        :key="m.id"
+        class="model-card"
+        :class="{ dim: !m.enabled }"
+      >
+        <header class="mc-head">
+          <div class="mc-meta">
+            <span class="mc-name">{{ m.modelName }}</span>
+            <span v-if="m.displayName" class="mc-alias">{{ m.displayName }}</span>
+          </div>
+          <Switch
+            v-model:checked="m.enabled"
+            size="small"
+            @change="(c) => toggleModelEnabled(m, c as boolean)"
+          />
+        </header>
+        <div v-if="parseSizes(m.supportedSizes).length" class="mc-sizes">
+          <span
+            v-for="s in parseSizes(m.supportedSizes)"
+            :key="s"
+            class="mc-size"
+          >
+            {{ s }}
+          </span>
+        </div>
+        <footer class="mc-foot">
+          <span class="mc-price">
+            {{ m.pricePerImage > 0 ? `${m.pricePerImage} 元/次` : '免费' }}
+          </span>
+          <span class="mc-priority">P{{ m.priority }}</span>
+          <span class="mc-actions">
+            <Button size="small" type="link" @click="openModelEdit(m)">编辑</Button>
+            <Button danger size="small" type="link" @click="removeModel(m)">删除</Button>
+          </span>
+        </footer>
+      </article>
+    </div>
   </Modal>
 
   <Modal
@@ -520,27 +538,96 @@ async function toggleModelEnabled(m: AiAgentChannelModelDto, checked: boolean) {
   color: var(--vben-text-color-2, #666);
 }
 
-.model-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
+.model-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  max-height: 420px;
+  overflow-y: auto;
 }
 
-.model-table th,
-.model-table td {
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--vben-border-color, #eee);
-  text-align: left;
+.model-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--vben-bg-color, #fff);
+  border: 1px solid var(--vben-border-color, #eee);
+  border-radius: 10px;
+  transition: border-color 0.2s ease;
 }
 
-.model-table th {
-  color: var(--vben-text-color-2, #666);
-  font-weight: 600;
-  background: var(--vben-bg-color, #fafafa);
+.model-card:hover {
+  border-color: var(--vben-primary-color, #1677ff);
 }
 
-.mono {
+.model-card.dim {
+  opacity: 0.55;
+}
+
+.mc-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mc-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mc-name {
+  overflow: hidden;
   font-family: monospace;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mc-alias {
+  font-size: 12px;
+  color: var(--vben-text-color-2, #666);
+}
+
+.mc-sizes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.mc-size {
+  padding: 1px 7px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--vben-primary-color, #1677ff);
+  background: color-mix(in srgb, var(--vben-primary-color, #1677ff) 10%, transparent);
+  border-radius: 999px;
+}
+
+.mc-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 6px;
+  font-size: 12px;
+  border-top: 1px dashed var(--vben-border-color, #eee);
+}
+
+.mc-price {
+  font-weight: 600;
+  color: var(--vben-primary-color, #1677ff);
+}
+
+.mc-priority {
+  color: var(--vben-text-color-3, #999);
+}
+
+.mc-actions {
+  margin-left: auto;
 }
 
 .muted {
