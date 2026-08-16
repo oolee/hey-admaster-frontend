@@ -89,6 +89,7 @@ export interface AiAgentChannelDto {
   model: string;
   description?: null | string;
   hasApiKey: boolean;
+  apiKeyMasked?: null | string;
   creationTime: string;
   lastModificationTime?: null | string;
 }
@@ -111,6 +112,37 @@ export interface ProbedModelDto {
   modelName: string;
   displayName?: null | string;
   supportedSizes?: null | string;
+}
+
+export interface AiAgentChannelModelDto {
+  id: string;
+  channelId: string;
+  modelName: string;
+  displayName?: null | string;
+  enabled: boolean;
+  priority: number;
+  weight: number;
+  maxImagesPerRequest: number;
+  supportedSizes?: null | string;
+  sizeMode: number;
+  disabledRequestParams: number;
+  paramProfileJson?: null | string;
+  defaultResponseFormat?: null | string;
+  pricePerImage: number;
+}
+
+export interface UpdateAiAgentChannelModelDto {
+  displayName: string;
+  enabled: boolean;
+  priority: number;
+  weight: number;
+  maxImagesPerRequest: number;
+  supportedSizes: string;
+  sizeMode: number;
+  disabledRequestParams: number;
+  paramProfileJson: string;
+  defaultResponseFormat: string;
+  pricePerImage: number;
 }
 
 // ---------- API ----------
@@ -164,6 +196,27 @@ export function useAiAgentApi() {
       method: 'POST',
     });
 
+  const getChannelModels = (channelId: string) =>
+    request<ListResultDto<AiAgentChannelModelDto>>(
+      `${BASE_URL}/channels/${channelId}/models`,
+      { method: 'GET' },
+    );
+
+  const updateChannelModel = (id: string, input: UpdateAiAgentChannelModelDto) =>
+    request<AiAgentChannelModelDto>(`${BASE_URL}/channels/models/${id}`, {
+      method: 'PUT',
+      data: input,
+    });
+
+  const deleteChannelModel = (id: string) =>
+    request<void>(`${BASE_URL}/channels/models/${id}`, { method: 'DELETE' });
+
+  const setChannelModelEnabled = (id: string, enabled: boolean) =>
+    request<AiAgentChannelModelDto>(
+      `${BASE_URL}/channels/models/${id}/enabled/${enabled}`,
+      { method: 'PUT' },
+    );
+
   return {
     getCapabilities,
     getModelBridges,
@@ -174,5 +227,9 @@ export function useAiAgentApi() {
     deleteChannel,
     setChannelEnabled,
     probeChannel,
+    getChannelModels,
+    updateChannelModel,
+    deleteChannelModel,
+    setChannelModelEnabled,
   };
 }

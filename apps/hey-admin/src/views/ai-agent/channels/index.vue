@@ -3,7 +3,9 @@ import type { VxeGridProps, VxeGridPropTypes } from '@abp/ui';
 
 import type {
   AiAgentChannelDto,
+  AiAgentChannelModelDto,
   CreateUpdateAiAgentChannelDto,
+  UpdateAiAgentChannelModelDto,
 } from '#/api/ai-agent';
 
 import { AiAgentChannelProviderTypeLabel, useAiAgentApi } from '#/api/ai-agent';
@@ -25,10 +27,14 @@ defineOptions({ name: 'AiAgentChannelManagement' });
 const {
   createChannel,
   deleteChannel,
+  deleteChannelModel,
+  getChannelModels,
   getChannels,
   probeChannel,
   setChannelEnabled,
+  setChannelModelEnabled,
   updateChannel,
+  updateChannelModel,
 } = useAiAgentApi();
 
 const columns: VxeGridPropTypes.Columns<AiAgentChannelDto> = [
@@ -49,7 +55,7 @@ const columns: VxeGridPropTypes.Columns<AiAgentChannelDto> = [
   {
     field: 'actions',
     title: '操作',
-    width: 200,
+    width: 240,
     fixed: 'right',
     slots: { default: 'actions' },
   },
@@ -76,6 +82,7 @@ const providerTypeOptions = [
 // ---- 新建 / 编辑表单 ----
 const modalOpen = ref(false);
 const editingId = ref<null | string>(null);
+const currentApiKeyMasked = ref<null | string>(null);
 const saving = ref(false);
 const form = reactive<CreateUpdateAiAgentChannelDto>({
   name: '',
@@ -92,6 +99,7 @@ const form = reactive<CreateUpdateAiAgentChannelDto>({
 
 function onCreate() {
   editingId.value = null;
+  currentApiKeyMasked.value = null;
   Object.assign(form, {
     name: '',
     providerType: 0,
@@ -109,6 +117,7 @@ function onCreate() {
 
 function onUpdate(row: AiAgentChannelDto) {
   editingId.value = row.id;
+  currentApiKeyMasked.value = row.apiKeyMasked ?? null;
   Object.assign(form, {
     name: row.name,
     providerType: row.providerType,
@@ -178,6 +187,90 @@ async function onRefresh(row: AiAgentChannelDto) {
     refreshingId.value = null;
   }
 }
+
+// ---- 模型管理 ----
+const modelsModal = ref(false);
+const currentChannel = ref<null | AiAgentChannelDto>(null);
+const channelModels = ref<AiAgentChannelModelDto[]>([]);
+const modelsLoading = ref(false);
+
+const modelEditModal = ref(false);
+const editingModelId = ref<null | string>(null);
+const modelForm = reactive<UpdateAiAgentChannelModelDto>({
+  displayName: '',
+  enabled: true,
+  priority: 100,
+  weight: 1,
+  maxImagesPerRequest: 4,
+  supportedSizes: '',
+  sizeMode: 0,
+  disabledRequestParams: 0,
+  paramProfileJson: '',
+  defaultResponseFormat: '',
+  pricePerImage: 0,
+});
+
+async function openModels(row: AiAgentChannelDto) {
+  currentChannel.value = row;
+  modelsModal.value = true;
+  await loadModels(row.id);
+}
+
+async function loadModels(channelId: string) {
+  modelsLoading.value = true;
+  try {
+    const res = await getChannelModels(channelId);
+    channelModels.value = res.items ?? [];
+  } finally {
+    modelsLoading.value = false;
+  }
+}
+
+function openModelEdit(m: AiAgentChannelModelDto) {
+  editingModelId.value = m.id;
+  Object.assign(modelForm, {
+    displayName: m.displayName ?? '',
+    enabled: m.enabled,
+    priority: m.priority,
+    weight: m.weight,
+    maxImagesPerRequest: m.maxImagesPerRequest,
+    supportedSizes: m.supportedSizes ?? '',
+    sizeMode: m.sizeMode,
+    disabledRequestParams: m.disabledRequestParams,
+    paramProfileJson: m.paramProfileJson ?? '',
+    defaultResponseFormat: m.defaultResponseFormat ?? '',
+    pricePerImage: m.pricePerImage,
+  });
+  modelEditModal.value = true;
+}
+
+async function saveModel() {
+  if (!editingModelId.value) return;
+  await updateChannelModel(editingModelId.value, { ...modelForm });
+  message.success('模型已更新');
+  modelEditModal.value = false;
+  await loadModels(currentChannel.value!.id);
+}
+
+function removeModel(m: AiAgentChannelModelDto) {
+  Modal.confirm({
+    title: `删除模型「${m.modelName}」？`,
+    content: '删除后不可恢复。',
+    okText: '删除',
+    okType: 'danger',
+    cancelText: '取消',
+    onOk: async () => {
+      await deleteChannelModel(m.id);
+      message.success('已删除');
+      await loadModels(currentChannel.value!.id);
+    },
+  });
+}
+
+async function toggleModelEnabled(m: AiAgentChannelModelDto, checked: boolean) {
+  await setChannelModelEnabled(m.id, checked);
+  message.success(checked ? '已启用' : '已停用');
+}
 </script>
 
 <template>
@@ -213,6 +306,7 @@ async function onRefresh(row: AiAgentChannelDto) {
       >
         刷新
       </Button>
+      <Button type="link" @click="openModels(row)">模型</Button>
       <Button danger type="link" @click="onDelete(row)">删除</Button>
     </template>
   </Grid>
@@ -251,7 +345,7 @@ async function onRefresh(row: AiAgentChannelDto) {
         <Input
           v-model:value="form.apiKey"
           type="password"
-          :placeholder="editingId ? '留空则保持不变' : '上游 API 密钥（加密存储）'"
+          :placeholder="currentApiKeyMasked ? `当前 ${currentApiKeyMasked}，留空则不变` : '上游 API 密钥（加密存储）'"
         />
       </div>
       <div class="form-row form-row-3">
@@ -275,6 +369,109 @@ async function onRefresh(row: AiAgentChannelDto) {
       <div class="form-row">
         <label>说明</label>
         <Input v-model:value="form.description" placeholder="可选" />
+      </div>
+    </div>
+  </Modal>
+
+  <Modal
+    v-model:open="modelsModal"
+    :footer="null"
+    :title="`模型管理 · ${currentChannel?.name ?? ''}`"
+    width="720px"
+  >
+    <p v-if="modelsLoading" class="muted">加载中…</p>
+    <p v-else-if="!channelModels.length" class="muted">
+      暂无模型 · 回列表点「刷新」自动获取
+    </p>
+    <table v-else class="model-table">
+      <thead>
+        <tr>
+          <th>模型</th>
+          <th>别名</th>
+          <th>状态</th>
+          <th>优先级</th>
+          <th>单价(元)</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="m in channelModels" :key="m.id">
+          <td class="mono">{{ m.modelName }}</td>
+          <td>{{ m.displayName || '—' }}</td>
+          <td>
+            <Switch
+              v-model:checked="m.enabled"
+              size="small"
+              @change="(c) => toggleModelEnabled(m, c as boolean)"
+            />
+          </td>
+          <td>{{ m.priority }}</td>
+          <td>{{ m.pricePerImage }}</td>
+          <td>
+            <Button type="link" @click="openModelEdit(m)">编辑</Button>
+            <Button danger type="link" @click="removeModel(m)">删除</Button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </Modal>
+
+  <Modal
+    v-model:open="modelEditModal"
+    cancel-text="取消"
+    ok-text="保存"
+    title="编辑模型"
+    @ok="saveModel"
+  >
+    <div class="channel-form">
+      <div class="form-row">
+        <label>别名</label>
+        <Input v-model:value="modelForm.displayName" placeholder="前台显示名，留空用原始 ID" />
+      </div>
+      <div class="form-row form-row-3">
+        <div class="form-col"><label>优先级</label><InputNumber v-model:value="modelForm.priority" :min="0" /></div>
+        <div class="form-col"><label>权重</label><InputNumber v-model:value="modelForm.weight" :min="1" /></div>
+        <div class="form-col"><label>单次张数</label><InputNumber v-model:value="modelForm.maxImagesPerRequest" :min="1" /></div>
+      </div>
+      <div class="form-row">
+        <label>尺寸模式</label>
+        <Select
+          v-model:value="modelForm.sizeMode"
+          :options="[{ label: 'Auto 直传', value: 0 }, { label: 'Tier 档位', value: 1 }]"
+          :style="{ width: '200px' }"
+        />
+      </div>
+      <div class="form-row">
+        <label>支持尺寸</label>
+        <Input
+          v-model:value="modelForm.supportedSizes"
+          placeholder='JSON 数组，如 ["1024x1024","1024x1792"]，留空不限'
+        />
+      </div>
+      <div class="form-row">
+        <label>返回格式</label>
+        <Select
+          v-model:value="modelForm.defaultResponseFormat"
+          :options="[{ label: '默认', value: '' }, { label: 'URL', value: 'url' }, { label: 'Base64', value: 'b64_json' }]"
+          :style="{ width: '200px' }"
+        />
+      </div>
+      <div class="form-row">
+        <label>参数映射 JSON</label>
+        <textarea
+          v-model="modelForm.paramProfileJson"
+          class="json-area"
+          placeholder='{"quality_via_size":true,"resolution_map":{"1K":"1024x1024","2K":"1024x1792"}}'
+          rows="3"
+        ></textarea>
+      </div>
+      <div class="form-row">
+        <label>成本单价(元)</label>
+        <InputNumber v-model:value="modelForm.pricePerImage" :min="0" :step="0.01" />
+      </div>
+      <div class="form-row">
+        <label>启用</label>
+        <Switch v-model:checked="modelForm.enabled" />
       </div>
     </div>
   </Modal>
@@ -316,5 +513,42 @@ async function onRefresh(row: AiAgentChannelDto) {
   flex-shrink: 0;
   font-size: 13px;
   color: var(--vben-text-color-2, #666);
+}
+
+.model-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.model-table th,
+.model-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--vben-border-color, #eee);
+  text-align: left;
+}
+
+.model-table th {
+  color: var(--vben-text-color-2, #666);
+  font-weight: 600;
+  background: var(--vben-bg-color, #fafafa);
+}
+
+.mono {
+  font-family: monospace;
+}
+
+.muted {
+  color: var(--vben-text-color-2, #666);
+}
+
+.json-area {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--vben-border-color, #d9d9d9);
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 12px;
+  resize: vertical;
 }
 </style>
