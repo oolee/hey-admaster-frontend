@@ -26,7 +26,7 @@ const {
   createChannel,
   deleteChannel,
   getChannels,
-  probeChannels,
+  probeChannel,
   setChannelEnabled,
   updateChannel,
 } = useAiAgentApi();
@@ -49,7 +49,7 @@ const columns: VxeGridPropTypes.Columns<AiAgentChannelDto> = [
   {
     field: 'actions',
     title: '操作',
-    width: 140,
+    width: 200,
     fixed: 'right',
     slots: { default: 'actions' },
   },
@@ -165,29 +165,17 @@ async function onToggleEnabled(row: AiAgentChannelDto, checked: boolean) {
   message.success(checked ? '已启用' : '已停用');
 }
 
-// ---- 能力探测：填 baseUrl + apiKey 后自动获取模型 ----
-const probing = ref(false);
-async function onProbe() {
-  if (!form.baseUrl?.trim() || !form.apiKey?.trim()) {
-    message.warning('请先填写 BaseUrl 和 ApiKey');
-    return;
-  }
-  probing.value = true;
+// ---- 能力探测：后端读库取密钥，前端只传渠道 ID ----
+const refreshingId = ref<null | string>(null);
+async function onRefresh(row: AiAgentChannelDto) {
+  refreshingId.value = row.id;
   try {
-    const res = await probeChannels({
-      providerType: form.providerType,
-      baseUrl: form.baseUrl,
-      apiKey: form.apiKey,
-    });
+    const res = await probeChannel(row.id);
     const models = res.items ?? [];
-    if (models.length === 0) {
-      message.warning('未获取到模型，请检查 BaseUrl / ApiKey');
-      return;
-    }
-    form.model = models[0]?.modelName ?? form.model;
-    message.success(`已获取 ${models.length} 个模型，已选第一个`);
+    message.success(`已获取 ${models.length} 个模型`);
+    gridApi.query();
   } finally {
-    probing.value = false;
+    refreshingId.value = null;
   }
 }
 </script>
@@ -204,7 +192,7 @@ async function onProbe() {
 
     <template #enabled="{ row }">
       <Switch
-        :checked="row.enabled"
+        v-model:checked="row.enabled"
         size="small"
         @change="(checked) => onToggleEnabled(row, checked as boolean)"
       />
@@ -218,6 +206,13 @@ async function onProbe() {
 
     <template #actions="{ row }">
       <Button type="link" @click="onUpdate(row)">编辑</Button>
+      <Button
+        type="link"
+        :loading="refreshingId === row.id"
+        @click="onRefresh(row)"
+      >
+        刷新
+      </Button>
       <Button danger type="link" @click="onDelete(row)">删除</Button>
     </template>
   </Grid>
@@ -237,12 +232,15 @@ async function onProbe() {
       </div>
       <div class="form-row">
         <label>供应商</label>
-        <Select v-model:value="form.providerType" :options="providerTypeOptions" />
+        <Select
+          v-model:value="form.providerType"
+          :options="providerTypeOptions"
+          :style="{ width: '200px' }"
+        />
       </div>
       <div class="form-row">
         <label>模型</label>
-        <Input v-model:value="form.model" placeholder="如：qwen-image / wan2.1-t2i-turbo" />
-        <Button :loading="probing" @click="onProbe">自动获取</Button>
+        <Input v-model:value="form.model" placeholder="如：qwen-image，保存后点列表「刷新」自动获取" />
       </div>
       <div class="form-row">
         <label>BaseUrl</label>
