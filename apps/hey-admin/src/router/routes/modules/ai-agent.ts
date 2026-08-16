@@ -35,6 +35,12 @@ const routes: RouteRecordRaw[] = [
         path: '/ai-agent/channels',
         component: () => import('#/views/ai-agent/channels/index.vue'),
       },
+      {
+        meta: { title: '计价规则' },
+        name: 'AiAgentPricingRules',
+        path: '/ai-agent/pricing-rules',
+        component: () => import('#/views/ai-agent/pricing-rules/index.vue'),
+      },
     ],
   },
 ];

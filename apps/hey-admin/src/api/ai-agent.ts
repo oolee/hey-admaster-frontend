@@ -29,6 +29,11 @@ export const AiAgentChannelProviderTypeLabel: Record<number, string> = {
   2: 'Mock',
 };
 
+export const PricingRuleKindLabel: Record<number, string> = {
+  0: '平台价',
+  1: '渠道成本',
+};
+
 // ---------- 类型（对齐后端 Domain.Shared） ----------
 
 export interface ParamSpecDto {
@@ -131,6 +136,27 @@ export interface AiAgentChannelModelDto {
   pricePerImage: number;
 }
 
+export interface AiAgentPricingRuleDto {
+  id: string;
+  capabilityId: string;
+  kind: number;
+  conditions: Record<string, string>;
+  unitPrice: number;
+  costFormula?: null | string;
+  priority: number;
+  enabled: boolean;
+}
+
+export interface CreateUpdateAiAgentPricingRuleDto {
+  capabilityId: string;
+  kind: number;
+  conditions: Record<string, string>;
+  unitPrice: number;
+  costFormula: string;
+  priority: number;
+  enabled: boolean;
+}
+
 export interface UpdateAiAgentChannelModelDto {
   displayName: string;
   enabled: boolean;
@@ -165,6 +191,27 @@ export function useAiAgentApi() {
     request<ListResultDto<PluginManifestDto>>(`${BASE_URL}/plugins`, {
       method: 'GET',
     });
+
+  const getPricingRules = () =>
+    request<ListResultDto<AiAgentPricingRuleDto>>(
+      `${BASE_URL}/pricing-rules`,
+      { method: 'GET' },
+    );
+
+  const createPricingRule = (input: CreateUpdateAiAgentPricingRuleDto) =>
+    request<AiAgentPricingRuleDto>(`${BASE_URL}/pricing-rules`, {
+      method: 'POST',
+      data: input,
+    });
+
+  const updatePricingRule = (id: string, input: CreateUpdateAiAgentPricingRuleDto) =>
+    request<AiAgentPricingRuleDto>(`${BASE_URL}/pricing-rules/${id}`, {
+      method: 'PUT',
+      data: input,
+    });
+
+  const deletePricingRule = (id: string) =>
+    request<void>(`${BASE_URL}/pricing-rules/${id}`, { method: 'DELETE' });
 
   const getChannels = () =>
     request<ListResultDto<AiAgentChannelDto>>(`${BASE_URL}/channels`, {
@@ -221,6 +268,10 @@ export function useAiAgentApi() {
     getCapabilities,
     getModelBridges,
     getPlugins,
+    getPricingRules,
+    createPricingRule,
+    updatePricingRule,
+    deletePricingRule,
     getChannels,
     createChannel,
     updateChannel,
