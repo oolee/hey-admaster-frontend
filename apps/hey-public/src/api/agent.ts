@@ -107,6 +107,7 @@ export interface AgentEvent {
 
 export interface AgentRunInput {
   message: string;
+  capabilityId?: null | string;
   history: Array<{ content: string; role: string; }>;
   resourceRefs: string[];
   mask?: null | unknown;

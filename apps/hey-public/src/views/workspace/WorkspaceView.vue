@@ -362,8 +362,13 @@ async function send() {
 
   try {
     // 真实后端：POST /api/ai-agent/run（阶段 0 同步返回；SSE 流式阶段 2）
+    // 只有用户显式选了技能（taskType 命中后端能力 id）才传 capabilityId，否则交给后端斜杠/关键词识别
+    const capabilityId = agent.skills.some((s) => s.id === store.taskType)
+      ? store.taskType
+      : undefined;
     const run = await runAgent({
       message: finalPrompt,
+      capabilityId,
       history: [],
       resourceRefs: refUrls,
       params: {},
