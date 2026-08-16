@@ -5,8 +5,12 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { fetchConversations, fetchModels } from '@/api';
-import { llmStream } from '@/api/llm-stream';
-import { mockGenerate } from '@/api/mock-stream';
+import {
+  AgentArtifactKind,
+  AgentErrorCodeLabel,
+  AgentResultStatus,
+  runAgent,
+} from '@/api/agent';
 import ArtCanvas from '@/components/ui/ArtCanvas.vue';
 import ThemeToggle from '@/components/ui/ThemeToggle.vue';
 import ConversationList from '@/components/workspace/ConversationList.vue';
@@ -376,167 +380,56 @@ async function send() {
   scrollBottom();
 
   try {
-    // 真实后端 SSE 流式（Agent Run Streaming）；网络失败/未配置渠道时回退本地 mock 演示
-    let acc = '';
-    let usedMock = false;
-    let sessionId = '';
-
-    await new Promise<void>((resolve, reject) => {
-      let settled = false;
-      const finish = (err?: unknown) => {
-        if (settled) return;
-        settled = true;
-        if (err) reject(err);
-        else resolve();
-      };
-
-      // 仅当会话 id 为真实后端 UUID 时回传；local 占位 id 一律不带（后端自动新建）
-      const activeId = store.activeConvId;
-      const validSessionId =
-        activeId &&
-        activeId !== 'c1' &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-          activeId,
-        )
-          ? activeId
-          : undefined;
-      llmStream(
-        {
-          sessionId: validSessionId,
-          title: text.slice(0, 30),
-          skill: taskType,
-          model: store.model === 'auto' ? undefined : store.model,
-          prompt: finalPrompt,
-          attachments:
-            attachFiles.length > 0
-              ? attachFiles.map((a, i) => ({
-                  url: refUrls[i] || a.url,
-                  note: a.note,
-                }))
-              : undefined,
-          params: {
-            size: '1024x1024',
-            quality: 'high',
-            pages: taskType === 'ppt' ? 5 : undefined,
-          },
-        },
-        {
-          onMeta(meta) {
-            sessionId = meta.sessionId;
-            if (meta.mock) usedMock = true;
-            store.updateLastMessage(convId.value, {
-              model: meta.model || store.activeModel?.label,
-            });
-          },
-          onText(content) {
-            acc += content;
-            store.updateLastMessage(convId.value, { content: acc });
-            scrollBottom();
-          },
-          onArtifact(artifact) {
-            if (artifact.images?.length) {
-              store.updateLastMessage(convId.value, {
-                artifact: {
-                  type: 'image',
-                  label: artifact.label || 'AI 生成的图像',
-                  images: artifact.images,
-                },
-              });
-            } else if (artifact.type === 'ppt' || artifact.type === 'web') {
-              store.updateLastMessage(convId.value, {
-                artifact: {
-                  type: artifact.type,
-                  label: artifact.label,
-                  pages: artifact.pages,
-                  html: artifact.html,
-                },
-              });
-            }
-            scrollBottom();
-          },
-          onDone(cost) {
-            store.updateLastMessage(convId.value, {
-              streaming: false,
-              cost: cost ?? 0,
-              actions: getActions(taskType),
-            });
-            finish();
-          },
-          onError(message) {
-            finish(new Error(message));
-          },
-        },
-        180_000,
-      );
+    // 真实后端：POST /api/ai-agent/run（阶段 0 同步返回；SSE 流式阶段 2）
+    const run = await runAgent({
+      message: finalPrompt,
+      history: [],
+      resourceRefs: refUrls,
+      params: {},
+      idempotencyKey: `u${Date.now()}`,
     });
 
-    if (sessionId && store.activeConvId !== sessionId) {
-      const title = usedMock ? text.slice(0, 20) : text.slice(0, 30);
-      store.addConversation({
-        id: sessionId,
-        title: title || '新对话',
-        time: '刚刚',
-        type: taskType,
-        active: true,
-        preview: text.slice(0, 40),
-        task: taskType,
-        model: store.activeModel?.label,
-      });
-      store.selectConv(sessionId);
-      // 会话已入库，清掉本地 mock 消息占位
-      store.messagesByConv[sessionId] =
-        store.messagesByConv[convId.value] || [];
-      if (convId.value !== sessionId) delete store.messagesByConv[convId.value];
-    }
-
-    if (usedMock) {
-      toast.info('当前为演示模式（后端未配置渠道或未登录），展示 mock 结果');
-    } else {
-      toast.success('生成完成');
-    }
-  } catch {
-    // 真实后端不可用 → 回退本地 mock 流式（演示模式）
-    toast.info('后端暂不可用，已切换演示模式');
-    let acc = '';
-    try {
-      const stream = mockGenerate({
-        prompt: text,
-        task: taskType,
-        model: store.model,
-      });
-      for await (const chunk of stream) {
-        if (chunk.type === 'text') {
-          acc += chunk.content;
-          store.updateLastMessage(convId.value, { content: acc });
-          scrollBottom();
-        } else if (chunk.type === 'artifact') {
-          store.updateLastMessage(convId.value, {
-            artifact: {
-              ...chunk.content,
-              html:
-                chunk.content.type === 'ppt'
-                  ? pptHtml()
-                  : chunk.content.type === 'web'
-                    ? webHtml()
-                    : undefined,
-            },
-          });
-        } else if (chunk.type === 'done') {
-          store.updateLastMessage(convId.value, {
-            streaming: false,
-            cost: chunk.cost,
-            actions: getActions(taskType),
-          });
-        }
-      }
-    } catch (mockError) {
-      toast.error(
-        `生成失败：${
-          mockError instanceof Error ? mockError.message : String(mockError)
-        }`,
+    const result = run.result;
+    if (!result || result.status !== AgentResultStatus.Succeeded) {
+      const code = result?.errorCode;
+      throw new Error(
+        code === null || code === undefined
+          ? '生成失败'
+          : AgentErrorCodeLabel[code] || `错误码 ${code}`,
       );
     }
+
+    const textArtifact = result.artifacts?.find(
+      (a) => a.kind === AgentArtifactKind.Text,
+    );
+    const imageArtifact = result.artifacts?.find(
+      (a) => a.kind === AgentArtifactKind.Image,
+    );
+
+    if (imageArtifact) {
+      store.updateLastMessage(convId.value, {
+        artifact: {
+          type: 'image',
+          label: 'AI 生成的图像',
+          images: [{ url: imageArtifact.uri }],
+        },
+      });
+    }
+    if (textArtifact?.text) {
+      store.updateLastMessage(convId.value, { content: textArtifact.text });
+    }
+
+    store.updateLastMessage(convId.value, {
+      streaming: false,
+      cost: result.usage?.chargedAmount ?? 0,
+      actions: getActions(taskType),
+    });
+    toast.success('生成完成');
+  } catch (error) {
     store.updateLastMessage(convId.value, { streaming: false });
+    toast.error(
+      `生成失败：${error instanceof Error ? error.message : String(error)}`,
+    );
   } finally {
     generating.value = false;
     scrollBottom();

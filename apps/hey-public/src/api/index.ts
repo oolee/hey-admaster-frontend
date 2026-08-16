@@ -171,7 +171,7 @@ export interface V2ChatMessage {
   streaming?: boolean;
   artifact?: {
     html?: string;
-    images?: Array<{ seed: number; url: string }>;
+    images?: Array<{ seed?: number; url: string }>;
     label?: string;
     pages?: number;
     type: string;
