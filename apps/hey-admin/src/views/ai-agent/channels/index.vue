@@ -12,6 +12,8 @@ import { AiAgentChannelProviderTypeLabel, useAiAgentApi } from '#/api/ai-agent';
 import { useVbenVxeGrid } from '@abp/ui';
 import {
   Button,
+  Card,
+  Checkbox,
   Input,
   InputNumber,
   Modal,
@@ -20,7 +22,7 @@ import {
   Tag,
   message,
 } from 'ant-design-vue';
-import { reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 
 defineOptions({ name: 'AiAgentChannelManagement' });
 
@@ -286,6 +288,47 @@ function parseSizes(json: null | string | undefined): string[] {
     return [];
   }
 }
+
+// ---- 批量删除 ----
+const selectedModelIds = ref<string[]>([]);
+const allSelected = computed(
+  () =>
+    channelModels.value.length > 0 &&
+    channelModels.value.every((m) => selectedModelIds.value.includes(m.id)),
+);
+const someSelected = computed(
+  () => selectedModelIds.value.length > 0 && !allSelected.value,
+);
+
+function toggleSelect(id: string, checked: boolean) {
+  if (checked) {
+    if (!selectedModelIds.value.includes(id)) selectedModelIds.value.push(id);
+  } else {
+    selectedModelIds.value = selectedModelIds.value.filter((x) => x !== id);
+  }
+}
+
+function toggleSelectAll(checked: boolean) {
+  selectedModelIds.value = checked ? channelModels.value.map((m) => m.id) : [];
+}
+
+function batchDelete() {
+  Modal.confirm({
+    title: `删除选中的 ${selectedModelIds.value.length} 个模型？`,
+    content: '删除后不可恢复。',
+    okText: '删除',
+    okType: 'danger',
+    cancelText: '取消',
+    onOk: async () => {
+      for (const id of selectedModelIds.value) {
+        await deleteChannelModel(id);
+      }
+      selectedModelIds.value = [];
+      message.success('已删除');
+      await loadModels(currentChannel.value!.id);
+    },
+  });
+}
 </script>
 
 <template>
@@ -398,45 +441,74 @@ function parseSizes(json: null | string | undefined): string[] {
     <p v-else-if="!channelModels.length" class="muted">
       暂无模型 · 回列表点「刷新」自动获取
     </p>
-    <div v-else class="model-grid">
-      <article
-        v-for="m in channelModels"
-        :key="m.id"
-        class="model-card"
-        :class="{ dim: !m.enabled }"
-      >
-        <header class="mc-head">
-          <div class="mc-meta">
-            <span class="mc-name">{{ m.modelName }}</span>
-            <span v-if="m.displayName" class="mc-alias">{{ m.displayName }}</span>
+    <template v-else>
+      <div class="model-toolbar">
+        <Checkbox
+          :checked="allSelected"
+          :indeterminate="someSelected"
+          @change="(e) => toggleSelectAll(e.target.checked)"
+        >
+          全选
+        </Checkbox>
+        <span v-if="selectedModelIds.length" class="muted">
+          已选 {{ selectedModelIds.length }}
+        </span>
+        <Button
+          danger
+          size="small"
+          :disabled="!selectedModelIds.length"
+          @click="batchDelete"
+        >
+          批量删除
+        </Button>
+      </div>
+      <div class="model-grid">
+        <Card
+          v-for="m in channelModels"
+          :key="m.id"
+          size="small"
+          class="model-card"
+          :class="{ dim: !m.enabled }"
+        >
+          <template #title>
+            <div class="mc-title">
+              <Checkbox
+                :checked="selectedModelIds.includes(m.id)"
+                @change="(e) => toggleSelect(m.id, e.target.checked)"
+              />
+              <span class="mc-name">{{ m.modelName }}</span>
+            </div>
+          </template>
+          <template #extra>
+            <Switch
+              v-model:checked="m.enabled"
+              size="small"
+              @change="(c) => toggleModelEnabled(m, c as boolean)"
+            />
+          </template>
+          <div v-if="m.displayName" class="mc-alias">{{ m.displayName }}</div>
+          <div v-if="parseSizes(m.supportedSizes).length" class="mc-sizes">
+            <span
+              v-for="s in parseSizes(m.supportedSizes)"
+              :key="s"
+              class="mc-size"
+            >
+              {{ s }}
+            </span>
           </div>
-          <Switch
-            v-model:checked="m.enabled"
-            size="small"
-            @change="(c) => toggleModelEnabled(m, c as boolean)"
-          />
-        </header>
-        <div v-if="parseSizes(m.supportedSizes).length" class="mc-sizes">
-          <span
-            v-for="s in parseSizes(m.supportedSizes)"
-            :key="s"
-            class="mc-size"
-          >
-            {{ s }}
-          </span>
-        </div>
-        <footer class="mc-foot">
-          <span class="mc-price">
-            {{ m.pricePerImage > 0 ? `${m.pricePerImage} 元/次` : '免费' }}
-          </span>
-          <span class="mc-priority">P{{ m.priority }}</span>
-          <span class="mc-actions">
-            <Button size="small" type="link" @click="openModelEdit(m)">编辑</Button>
-            <Button danger size="small" type="link" @click="removeModel(m)">删除</Button>
-          </span>
-        </footer>
-      </article>
-    </div>
+          <div class="mc-foot">
+            <span class="mc-price">
+              {{ m.pricePerImage > 0 ? `${m.pricePerImage} 元/次` : '免费' }}
+            </span>
+            <span class="mc-priority">P{{ m.priority }}</span>
+            <span class="mc-actions">
+              <Button size="small" type="link" @click="openModelEdit(m)">编辑</Button>
+              <Button danger size="small" type="link" @click="removeModel(m)">删除</Button>
+            </span>
+          </div>
+        </Card>
+      </div>
+    </template>
   </Modal>
 
   <Modal
@@ -538,44 +610,29 @@ function parseSizes(json: null | string | undefined): string[] {
   color: var(--vben-text-color-2, #666);
 }
 
+.model-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
 .model-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   gap: 12px;
   max-height: 420px;
   overflow-y: auto;
-}
-
-.model-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px 14px;
-  background: var(--vben-bg-color, #fff);
-  border: 1px solid var(--vben-border-color, #eee);
-  border-radius: 10px;
-  transition: border-color 0.2s ease;
-}
-
-.model-card:hover {
-  border-color: var(--vben-primary-color, #1677ff);
 }
 
 .model-card.dim {
   opacity: 0.55;
 }
 
-.mc-head {
+.mc-title {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.mc-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -589,22 +646,24 @@ function parseSizes(json: null | string | undefined): string[] {
 }
 
 .mc-alias {
+  margin-bottom: 8px;
   font-size: 12px;
-  color: var(--vben-text-color-2, #666);
+  color: var(--ant-color-text-secondary, #999);
 }
 
 .mc-sizes {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+  margin-bottom: 8px;
 }
 
 .mc-size {
   padding: 1px 7px;
   font-size: 10px;
   font-weight: 600;
-  color: var(--vben-primary-color, #1677ff);
-  background: color-mix(in srgb, var(--vben-primary-color, #1677ff) 10%, transparent);
+  color: var(--ant-color-primary, #1677ff);
+  background: color-mix(in srgb, var(--ant-color-primary, #1677ff) 12%, transparent);
   border-radius: 999px;
 }
 
@@ -614,16 +673,16 @@ function parseSizes(json: null | string | undefined): string[] {
   gap: 10px;
   padding-top: 6px;
   font-size: 12px;
-  border-top: 1px dashed var(--vben-border-color, #eee);
+  border-top: 1px dashed var(--ant-color-border, #d9d9d9);
 }
 
 .mc-price {
   font-weight: 600;
-  color: var(--vben-primary-color, #1677ff);
+  color: var(--ant-color-primary, #1677ff);
 }
 
 .mc-priority {
-  color: var(--vben-text-color-3, #999);
+  color: var(--ant-color-text-tertiary, #999);
 }
 
 .mc-actions {
@@ -631,7 +690,7 @@ function parseSizes(json: null | string | undefined): string[] {
 }
 
 .muted {
-  color: var(--vben-text-color-2, #666);
+  color: var(--ant-color-text-secondary, #999);
 }
 
 .json-area {
