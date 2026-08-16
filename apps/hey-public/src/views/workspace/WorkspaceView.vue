@@ -1241,7 +1241,7 @@ onMounted(async () => {
 .composer-box {
   position: relative;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
   background: var(--color-surface);
   border: 1.5px solid var(--sh, var(--color-border));
   border-radius: 14px;
@@ -1267,6 +1267,7 @@ onMounted(async () => {
   font-weight: 600;
   color: #fff;
   letter-spacing: 0.02em;
+  border-radius: 12px 12px 0 0;
 }
 
 .skill-indicator > span:first-child::before {
