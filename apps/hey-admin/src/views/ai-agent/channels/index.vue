@@ -26,6 +26,7 @@ const {
   createChannel,
   deleteChannel,
   getChannels,
+  probeChannels,
   setChannelEnabled,
   updateChannel,
 } = useAiAgentApi();
@@ -85,7 +86,7 @@ const form = reactive<CreateUpdateAiAgentChannelDto>({
   enabled: true,
   priority: 100,
   weight: 1,
-  timeoutSeconds: 120,
+  timeoutSeconds: 300,
   description: '',
 });
 
@@ -100,7 +101,7 @@ function onCreate() {
     enabled: true,
     priority: 100,
     weight: 1,
-    timeoutSeconds: 120,
+    timeoutSeconds: 300,
     description: '',
   });
   modalOpen.value = true;
@@ -163,6 +164,32 @@ async function onToggleEnabled(row: AiAgentChannelDto, checked: boolean) {
   await setChannelEnabled(row.id, checked);
   message.success(checked ? '已启用' : '已停用');
 }
+
+// ---- 能力探测：填 baseUrl + apiKey 后自动获取模型 ----
+const probing = ref(false);
+async function onProbe() {
+  if (!form.baseUrl?.trim() || !form.apiKey?.trim()) {
+    message.warning('请先填写 BaseUrl 和 ApiKey');
+    return;
+  }
+  probing.value = true;
+  try {
+    const res = await probeChannels({
+      providerType: form.providerType,
+      baseUrl: form.baseUrl,
+      apiKey: form.apiKey,
+    });
+    const models = res.items ?? [];
+    if (models.length === 0) {
+      message.warning('未获取到模型，请检查 BaseUrl / ApiKey');
+      return;
+    }
+    form.model = models[0]?.modelName ?? form.model;
+    message.success(`已获取 ${models.length} 个模型，已选第一个`);
+  } finally {
+    probing.value = false;
+  }
+}
 </script>
 
 <template>
@@ -215,6 +242,7 @@ async function onToggleEnabled(row: AiAgentChannelDto, checked: boolean) {
       <div class="form-row">
         <label>模型</label>
         <Input v-model:value="form.model" placeholder="如：qwen-image / wan2.1-t2i-turbo" />
+        <Button :loading="probing" @click="onProbe">自动获取</Button>
       </div>
       <div class="form-row">
         <label>BaseUrl</label>

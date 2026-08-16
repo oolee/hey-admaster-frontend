@@ -107,6 +107,18 @@ export interface CreateUpdateAiAgentChannelDto {
   description: string;
 }
 
+export interface ProbedModelDto {
+  modelName: string;
+  displayName?: null | string;
+  supportedSizes?: null | string;
+}
+
+export interface ProbeAiAgentChannelInput {
+  providerType: number;
+  baseUrl: string;
+  apiKey: string;
+}
+
 // ---------- API ----------
 
 export function useAiAgentApi() {
@@ -153,6 +165,12 @@ export function useAiAgentApi() {
       method: 'PUT',
     });
 
+  const probeChannels = (input: ProbeAiAgentChannelInput) =>
+    request<ListResultDto<ProbedModelDto>>(`${BASE_URL}/channels/probe`, {
+      method: 'POST',
+      data: input,
+    });
+
   return {
     getCapabilities,
     getModelBridges,
@@ -162,5 +180,6 @@ export function useAiAgentApi() {
     updateChannel,
     deleteChannel,
     setChannelEnabled,
+    probeChannels,
   };
 }
