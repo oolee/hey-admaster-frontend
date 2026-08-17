@@ -2,6 +2,7 @@
 import type { VxeComponentStyleType } from 'vxe-table';
 
 import { h, ref, useTemplateRef, watch } from 'vue';
+// @ts-expect-error vue-simple-uploader 无类型声明
 import uploader from 'vue-simple-uploader';
 import 'vue-simple-uploader/dist/style.css';
 

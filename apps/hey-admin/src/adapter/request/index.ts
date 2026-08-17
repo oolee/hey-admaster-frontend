@@ -9,9 +9,17 @@ import { useOAuthError } from '@abp/account';
 import { useAbpStore } from '@abp/core';
 import { requestClient, useWrapperResult } from '@abp/request';
 import { message } from 'ant-design-vue';
-import Cookies from 'universal-cookie';
 
 import { useAuthStore } from '#/store';
+
+/** 读取浏览器 cookie（替代 universal-cookie 依赖） */
+function readCookie(name: string): string | undefined {
+  const match = document.cookie.match(
+    new RegExp(`(?:^|;\\s*)${name}=([^;]*)`),
+  );
+  const value = match?.[1];
+  return value ? decodeURIComponent(value) : undefined;
+}
 
 export function initRequestClient() {
   /**
@@ -73,11 +81,7 @@ export function initRequestClient() {
       }
       // 从 cookie 实时读取 xsrfToken，避免持久化的旧 token 导致
       // "The provided antiforgery token was meant for a different claims-based user" 错误
-      const cookies = new Cookies(null, {
-        domain: window.location.host,
-        path: '/',
-      });
-      const xsrfToken = cookies.get('XSRF-TOKEN');
+      const xsrfToken = readCookie('XSRF-TOKEN');
       if (xsrfToken) {
         config.headers.RequestVerificationToken = xsrfToken;
       }

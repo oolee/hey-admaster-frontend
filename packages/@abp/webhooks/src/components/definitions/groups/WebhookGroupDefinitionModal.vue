@@ -4,7 +4,7 @@ import type { FormInstance } from 'ant-design-vue';
 
 import type { WebhookGroupDefinitionDto } from '../../../types/groups';
 
-import { defineEmits, defineOptions, ref, toValue, useTemplateRef } from 'vue';
+import { ref, toValue, useTemplateRef } from 'vue';
 
 import { useVbenModal } from '@vben/common-ui';
 import { $t } from '@vben/locales';

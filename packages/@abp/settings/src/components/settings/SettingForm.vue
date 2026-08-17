@@ -44,7 +44,6 @@ const emits = defineEmits<{
 const FormItem = Form.Item;
 const TabPane = Tabs.TabPane;
 const CollapsePanel = Collapse.Panel;
-const SelectOption = Select.Option;
 
 const defaultModel: SettingsUpdateInput = {
   settings: [],

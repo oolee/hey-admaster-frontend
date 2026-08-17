@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { VxeGridProps, VxeGridPropTypes } from '@abp/ui';
 
-import type { AiOrderDto, AiOrderStatus } from '#/api/ai-design';
+import type { AiOrderDto } from '#/api/ai-design';
+
 
 import { reactive, ref } from 'vue';
 
@@ -10,6 +11,7 @@ import { Descriptions, message, Modal, Select } from 'ant-design-vue';
 
 import {
   AiOrderPaymentStatusLabels,
+  AiOrderStatus,
   AiOrderStatusLabels,
   useAiDesignApi,
 } from '#/api/ai-design';
@@ -215,7 +217,7 @@ function canStartProduction(row: AiOrderDto): boolean {
             ]"
             placeholder="流转状态"
             @change="
-              updateStatus.value = $event;
+              updateStatus.value = $event as AiOrderStatus;
               onStatusChange(row);
             "
           />

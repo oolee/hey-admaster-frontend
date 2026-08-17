@@ -47,7 +47,7 @@ const abpStore = useAbpStore();
 const { Lr } = useLocalization();
 const { hasAccessByCodes } = useAccess();
 const { deserialize } = useLocalizationSerializer();
-const { getListApi: getResourcesApi } = useResourcesApi();
+const { getPagedListApi: getResourcesApi } = useResourcesApi();
 const { cancel, createApi, getApi, getListApi, updateApi } =
   useTemplateDefinitionsApi();
 

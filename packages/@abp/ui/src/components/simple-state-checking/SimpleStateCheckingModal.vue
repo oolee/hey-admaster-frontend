@@ -31,6 +31,7 @@ const [Form, formApi] = useVbenForm({
     },
     {
       component: 'Empty',
+      // @ts-expect-error vben 当前版本未声明 disabledOnChangeListener
       disabledOnChangeListener: false,
       fieldName: 'value',
       label: '',
@@ -118,7 +119,7 @@ function onChange(value: string) {
     case 'F': {
       formApi.updateSchema([
         {
-          component: 'FeatureStateCheck',
+          component: 'FeatureStateCheck' as any,
           fieldName: 'value',
           label: $t(
             'component.simple_state_checking.requireFeatures.featureNames',
@@ -143,7 +144,7 @@ function onChange(value: string) {
     case 'G': {
       formApi.updateSchema([
         {
-          component: 'GlobalFeatureStateCheck',
+          component: 'GlobalFeatureStateCheck' as any,
           fieldName: 'value',
           label: $t(
             'component.simple_state_checking.requireFeatures.featureNames',
@@ -168,7 +169,7 @@ function onChange(value: string) {
     case 'P': {
       formApi.updateSchema([
         {
-          component: 'PermissionStateCheck',
+          component: 'PermissionStateCheck' as any,
           fieldName: 'value',
           label: $t(
             'component.simple_state_checking.requirePermissions.permissions',

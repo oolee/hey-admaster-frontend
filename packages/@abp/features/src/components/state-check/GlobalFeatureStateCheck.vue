@@ -6,14 +6,13 @@ import { Checkbox, FormItemRest, Select } from 'ant-design-vue';
 
 const emits = defineEmits(['blur', 'change']);
 
-const modelValue = defineModel<{
+interface GlobalFeatureCheckModel {
   globalFeatureNames: string[];
   requiresAll: boolean;
-}>({
-  default: {
-    globalFeatureNames: [],
-    requiresAll: false,
-  },
+}
+
+const modelValue = defineModel<GlobalFeatureCheckModel>({
+  default: (): GlobalFeatureCheckModel => ({ globalFeatureNames: [], requiresAll: false }),
 });
 
 const abpStore = useAbpStore();

@@ -8,7 +8,7 @@ import type {
   WebhookSubscriptionDto,
 } from '../../types';
 
-import { defineEmits, defineOptions, ref, toValue, useTemplateRef } from 'vue';
+import { ref, toValue, useTemplateRef } from 'vue';
 
 import { useAccess } from '@vben/access';
 import { useVbenModal } from '@vben/common-ui';
@@ -48,8 +48,6 @@ const TabPane = Tabs.TabPane;
 
 const defaultModel: WebhookSubscriptionDto = {
   creationTime: new Date(),
-  displayName: '',
-  extraProperties: {},
   id: '',
   isActive: true,
   isStatic: false,

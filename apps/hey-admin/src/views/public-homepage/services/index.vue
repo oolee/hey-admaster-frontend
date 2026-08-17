@@ -120,7 +120,7 @@ async function onToggleActive(record: ServiceItemAdminDto, checked: boolean) {
         :checked="row.isActive"
         :disabled="!canEdit"
         size="small"
-        @change="(checked: boolean) => onToggleActive(row, checked)"
+        @change="(checked: any) => onToggleActive(row, checked === true)"
       />
     </template>
     <template #action="{ row }">

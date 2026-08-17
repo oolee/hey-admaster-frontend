@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { defineEmits, defineOptions } from 'vue';
 
 import { useVbenForm, useVbenModal } from '@vben/common-ui';
 import { $t } from '@vben/locales';

@@ -25,6 +25,12 @@ interface DeleteTextInput {
   resourceName: string;
 }
 
+interface RestoreDefaultTextInput {
+  cultureName: string;
+  key: string;
+  resourceName: string;
+}
+
 interface TextDifferenceDto {
   cultureName: string;
   key: string;

@@ -6,7 +6,7 @@ import { ref } from 'vue';
 import { useVbenModal } from '@vben/common-ui';
 import { $t } from '@vben/locales';
 
-import { isEmail, useAbpStore } from '@abp/core';
+import { isEmail } from '@abp/core';
 import { FeatureModal } from '@abp/features';
 import { Button, Form, InputSearch, message, Modal } from 'ant-design-vue';
 

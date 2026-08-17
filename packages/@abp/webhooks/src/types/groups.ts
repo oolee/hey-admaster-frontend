@@ -1,9 +1,12 @@
 import type { IHasConcurrencyStamp, IHasExtraProperties } from '@abp/core';
+import type { WebhookDefinitionDto } from './definitions';
 
 interface WebhookGroupDefinitionDto extends IHasExtraProperties {
   displayName: string;
   isStatic: boolean;
   name: string;
+  /** 子网格数据（表格树形展开用） */
+  items?: WebhookDefinitionDto[];
 }
 
 interface WebhookGroupDefinitionCreateOrUpdateDto extends IHasExtraProperties {

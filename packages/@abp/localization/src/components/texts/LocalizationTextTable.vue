@@ -19,7 +19,7 @@ import {
   PlusOutlined,
 } from '@ant-design/icons-vue';
 import { useDebounceFn } from '@vueuse/core';
-import { Button, Select } from 'ant-design-vue';
+import { Button, Modal, Select } from 'ant-design-vue';
 
 import { useLanguagesApi } from '../../api/useLanguagesApi';
 import { useLocalizationsApi } from '../../api/useLocalizationsApi';
@@ -195,7 +195,7 @@ const [LocalizationTextModal, modalApi] = useVbenModal({
 });
 
 const onSearchLanguages = useDebounceFn((filter?: string) => {
-  getLanguagesApi({ filter, maxResultCount: 100 }).then((res) => {
+  getLanguagesApi({ filter, maxResultCount: 100 } as any).then((res) => {
     languages.value = res.items;
   });
 }, 200);

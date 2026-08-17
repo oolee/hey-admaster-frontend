@@ -47,8 +47,8 @@ const formModel = ref<TextDto>({ ...defaultModel });
 const resources = ref<ResourceDto[]>([]);
 const languages = ref<LanguageDto[]>([]);
 
-const { getListApi: getLanguagesApi } = useLanguagesApi();
-const { getListApi: getResourcesApi } = useResourcesApi();
+const { getPagedListApi: getLanguagesApi } = useLanguagesApi();
+const { getPagedListApi: getResourcesApi } = useResourcesApi();
 const { cancel, getApi, setApi } = useTextsApi();
 
 const [Modal, modalApi] = useVbenModal({

@@ -125,7 +125,7 @@ const [Grid, gridApi] = useVbenVxeGrid({
 async function onGet(input?: Record<string, string>) {
   try {
     gridApi.setLoading(true);
-    const { items } = await getListApi(input);
+    const { items } = await getPagedListApi(input);
     dataSource.value = items;
     setTimeout(() => gridApi.reload(), 100);
   } finally {

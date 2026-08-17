@@ -32,14 +32,13 @@ const { Lr } = useLocalization();
 
 const permissions = ref<PermissionDefinitionDto[]>([]);
 const permissionGroups = ref<PermissionGroupDefinitionDto[]>([]);
-const modelValue = defineModel<{
+interface PermissionCheckModel {
   permissions: string[];
   requiresAll: boolean;
-}>({
-  default: {
-    permissions: [],
-    requiresAll: false,
-  },
+}
+
+const modelValue = defineModel<PermissionCheckModel>({
+  default: (): PermissionCheckModel => ({ permissions: [], requiresAll: false }),
 });
 const getPermissionOptions = computed(() => {
   const permissionOptions: TreeData[] = [];

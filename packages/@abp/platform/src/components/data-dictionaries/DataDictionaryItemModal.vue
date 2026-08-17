@@ -211,7 +211,7 @@ function onValueTypeChange(valueType: ValueType) {
   }
   formApi.updateSchema([
     {
-      component,
+      component: component as never,
       componentProps,
       dependencies: {
         rules(values) {

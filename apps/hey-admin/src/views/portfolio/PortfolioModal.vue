@@ -9,7 +9,7 @@ import { h, ref } from 'vue';
 
 import { useVbenForm, useVbenModal } from '@vben/common-ui';
 
-import { Button, message, Modal, Upload } from 'ant-design-vue';
+import { Button, message, Modal as AntModal, Upload } from 'ant-design-vue';
 
 import {
   getBlobImageUrl,
@@ -149,7 +149,7 @@ const galleryUploading = ref(false);
 
 function previewImage(url: string) {
   if (!url) return;
-  Modal.info({
+  AntModal.info({
     centered: true,
     title: '图片预览',
     content: h('img', { src: url, style: 'width: 100%; border-radius: 6px' }),
@@ -193,7 +193,7 @@ async function onUploadGallery(file: File) {
 }
 
 function onDeleteGalleryImage(image: PortfolioImageDto) {
-  Modal.confirm({
+  AntModal.confirm({
     centered: true,
     content: '确认删除这张配图吗？删除后无法恢复。',
     onOk: async () => {

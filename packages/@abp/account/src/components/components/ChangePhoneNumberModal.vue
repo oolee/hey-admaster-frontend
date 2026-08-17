@@ -49,7 +49,8 @@ const [Modal, modalApi] = useVbenModal({
 async function onSendCode() {
   const result = await formApi.validateField('newPhoneNumber');
   if (!result.valid) {
-    throw new Error(result.errors.join('\n'));
+    const errors = Array.isArray(result.errors) ? result.errors : [];
+    throw new Error(errors.join('\n'));
   }
   const input = await formApi.getValues();
   await sendChangePhoneNumberCodeApi({

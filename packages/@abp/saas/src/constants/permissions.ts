@@ -25,4 +25,6 @@ export const TenantsPermissions = {
   ManageFeatures: 'AbpSaas.Tenants.ManageFeatures',
   /** 更新 */
   Update: 'AbpSaas.Tenants.Update',
+  /** 模拟登录 */
+  Impersonation: 'AbpSaas.Tenants.Impersonation',
 };

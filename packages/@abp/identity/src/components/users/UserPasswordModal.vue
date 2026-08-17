@@ -33,7 +33,7 @@ const [Form, formApi] = useVbenForm({
   schema: [
     {
       component: 'InputSearch',
-      componentProps: (_, actions) => {
+      componentProps: (_: unknown, actions: any) => {
         return {
           allowClear: false,
           enterButton: h(

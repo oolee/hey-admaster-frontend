@@ -35,14 +35,13 @@ const { Lr } = useLocalization();
 
 const features = ref<FeatureDefinitionDto[]>([]);
 const featureGroups = ref<FeatureGroupDefinitionDto[]>([]);
-const modelValue = defineModel<{
+interface FeatureCheckModel {
   featureNames: string[];
   requiresAll: boolean;
-}>({
-  default: {
-    featureNames: [],
-    requiresAll: false,
-  },
+}
+
+const modelValue = defineModel<FeatureCheckModel>({
+  default: (): FeatureCheckModel => ({ featureNames: [], requiresAll: false }),
 });
 
 const getFeatureOptions = computed(() => {

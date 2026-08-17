@@ -41,7 +41,8 @@ async function initSetupVbenForm() {
   });
 }
 
-const useVbenForm = useForm<ComponentType, ComponentPropsMap>;
+// vben 5 的 useForm 泛型首参约束为 FormValues；调用点自行推断组件类型
+const useVbenForm = useForm;
 
 export { initSetupVbenForm, useVbenForm, z };
 
