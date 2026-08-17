@@ -251,6 +251,51 @@ export interface WorkflowRunResult {
   context?: Record<string, unknown>;
 }
 
+/**
+ * SSE 流式单能力执行（§10 阶段 2 真渐进式）：逐帧产出管线事件。
+ * 事件 type 为枚举名字符串（IntentResolved/ModelSelected/…/Completed）；Completed 的 data = CanonicalResult。
+ */
+export async function* streamRunAgent(
+  input: AgentRunInput,
+): AsyncGenerator<AgentEvent> {
+  const token = localStorage.getItem('hey19-v2-token') || '';
+  const res = await fetch('/api/ai-agent/run/stream-single', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok || !res.body) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let idx = buffer.indexOf('\n\n');
+    while (idx >= 0) {
+      const frame = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 2);
+      const line = frame
+        .split('\n')
+        .find((l) => l.startsWith('data:'));
+      if (line) {
+        try {
+          yield JSON.parse(line.slice(5).trim()) as AgentEvent;
+        } catch {
+          /* 忽略坏帧 */
+        }
+      }
+      idx = buffer.indexOf('\n\n');
+    }
+  }
+}
+
 /** 运行工作流（命名模板或内联 DAG）；checkpoint 返回续跑令牌（§12 R1） */
 export function runWorkflow(input: {
   workflowId?: string;

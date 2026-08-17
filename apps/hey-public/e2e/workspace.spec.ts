@@ -96,29 +96,34 @@ test.describe('AI 工作台', () => {
         ),
       });
     });
-    // 拦截 runAgent，返回图像产物（快速且确定）
-    await page.route('**/api/ai-agent/run', async (route) => {
+    // 拦截 stream-single（SSE 帧流），返回图像产物（快速且确定）
+    await page.route('**/api/ai-agent/run/stream-single', async (route) => {
+      const frames = [
+        { type: 'IntentResolved', data: { capabilityId: 'image-gen.v1' } },
+        { type: 'ModelSelected', data: 'e2e-image-bridge' },
+        {
+          type: 'Completed',
+          data: {
+            status: 0,
+            artifacts: [
+              {
+                kind: 1,
+                uri: '/ai-agent-images/e2e-fake.png',
+                previewUri: '/ai-agent-images/e2e-fake.webp',
+                contentType: 'image/png',
+              },
+            ],
+            usage: null,
+          },
+        },
+      ];
+      const body = frames
+        .map((f) => `data: ${JSON.stringify(f)}\n\n`)
+        .join('');
       await route.fulfill({
         status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          code: '0',
-          result: {
-            result: {
-              status: 0,
-              artifacts: [
-                {
-                  kind: 1,
-                  uri: '/ai-agent-images/e2e-fake.png',
-                  previewUri: '/ai-agent-images/e2e-fake.webp',
-                  contentType: 'image/png',
-                },
-              ],
-              usage: null,
-            },
-            events: [],
-          },
-        }),
+        contentType: 'text/event-stream',
+        body,
       });
     });
 

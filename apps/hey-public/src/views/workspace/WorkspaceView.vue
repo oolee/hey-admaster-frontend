@@ -11,11 +11,13 @@ import {
   createConversation,
   fetchConversations,
 } from '@/api';
+import type { CanonicalResult } from '@/api/agent';
+
 import {
   AgentArtifactKind,
   AgentErrorCodeLabel,
   AgentResultStatus,
-  runAgent,
+  streamRunAgent,
 } from '@/api/agent';
 import ArtCanvas from '@/components/ui/ArtCanvas.vue';
 import ThemeToggle from '@/components/ui/ThemeToggle.vue';
@@ -393,21 +395,37 @@ async function send() {
   scrollBottom();
 
   try {
-    // 真实后端：POST /api/ai-agent/run（阶段 0 同步返回；SSE 流式阶段 2）
+    // 真实后端：SSE 流式执行（§10 阶段 2 真渐进式；Completed 事件携带最终 CanonicalResult）
     // 只有用户显式选了技能（taskType 命中后端能力 id）才传 capabilityId，否则交给后端斜杠/关键词识别
     const capabilityId = agent.skills.some((s) => s.id === store.taskType)
       ? store.taskType
       : undefined;
-    const run = await runAgent({
+
+    let result: CanonicalResult | undefined;
+    let modelName = 'Auto';
+    for await (const ev of streamRunAgent({
       message: finalPrompt,
       capabilityId,
       history: [],
       resourceRefs: refUrls,
       params: {},
       idempotencyKey: `u${Date.now()}`,
-    });
+    })) {
+      // 渐进式 UI：模型名一到就显示（§8 事后透明）
+      if (ev.type === 'ModelSelected' && typeof ev.data === 'string') {
+        modelName = ev.data;
+        store.updateLastMessage(targetConvId, { model: modelName });
+      }
+      if (ev.type === 'Completed' && ev.data) {
+        result = ev.data as CanonicalResult;
+      }
+      if (ev.type === 'failed') {
+        throw new Error(
+          typeof ev.message === 'string' ? ev.message : '生成失败',
+        );
+      }
+    }
 
-    const result = run.result;
     if (!result || result.status !== AgentResultStatus.Succeeded) {
       const code = result?.errorCode;
       throw new Error(
@@ -437,10 +455,6 @@ async function send() {
       store.updateLastMessage(targetConvId, { content: textArtifact.text });
     }
 
-    // 模型名：ModelSelected 事件（后端枚举序列化为数值 1）里的桥 id；未知则 Auto（§8 事后透明）
-    const modelEvent = run.events?.find((ev) => Number(ev.type) === 1);
-    const modelName =
-      typeof modelEvent?.data === 'string' ? modelEvent.data : 'Auto';
     store.updateLastMessage(targetConvId, {
       streaming: false,
       cost: result.usage?.chargedAmount ?? 0,
