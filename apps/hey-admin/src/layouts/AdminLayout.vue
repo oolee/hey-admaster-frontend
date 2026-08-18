@@ -79,6 +79,23 @@ const groups = [
     label: '系统',
     items: [{ path: '/settings', label: '系统设置', icon: Settings }],
   },
+  {
+    label: '演示',
+    items: [
+      { path: '/demo/dashboard', label: '看板(备份)', icon: LayoutDashboard },
+      { path: '/demo/users', label: '用户(备份)', icon: Users },
+      { path: '/demo/orders', label: '订单(备份)', icon: ShoppingCart },
+      { path: '/demo/credits', label: '积分(备份)', icon: Coins },
+      { path: '/demo/models', label: '模型(备份)', icon: Cpu },
+      { path: '/demo/skills', label: '技能(备份)', icon: Sparkles },
+      { path: '/demo/usage', label: '用量(备份)', icon: BarChart3 },
+      { path: '/demo/records', label: '记录(备份)', icon: History },
+      { path: '/demo/cases', label: '案例(备份)', icon: FolderOpen },
+      { path: '/demo/templates', label: '模板(备份)', icon: LayoutGrid },
+      { path: '/demo/audit', label: '审核(备份)', icon: ShieldCheck },
+      { path: '/demo/settings', label: '设置(备份)', icon: Settings },
+    ],
+  },
 ];
 
 const currentTitle = computed(() => route.meta.title || '后台管理');
@@ -219,45 +236,13 @@ function logout() {
 
 <style scoped>
 .al-shell {
-  /* AdminDemo 自包含设计令牌（warm 亮色），避免依赖宿主主题变量 */
-  --color-bg: #faf6ee;
-  --color-bg-deep: #fdfbf7;
-  --color-surface: #fff;
-  --color-surface-2: #f3ecdf;
-  --color-surface-3: #e5dac6;
-  --color-border: rgb(31 42 38 / 10%);
-  --color-border-strong: rgb(31 42 38 / 22%);
-  --color-text-1: #0f2e2c;
-  --color-text-2: #4d5f59;
-  --color-text-3: #8a9992;
-  --color-text-inverse: #fdfbf7;
-  --color-accent: #ff6b35;
-  --color-accent-hover: #e85320;
-  --color-accent-soft: #fff3ee;
-  --color-ai: #7c5cff;
-  --color-ai-soft: rgb(124 92 255 / 10%);
-  --color-success: #2e9e5b;
-  --color-warning: #f5a623;
-  --color-error: #d64545;
-  --color-info: #3d7bd9;
-  --shadow-lg: 0 20px 48px rgb(15 46 44 / 16%);
-  --shadow-accent: 0 8px 24px rgb(255 107 53 / 30%);
-  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  --dur-fast: 150ms;
-  --font-display:
-    'Space Grotesk', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
-  --text-xs: 0.75rem;
-  --text-sm: 0.875rem;
-  --text-base: 1rem;
-  --header-h: 72px;
-  --r-md: 0.75rem;
-  --r-full: 9999px;
-  --r-lg: 1.125rem;
-  --r-xl: 1.5rem;
-
+  /* 设计令牌统一由 tokens.css 的 [data-theme]×[data-mode] 驱动，
+     此处不再硬编码，主题与白天/夜晚切换才能生效 */
   display: flex;
   min-height: 100vh;
   background: var(--color-bg);
+  color: var(--color-text-1);
+  transition: background-color 0.4s ease, color 0.4s ease;
 }
 
 /* 侧边栏 */

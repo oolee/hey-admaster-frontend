@@ -79,6 +79,8 @@ function setTheme(id) {
 .icon-leave-to { opacity: 0; transform: rotate(90deg) scale(0.5); }
 
 .theme-picker { position: relative; flex-shrink: 0; }
+/* 桥接触发按钮与下拉菜单之间的 8px 空隙，避免鼠标从按钮移到菜单途中经过空白导致弹窗消失 */
+.theme-picker::after { content: ''; position: absolute; top: 100%; left: 0; right: 0; height: 10px; }
 .picker-trigger {
   display: inline-flex;
   align-items: center;
