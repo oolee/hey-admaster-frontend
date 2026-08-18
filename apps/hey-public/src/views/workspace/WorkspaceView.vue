@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { V2AppendArtifact } from '@/api';
+import type { CanonicalResult } from '@/api/agent';
 import type { ArtifactActionDef } from '@/skills/artifacts';
 import type { SkillId, SkillInfo } from '@/skills/registry';
 
@@ -11,8 +12,6 @@ import {
   createConversation,
   fetchConversations,
 } from '@/api';
-import type { CanonicalResult } from '@/api/agent';
-
 import {
   AgentArtifactKind,
   AgentErrorCodeLabel,
@@ -23,6 +22,7 @@ import ArtCanvas from '@/components/ui/ArtCanvas.vue';
 import ThemeToggle from '@/components/ui/ThemeToggle.vue';
 import ConversationList from '@/components/workspace/ConversationList.vue';
 import MessageBubble from '@/components/workspace/MessageBubble.vue';
+import SemanticParamBar from '@/components/workspace/SemanticParamBar.vue';
 import SkillPicker from '@/components/workspace/SkillPicker.vue';
 import TaskModelBar from '@/components/workspace/TaskModelBar.vue';
 import { useAgentStore } from '@/stores/agent';
@@ -51,6 +51,8 @@ const scrollBox = ref<HTMLElement | null>(null);
 const inputEl = ref<HTMLInputElement | null>(null);
 const prompt = ref('');
 const generating = ref(false);
+/** L1 语义参数（比例/张数/清晰度），元数据驱动，随 send() 填入 params（§8 / P0-3） */
+const semanticParams = ref<Record<string, unknown>>({});
 interface Attachment {
   id: string;
   url: string;
@@ -408,7 +410,7 @@ async function send() {
       capabilityId,
       history: [],
       resourceRefs: refUrls,
-      params: {},
+      params: semanticParams.value,
       idempotencyKey: `u${Date.now()}`,
     })) {
       // 渐进式 UI：模型名一到就显示（§8 事后透明）
@@ -969,6 +971,16 @@ onUnmounted(() =>
         <!-- 输入区：底部固定 -->
         <div class="composer">
           <div class="composer-inner">
+            <!-- L1 语义参数栏（仅图像类技能；元数据驱动，霓虹玻璃风） -->
+            <SemanticParamBar
+              v-if="
+                store.taskType === 'image-gen' ||
+                store.taskType === 'image-edit'
+              "
+              v-model="semanticParams"
+              :capability-id="store.taskType"
+            />
+
             <!-- 附件预览（多图 + 备注） -->
             <div v-if="attachments.length" class="attachments-row">
               <div v-for="a in attachments" :key="a.id" class="att-item">

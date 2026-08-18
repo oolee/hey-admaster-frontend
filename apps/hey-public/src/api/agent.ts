@@ -122,13 +122,25 @@ export interface AgentRunResult {
 
 export interface ParamSpec {
   key: string;
-  type: number;
+  type: number; // ParamType: String=0 Integer=1 Number=2 Boolean=3 Enum=4
   required: boolean;
   default?: unknown;
   options?: null | string[];
   userVisible: boolean;
   dependsOn?: null | string[];
   memory: 0 | 1; // Transient | Sticky
+  /** 展示名（参数栏标签，§6 只增字段）。 */
+  displayName?: null | string;
+  /** 枚举项展示文案（key → 文案）。 */
+  optionLabels?: null | Record<string, string>;
+  /** JSON 约束（min/max/combo 等，前端即时校验）。 */
+  constraints?: null | Record<string, unknown>;
+  /** 是否影响产出内容（UI 强调）。 */
+  affectsOutput?: boolean;
+  /** 是否影响计费（UI 价格联动，§16.2）。 */
+  affectsBilling?: boolean;
+  /** 展示层级：Basic=0 进参数栏主行，Advanced=1 仅高级区。 */
+  level?: number;
 }
 
 export const ArtifactActionTarget = {
@@ -222,7 +234,9 @@ async function unwrap<T>(
 
 /** 平台价规则（§16.2 事前透明，用户侧明码标价；不含渠道成本） */
 export function fetchPlatformPrices(): Promise<ListResult<PlatformPriceDto>> {
-  return unwrap<ListResult<PlatformPriceDto>>('/ai-agent/pricing-rules/platform');
+  return unwrap<ListResult<PlatformPriceDto>>(
+    '/ai-agent/pricing-rules/platform',
+  );
 }
 
 /* ---------- 工作流（§10 阶段 2 DAG） ---------- */
@@ -281,9 +295,7 @@ export async function* streamRunAgent(
     while (idx >= 0) {
       const frame = buffer.slice(0, idx);
       buffer = buffer.slice(idx + 2);
-      const line = frame
-        .split('\n')
-        .find((l) => l.startsWith('data:'));
+      const line = frame.split('\n').find((l) => l.startsWith('data:'));
       if (line) {
         try {
           yield JSON.parse(line.slice(5).trim()) as AgentEvent;
@@ -298,10 +310,10 @@ export async function* streamRunAgent(
 
 /** 运行工作流（命名模板或内联 DAG）；checkpoint 返回续跑令牌（§12 R1） */
 export function runWorkflow(input: {
-  workflowId?: string;
   definition?: WorkflowDefinitionInput;
-  prompt?: string;
   idempotencyKey?: string;
+  prompt?: string;
+  workflowId?: string;
 }): Promise<WorkflowRunResult> {
   return unwrap<WorkflowRunResult>('/ai-agent/workflows/run', {
     method: 'POST',
