@@ -12,6 +12,12 @@ const routes: RouteRecordRaw[] = [
     path: '/ai-agent',
     children: [
       {
+        meta: { title: '模型管理' },
+        name: 'AiAgentModels',
+        path: '/ai-agent/models',
+        component: () => import('#/views/ai-agent/models/index.vue'),
+      },
+      {
         meta: { title: '能力清单' },
         name: 'AiAgentCapabilities',
         path: '/ai-agent/capabilities',
@@ -28,12 +34,6 @@ const routes: RouteRecordRaw[] = [
         name: 'AiAgentPlugins',
         path: '/ai-agent/plugins',
         component: () => import('#/views/ai-agent/plugins/index.vue'),
-      },
-      {
-        meta: { title: '渠道管理' },
-        name: 'AiAgentChannels',
-        path: '/ai-agent/channels',
-        component: () => import('#/views/ai-agent/channels/index.vue'),
       },
       {
         meta: { title: '计价规则' },

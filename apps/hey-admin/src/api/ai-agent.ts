@@ -253,6 +253,49 @@ export function useAiAgentApi() {
       { method: 'PUT' },
     );
 
+  // ---------- 模型管理 v2 §5.3 Provider/Model ----------
+
+  const getProviders = () =>
+    request<ListResultDto<ProviderDto>>(`${BASE_URL}/providers`, { method: 'GET' });
+
+  const getProvider = (id: string) =>
+    request<ProviderDto>(`${BASE_URL}/providers/${id}`, { method: 'GET' });
+
+  const createBuiltinProvider = (input: CreateBuiltinProviderDto) =>
+    request<ProviderDto>(`${BASE_URL}/providers/builtin`, { method: 'POST', data: input });
+
+  const createCustomProvider = (input: CreateCustomProviderDto) =>
+    request<ProviderDto>(`${BASE_URL}/providers/custom`, { method: 'POST', data: input });
+
+  const updateProvider = (id: string, input: UpdateProviderDto) =>
+    request<ProviderDto>(`${BASE_URL}/providers/${id}`, { method: 'PUT', data: input });
+
+  const setProviderEnabled = (id: string, enabled: boolean) =>
+    request<ProviderDto>(`${BASE_URL}/providers/${id}/enabled/${enabled}`, { method: 'PUT' });
+
+  const deleteProvider = (id: string) =>
+    request<void>(`${BASE_URL}/providers/${id}`, { method: 'DELETE' });
+
+  const getAvailableBuiltinProviders = () =>
+    request<ListResultDto<BuiltinProviderDto>>(`${BASE_URL}/providers/builtin-available`, {
+      method: 'GET',
+    });
+
+  const getProviderModels = (providerId: string) =>
+    request<ListResultDto<ModelDto>>(`${BASE_URL}/providers/${providerId}/models`, { method: 'GET' });
+
+  const addProviderModel = (providerId: string, input: CreateModelInputDto) =>
+    request<ModelDto>(`${BASE_URL}/providers/${providerId}/models`, { method: 'POST', data: input });
+
+  const updateProviderModel = (providerId: string, modelId: string, input: UpdateModelDto) =>
+    request<ModelDto>(`${BASE_URL}/providers/${providerId}/models/${modelId}`, { method: 'PUT', data: input });
+
+  const setProviderModelEnabled = (providerId: string, modelId: string, enabled: boolean) =>
+    request<ModelDto>(`${BASE_URL}/providers/${providerId}/models/${modelId}/enabled/${enabled}`, { method: 'PUT' });
+
+  const deleteProviderModel = (providerId: string, modelId: string) =>
+    request<void>(`${BASE_URL}/providers/${providerId}/models/${modelId}`, { method: 'DELETE' });
+
   return {
     getCapabilities,
     getModelBridges,
@@ -270,5 +313,116 @@ export function useAiAgentApi() {
     updateChannelModel,
     deleteChannelModel,
     setChannelModelEnabled,
+
+    // 模型管理
+    getProviders,
+    getProvider,
+    createBuiltinProvider,
+    createCustomProvider,
+    updateProvider,
+    setProviderEnabled,
+    deleteProvider,
+    getAvailableBuiltinProviders,
+    getProviderModels,
+    addProviderModel,
+    updateProviderModel,
+    setProviderModelEnabled,
+    deleteProviderModel,
   };
+}
+
+export interface ProviderDto {
+  id: string;
+  code: string;
+  name: string;
+  type: 0 | 1;
+  baseUrl?: null | string;
+  hasApiKey: boolean;
+  protocol: string;
+  enabled: boolean;
+  priority: number;
+  weight: number;
+  timeoutSeconds: number;
+  description?: null | string;
+  modelCount: number;
+}
+
+export interface BuiltinProviderDto {
+  code: string;
+  displayName: string;
+  defaultBaseUrl?: null | string;
+  defaultProtocol: string;
+}
+
+export interface CreateBuiltinProviderDto {
+  code: string;
+  apiKey?: null | string;
+  baseUrl?: null | string;
+  priority: number;
+  weight: number;
+  timeoutSeconds: number;
+  description?: null | string;
+  models: CreateModelInputDto[];
+}
+
+export interface CreateCustomProviderDto {
+  code: string;
+  name: string;
+  baseUrl?: null | string;
+  protocol: string;
+  apiKey?: null | string;
+  priority: number;
+  weight: number;
+  timeoutSeconds: number;
+  description?: null | string;
+  models: CreateModelInputDto[];
+}
+
+export interface UpdateProviderDto {
+  name: string;
+  baseUrl?: null | string;
+  enabled: boolean;
+  priority: number;
+  weight: number;
+  timeoutSeconds: number;
+  description?: null | string;
+  apiKey?: null | string;
+}
+
+export interface ModelDto {
+  id: string;
+  providerId: string;
+  modelName: string;
+  displayName?: null | string;
+  contextWindow?: null | number;
+  maxOutputTokens?: null | number;
+  capabilityIds?: null | string;
+  priority: number;
+  weight: number;
+  maxImagesPerRequest: number;
+  enabled: boolean;
+  pricePerCall: number;
+}
+
+export interface CreateModelInputDto {
+  modelName: string;
+  displayName?: null | string;
+  contextWindow?: null | number;
+  maxOutputTokens?: null | number;
+  capabilityIds?: null | string;
+  maxImagesPerRequest: number;
+  enabled: boolean;
+  pricePerCall: number;
+}
+
+export interface UpdateModelDto {
+  displayName?: null | string;
+  contextWindow?: null | number;
+  maxOutputTokens?: null | number;
+  capabilityIds?: null | string;
+  priority: number;
+  weight: number;
+  maxImagesPerRequest: number;
+  enabled: boolean;
+  pricePerCall: number;
 }
