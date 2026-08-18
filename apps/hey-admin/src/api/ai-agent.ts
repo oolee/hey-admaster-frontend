@@ -113,12 +113,6 @@ export interface CreateUpdateAiAgentChannelDto {
   description: string;
 }
 
-export interface ProbedModelDto {
-  modelName: string;
-  displayName?: null | string;
-  supportedSizes?: null | string;
-}
-
 export interface AiAgentChannelModelDto {
   id: string;
   channelId: string;
@@ -238,11 +232,6 @@ export function useAiAgentApi() {
       method: 'PUT',
     });
 
-  const probeChannel = (id: string) =>
-    request<ListResultDto<ProbedModelDto>>(`${BASE_URL}/channels/${id}/probe`, {
-      method: 'POST',
-    });
-
   const getChannelModels = (channelId: string) =>
     request<ListResultDto<AiAgentChannelModelDto>>(
       `${BASE_URL}/channels/${channelId}/models`,
@@ -277,7 +266,6 @@ export function useAiAgentApi() {
     updateChannel,
     deleteChannel,
     setChannelEnabled,
-    probeChannel,
     getChannelModels,
     updateChannelModel,
     deleteChannelModel,

@@ -32,7 +32,6 @@ const {
   deleteChannelModel,
   getChannelModels,
   getChannels,
-  probeChannel,
   setChannelEnabled,
   setChannelModelEnabled,
   updateChannel,
@@ -179,20 +178,6 @@ function onDelete(row: AiAgentChannelDto) {
 async function onToggleEnabled(row: AiAgentChannelDto, checked: boolean) {
   await setChannelEnabled(row.id, checked);
   message.success(checked ? '已启用' : '已停用');
-}
-
-// ---- 能力探测：后端读库取密钥，前端只传渠道 ID ----
-const refreshingId = ref<null | string>(null);
-async function onRefresh(row: AiAgentChannelDto) {
-  refreshingId.value = row.id;
-  try {
-    const res = await probeChannel(row.id);
-    const models = res.items ?? [];
-    message.success(`已获取 ${models.length} 个模型`);
-    gridApi.query();
-  } finally {
-    refreshingId.value = null;
-  }
 }
 
 // ---- 模型管理 ----
@@ -357,13 +342,6 @@ function batchDelete() {
 
     <template #actions="{ row }">
       <Button type="link" @click="onUpdate(row)">编辑</Button>
-      <Button
-        type="link"
-        :loading="refreshingId === row.id"
-        @click="onRefresh(row)"
-      >
-        刷新
-      </Button>
       <Button type="link" @click="openModels(row)">模型</Button>
       <Button danger type="link" @click="onDelete(row)">删除</Button>
     </template>
