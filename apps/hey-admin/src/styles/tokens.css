@@ -1,0 +1,384 @@
+/* =====================================================
+   Hey 19 V2 · 设计令牌
+   结构：data-theme（色系）× data-mode（明暗）双维度
+   5 色系：warm 日曜 / ink 墨青 / mint 薄荷 / midnight 紫夜 / sand 赤陶
+   ===================================================== */
+
+/* ===== 基础（字体、字号、间距、圆角、动效）===== */
+:root {
+  --font-display: 'Space Grotesk', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-body: 'DM Sans', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', consolas, monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+  --text-4xl: 3rem;
+  --text-5xl: 4rem;
+  --text-6xl: 5rem;
+  --sp-1: 0.25rem; --sp-2: 0.5rem; --sp-3: 0.75rem;
+  --sp-4: 1rem; --sp-5: 1.5rem; --sp-6: 2rem;
+  --sp-7: 2.5rem; --sp-8: 3rem; --sp-9: 4rem;
+  --sp-10: 5rem; --sp-11: 6.5rem; --sp-12: 8rem;
+  --r-sm: 0.5rem; --r-md: 0.75rem; --r-lg: 1.125rem;
+  --r-xl: 1.5rem; --r-2xl: 2rem; --r-full: 9999px;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-expo: cubic-bezier(0.87, 0, 0.13, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 150ms; --dur-med: 300ms; --dur-slow: 600ms;
+  --header-h: 72px;
+  --container: 1280px;
+}
+
+/* =====================================================
+   · 日曜 warm（默认色系）
+   ===================================================== */
+:root,
+[data-theme="warm"],
+[data-theme="warm"][data-mode="light"] {
+  --color-bg:                 #faf6ee;
+  --color-bg-deep:            #fdfbf7;
+  --color-surface:            #fff;
+  --color-surface-2:          #f3ecdf;
+  --color-surface-3:          #e5dac6;
+  --color-border:             rgb(31 42 38 / 10%);
+  --color-border-strong:      rgb(31 42 38 / 22%);
+  --color-text-1:             #0f2e2c;
+  --color-text-2:             #4d5f59;
+  --color-text-3:             #8a9992;
+  --color-text-inverse:       #fdfbf7;
+  --color-accent:             #ff6b35;
+  --color-accent-hover:       #e85320;
+  --color-accent-soft:        #fff3ee;
+  --color-primary-deep:       #142a25;
+  --color-ai:                 #7c5cff;
+  --color-ai-soft:            rgb(124 92 255 / 10%);
+  --color-success:            #2e9e5b;
+  --color-warning:            #f5a623;
+  --color-error:              #d64545;
+  --color-info:               #3d7bd9;
+  --glow-accent:              rgb(255 107 53 / 30%);
+  --glow-ai:                  rgb(124 92 255 / 25%);
+  --shadow-xs:  0 1px 2px rgb(15 46 44 / 6%);
+  --shadow-sm:  0 2px 8px rgb(15 46 44 / 7%);
+  --shadow-md:  0 8px 24px rgb(15 46 44 / 10%);
+  --shadow-lg:  0 20px 48px rgb(15 46 44 / 16%);
+  --shadow-accent: 0 8px 24px var(--glow-accent);
+}
+
+[data-theme="warm"][data-mode="dark"] {
+  --color-bg:                 #161310;
+  --color-bg-deep:            #0f0d0b;
+  --color-surface:            #221c17;
+  --color-surface-2:          #2e261f;
+  --color-surface-3:          #3b3028;
+  --color-border:             rgb(255 255 255 / 10%);
+  --color-border-strong:      rgb(255 255 255 / 20%);
+  --color-text-1:             #f5f1ea;
+  --color-text-2:             #c4b8ac;
+  --color-text-3:             #8d8075;
+  --color-text-inverse:       #161310;
+  --color-accent:             #ff8a5c;
+  --color-accent-hover:       #ff9d76;
+  --color-accent-soft:        rgb(255 138 92 / 15%);
+  --color-primary-deep:       #f5f1ea;
+  --color-ai:                 #9b8cff;
+  --color-ai-soft:            rgb(155 140 255 / 16%);
+  --color-success:            #4cc38a;
+  --color-warning:            #ffc24b;
+  --color-error:              #f26d6d;
+  --color-info:               #6ca2f0;
+  --glow-accent:              rgb(255 138 92 / 28%);
+  --glow-ai:                  rgb(155 140 255 / 30%);
+  --shadow-xs:  0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-sm:  0 2px 8px rgb(0 0 0 / 35%);
+  --shadow-md:  0 8px 24px rgb(0 0 0 / 45%);
+  --shadow-lg:  0 20px 48px rgb(0 0 0 / 60%);
+  --shadow-accent: 0 8px 28px var(--glow-accent);
+}
+
+/* =====================================================
+   · 墨青 ink
+   ===================================================== */
+[data-theme="ink"][data-mode="light"] {
+  --color-bg:                 #f2f7f5;
+  --color-bg-deep:            #f9fbfa;
+  --color-surface:            #fff;
+  --color-surface-2:          #dce9e4;
+  --color-surface-3:          #c3d8d0;
+  --color-border:             rgb(15 46 44 / 10%);
+  --color-border-strong:      rgb(15 46 44 / 22%);
+  --color-text-1:             #142a25;
+  --color-text-2:             #3a6659;
+  --color-text-3:             #86aca1;
+  --color-text-inverse:       #f2f7f5;
+  --color-accent:             #f5a623;
+  --color-accent-hover:       #d97706;
+  --color-accent-soft:        #fef3c7;
+  --color-primary-deep:       #142a25;
+  --color-ai:                 #5d3ff0;
+  --color-ai-soft:            rgb(93 63 240 / 10%);
+  --color-success:            #2e9e5b;
+  --color-warning:            #f5a623;
+  --color-error:              #d64545;
+  --color-info:               #3d7bd9;
+  --glow-accent:              rgb(245 166 35 / 30%);
+  --glow-ai:                  rgb(93 63 240 / 22%);
+  --shadow-xs:  0 1px 2px rgb(15 46 44 / 6%);
+  --shadow-sm:  0 2px 8px rgb(15 46 44 / 7%);
+  --shadow-md:  0 8px 24px rgb(15 46 44 / 10%);
+  --shadow-lg:  0 20px 48px rgb(15 46 44 / 16%);
+  --shadow-accent: 0 8px 24px var(--glow-accent);
+}
+
+[data-theme="ink"][data-mode="dark"] {
+  --color-bg:                 #0a1f1d;
+  --color-bg-deep:            #071714;
+  --color-surface:            #142a25;
+  --color-surface-2:          #1e3a33;
+  --color-surface-3:          #24413a;
+  --color-border:             rgb(255 255 255 / 10%);
+  --color-border-strong:      rgb(255 255 255 / 20%);
+  --color-text-1:             #f2f7f5;
+  --color-text-2:             #a8c0b8;
+  --color-text-3:             #6d8a80;
+  --color-text-inverse:       #0a1f1d;
+  --color-accent:             #ff9d76;
+  --color-accent-hover:       #ffc4ab;
+  --color-accent-soft:        rgb(255 157 118 / 15%);
+  --color-primary-deep:       #f2f7f5;
+  --color-ai:                 #9b8cff;
+  --color-ai-soft:            rgb(155 140 255 / 16%);
+  --color-success:            #4cc38a;
+  --color-warning:            #ffc24b;
+  --color-error:              #f26d6d;
+  --color-info:               #6ca2f0;
+  --glow-accent:              rgb(255 157 118 / 28%);
+  --glow-ai:                  rgb(155 140 255 / 30%);
+  --shadow-xs:  0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-sm:  0 2px 8px rgb(0 0 0 / 35%);
+  --shadow-md:  0 8px 24px rgb(0 0 0 / 45%);
+  --shadow-lg:  0 20px 48px rgb(0 0 0 / 60%);
+  --shadow-accent: 0 8px 28px var(--glow-accent);
+}
+
+/* =====================================================
+   · 薄荷 mint
+   ===================================================== */
+[data-theme="mint"][data-mode="light"] {
+  --color-bg:                 #f0fdfa;
+  --color-bg-deep:            #ecfeff;
+  --color-surface:            #fff;
+  --color-surface-2:          #ccfbf1;
+  --color-surface-3:          #cffafe;
+  --color-border:             rgb(8 80 73 / 10%);
+  --color-border-strong:      rgb(8 80 73 / 22%);
+  --color-text-1:             #134e4a;
+  --color-text-2:             #2d6a64;
+  --color-text-3:             #5e8a85;
+  --color-text-inverse:       #f0fdfa;
+  --color-accent:             #0d9488;
+  --color-accent-hover:       #0f766e;
+  --color-accent-soft:        #ccfbf1;
+  --color-primary-deep:       #134e4a;
+  --color-ai:                 #0284c7;
+  --color-ai-soft:            rgb(2 132 199 / 12%);
+  --color-success:            #16a34a;
+  --color-warning:            #f59e0b;
+  --color-error:              #dc2626;
+  --color-info:               #0284c7;
+  --glow-accent:              rgb(13 148 136 / 32%);
+  --glow-ai:                  rgb(2 132 199 / 25%);
+  --shadow-xs:  0 1px 2px rgb(8 80 73 / 8%);
+  --shadow-sm:  0 2px 8px rgb(8 80 73 / 10%);
+  --shadow-md:  0 8px 24px rgb(8 80 73 / 14%);
+  --shadow-lg:  0 20px 48px rgb(8 80 73 / 18%);
+  --shadow-accent: 0 8px 24px var(--glow-accent);
+}
+
+[data-theme="mint"][data-mode="dark"] {
+  --color-bg:                 #042f2e;
+  --color-bg-deep:            #022c22;
+  --color-surface:            #0f3a38;
+  --color-surface-2:          #155e5a;
+  --color-surface-3:          #1b6b66;
+  --color-border:             rgb(255 255 255 / 10%);
+  --color-border-strong:      rgb(255 255 255 / 20%);
+  --color-text-1:             #f0fdfa;
+  --color-text-2:             #99f6e4;
+  --color-text-3:             #5eead4;
+  --color-text-inverse:       #042f2e;
+  --color-accent:             #2dd4bf;
+  --color-accent-hover:       #5eead4;
+  --color-accent-soft:        rgb(45 212 191 / 16%);
+  --color-primary-deep:       #f0fdfa;
+  --color-ai:                 #38bdf8;
+  --color-ai-soft:            rgb(56 189 248 / 16%);
+  --color-success:            #4ade80;
+  --color-warning:            #fbbf24;
+  --color-error:              #fb7185;
+  --color-info:               #38bdf8;
+  --glow-accent:              rgb(45 212 191 / 30%);
+  --glow-ai:                  rgb(56 189 248 / 28%);
+  --shadow-xs:  0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-sm:  0 2px 8px rgb(0 0 0 / 35%);
+  --shadow-md:  0 8px 24px rgb(0 0 0 / 45%);
+  --shadow-lg:  0 20px 48px rgb(0 0 0 / 60%);
+  --shadow-accent: 0 8px 28px var(--glow-accent);
+}
+
+/* =====================================================
+   · 紫夜 midnight
+   ===================================================== */
+[data-theme="midnight"][data-mode="light"] {
+  --color-bg:                 #f5f3ff;
+  --color-bg-deep:            #faf9ff;
+  --color-surface:            #fff;
+  --color-surface-2:          #ede9fe;
+  --color-surface-3:          #ddd6fe;
+  --color-border:             rgb(46 16 101 / 10%);
+  --color-border-strong:      rgb(46 16 101 / 22%);
+  --color-text-1:             #2e1065;
+  --color-text-2:             #5b21b6;
+  --color-text-3:             #8b5cf6;
+  --color-text-inverse:       #f5f3ff;
+  --color-accent:             #9333ea;
+  --color-accent-hover:       #7e22ce;
+  --color-accent-soft:        #f3e8ff;
+  --color-primary-deep:       #3b0764;
+  --color-ai:                 #db2777;
+  --color-ai-soft:            rgb(219 39 119 / 10%);
+  --color-success:            #16a34a;
+  --color-warning:            #d97706;
+  --color-error:              #dc2626;
+  --color-info:               #7c3aed;
+  --glow-accent:              rgb(147 51 234 / 28%);
+  --glow-ai:                  rgb(219 39 119 / 22%);
+  --shadow-xs:  0 1px 2px rgb(46 16 101 / 8%);
+  --shadow-sm:  0 2px 8px rgb(46 16 101 / 10%);
+  --shadow-md:  0 8px 24px rgb(46 16 101 / 14%);
+  --shadow-lg:  0 20px 48px rgb(46 16 101 / 18%);
+  --shadow-accent: 0 8px 24px var(--glow-accent);
+}
+
+[data-theme="midnight"][data-mode="dark"] {
+  --color-bg:                 #0d0a1f;
+  --color-bg-deep:            #07051a;
+  --color-surface:            #1a1437;
+  --color-surface-2:          #261b4d;
+  --color-surface-3:          #342564;
+  --color-border:             rgb(255 255 255 / 10%);
+  --color-border-strong:      rgb(255 255 255 / 20%);
+  --color-text-1:             #f5f3ff;
+  --color-text-2:             #c4b5fd;
+  --color-text-3:             #8b7fcf;
+  --color-text-inverse:       #0d0a1f;
+  --color-accent:             #ec4899;
+  --color-accent-hover:       #f472b6;
+  --color-accent-soft:        rgb(236 72 153 / 18%);
+  --color-primary-deep:       #f5f3ff;
+  --color-ai:                 #a78bfa;
+  --color-ai-soft:            rgb(167 139 250 / 18%);
+  --color-success:            #4ade80;
+  --color-warning:            #fbbf24;
+  --color-error:              #fb7185;
+  --color-info:               #818cf8;
+  --glow-accent:              rgb(236 72 153 / 34%);
+  --glow-ai:                  rgb(167 139 250 / 32%);
+  --shadow-xs:  0 1px 2px rgb(0 0 0 / 50%);
+  --shadow-sm:  0 2px 8px rgb(0 0 0 / 40%);
+  --shadow-md:  0 8px 24px rgb(0 0 0 / 55%);
+  --shadow-lg:  0 20px 48px rgb(0 0 0 / 65%);
+  --shadow-accent: 0 8px 28px var(--glow-accent);
+}
+
+/* =====================================================
+   · 赤陶 sand
+   ===================================================== */
+[data-theme="sand"][data-mode="light"] {
+  --color-bg:                 #fdf8f3;
+  --color-bg-deep:            #faf3e8;
+  --color-surface:            #fff;
+  --color-surface-2:          #faeede;
+  --color-surface-3:          #f0e0c2;
+  --color-border:             rgb(120 53 15 / 10%);
+  --color-border-strong:      rgb(120 53 15 / 22%);
+  --color-text-1:             #451a03;
+  --color-text-2:             #78350f;
+  --color-text-3:             #a16207;
+  --color-text-inverse:       #fdf8f3;
+  --color-accent:             #d97706;
+  --color-accent-hover:       #b45309;
+  --color-accent-soft:        #fef3c7;
+  --color-primary-deep:       #431407;
+  --color-ai:                 #b91c1c;
+  --color-ai-soft:            rgb(185 28 28 / 12%);
+  --color-success:            #15803d;
+  --color-warning:            #ca8a04;
+  --color-error:              #b91c1c;
+  --color-info:               #1d4ed8;
+  --glow-accent:              rgb(217 119 6 / 30%);
+  --glow-ai:                  rgb(185 28 28 / 25%);
+  --shadow-xs:  0 1px 2px rgb(120 53 15 / 8%);
+  --shadow-sm:  0 2px 8px rgb(120 53 15 / 10%);
+  --shadow-md:  0 8px 24px rgb(120 53 15 / 14%);
+  --shadow-lg:  0 20px 48px rgb(120 53 15 / 20%);
+  --shadow-accent: 0 8px 24px var(--glow-accent);
+}
+
+[data-theme="sand"][data-mode="dark"] {
+  --color-bg:                 #1c1108;
+  --color-bg-deep:            #140c05;
+  --color-surface:            #2a1a0e;
+  --color-surface-2:          #3b2612;
+  --color-surface-3:          #4a3018;
+  --color-border:             rgb(255 255 255 / 10%);
+  --color-border-strong:      rgb(255 255 255 / 20%);
+  --color-text-1:             #fdf8f3;
+  --color-text-2:             #d9b48a;
+  --color-text-3:             #a8814f;
+  --color-text-inverse:       #1c1108;
+  --color-accent:             #f59e0b;
+  --color-accent-hover:       #fbbf24;
+  --color-accent-soft:        rgb(245 158 11 / 16%);
+  --color-primary-deep:       #fdf8f3;
+  --color-ai:                 #ef4444;
+  --color-ai-soft:            rgb(239 68 68 / 16%);
+  --color-success:            #4ade80;
+  --color-warning:            #fbbf24;
+  --color-error:              #f87171;
+  --color-info:               #60a5fa;
+  --glow-accent:              rgb(245 158 11 / 30%);
+  --glow-ai:                  rgb(239 68 68 / 26%);
+  --shadow-xs:  0 1px 2px rgb(0 0 0 / 45%);
+  --shadow-sm:  0 2px 8px rgb(0 0 0 / 40%);
+  --shadow-md:  0 8px 24px rgb(0 0 0 / 55%);
+  --shadow-lg:  0 20px 48px rgb(0 0 0 / 65%);
+  --shadow-accent: 0 8px 28px var(--glow-accent);
+}
+
+/* 系统偏好暗色时的默认（未手动设置时用 warm 暗色） */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --color-bg:                 #161310;
+    --color-bg-deep:            #0f0d0b;
+    --color-surface:            #221c17;
+    --color-surface-2:          #2e261f;
+    --color-surface-3:          #3b3028;
+    --color-border:             rgb(255 255 255 / 10%);
+    --color-border-strong:      rgb(255 255 255 / 20%);
+    --color-text-1:             #f5f1ea;
+    --color-text-2:             #c4b8ac;
+    --color-text-3:             #8d8075;
+    --color-text-inverse:       #161310;
+    --color-accent:             #ff8a5c;
+    --color-accent-hover:       #ff9d76;
+    --color-accent-soft:        rgb(255 138 92 / 15%);
+    --color-primary-deep:       #f5f1ea;
+    --color-ai:                 #9b8cff;
+    --color-ai-soft:            rgb(155 140 255 / 16%);
+  }
+}
