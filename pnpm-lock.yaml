@@ -62,7 +62,7 @@ catalogs:
       version: 3.1.0
     '@microsoft/signalr':
       specifier: ^10.0.0
-      version: 10.0.0
+      version: 10.0.11
     '@nolebase/vitepress-plugin-git-changelog':
       specifier: ^2.18.2
       version: 2.18.2
@@ -140,7 +140,7 @@ catalogs:
       version: 8.0.0
     '@types/codemirror':
       specifier: ^5.60.17
-      version: 5.60.17
+      version: 5.60.18
     '@types/html-minifier-terser':
       specifier: ^7.0.2
       version: 7.0.2
@@ -532,8 +532,8 @@ catalogs:
       specifier: ^0.170.0
       version: 0.170.0
     tinymce:
-      specifier: ^5.10.7
-      version: 5.10.9
+      specifier: ^8.8.2
+      version: 8.8.2
     tippy.js:
       specifier: ^6.3.7
       version: 6.3.7
@@ -563,7 +563,7 @@ catalogs:
       version: 7.2.0
     vditor:
       specifier: ^3.11.2
-      version: 3.11.2
+      version: 3.11.3
     vite:
       specifier: ^8.1.5
       version: 8.1.5
@@ -2092,17 +2092,17 @@ importers:
         version: 3.0.3
       tinymce:
         specifier: 'catalog:'
-        version: 5.10.9
+        version: 8.8.2
       vditor:
         specifier: 'catalog:'
-        version: 3.11.2
+        version: 3.11.3
       vue:
         specifier: ^3.5.40
         version: 3.5.40(typescript@6.0.3)
     devDependencies:
       '@types/codemirror':
         specifier: 'catalog:'
-        version: 5.60.17
+        version: 5.60.18
       '@types/lodash.isnumber':
         specifier: 'catalog:'
         version: 3.0.9
@@ -2867,7 +2867,7 @@ importers:
         version: link:../core
       '@microsoft/signalr':
         specifier: 'catalog:'
-        version: 10.0.0
+        version: 10.0.11
       '@vben/stores':
         specifier: workspace:*
         version: link:../../stores
@@ -5789,8 +5789,8 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  '@microsoft/signalr@10.0.0':
-    resolution: {integrity: sha512-0BRqz/uCx3JdrOqiqgFhih/+hfTERaUfCZXFB52uMaZJrKaPRzHzMuqVsJC/V3pt7NozcNXGspjKiQEK+X7P2w==}
+  '@microsoft/signalr@10.0.11':
+    resolution: {integrity: sha512-FulOJ2EEtKvLQcswe/U7v8pzyXyk7Jua5xgWJPPwyQU/2Z9ORvKcVjyO75VvLsem+CJ1ORRexJ+7Bz1FCei2aw==}
 
   '@napi-rs/wasm-runtime@1.1.6':
     resolution: {integrity: sha512-ZLv/JdUfkvOy9eCnnBaGfiO+XimbjebAeO+MRQqD/B+FR1tnRN0tpKSJHRbE8sFfS6aqsXZ67TQjfwfsxULVbg==}
@@ -7416,8 +7416,8 @@ packages:
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
 
-  '@types/codemirror@5.60.17':
-    resolution: {integrity: sha512-AZq2FIsUHVMlp7VSe2hTfl5w4pcUkoFkM3zVsRKsn1ca8CXRDYvnin04+HP2REkwsxemuHqvDofdlhUWNpbwfw==}
+  '@types/codemirror@5.60.18':
+    resolution: {integrity: sha512-aSBOPXH2PXRYixxUpVP1sJ5+S0vEfKDvR+lABZ7Kju/9Qb0SSbZk72NihWaKoQbANyibs92q4DBfYasywxnNkA==}
 
   '@types/deep-eql@4.0.2':
     resolution: {integrity: sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw==}
@@ -8921,6 +8921,7 @@ packages:
 
   crypto-js@4.2.0:
     resolution: {integrity: sha512-KALDyEYgpY+Rlob/iriUtjV6d5Eq+Y191A5g4UqLAi8CyGP9N1+FdVbkc1SxKc2r4YAYqG8JzO2KGL+AizD70Q==}
+    deprecated: Active development of CryptoJS has been discontinued. This library is no longer maintained.
 
   crypto-random-string@2.0.0:
     resolution: {integrity: sha512-v1plID3y9r/lPhviJ1wrXpLeyUIGAZ2SHNYTEapm7/8A9nLPoyvVp3RK/EPFqn5kEznyWgYZNsRtYYIWbuG8KA==}
@@ -9326,6 +9327,9 @@ packages:
 
   errx@0.1.0:
     resolution: {integrity: sha512-fZmsRiDNv07K6s2KkKFTiD2aIvECa7++PKyD5NC32tpRw46qZA3sOz+aM+/V9V0GDHxVTKLziveV4JhzBHDp9Q==}
+
+  errx@0.1.2:
+    resolution: {integrity: sha512-chfpPHmCerdo/rXr/nNvPZRkV4WwDRwzwnsJ0Uzz3tVi8Z41tDctRjduYy1138ii77AFlts1qvWtX3g/Acg91Q==}
 
   es-abstract-get@1.0.0:
     resolution: {integrity: sha512-6PMWXpdhshVvFp+FoWYs1EvG1Nj0tvk0dZM+XcK0xMEM1czRVcP6ohqPWHy6qPagSpC8j4+p89WXlT+xXJs/fg==}
@@ -11153,6 +11157,9 @@ packages:
   ohash@2.0.11:
     resolution: {integrity: sha512-RdR9FQrFwNBNXAr4GixM8YaRZRJ5PUWbKYbE5eOsrwAjJW0q2REGcf79oYPsLyskQCZG1PLN+S/K1V00joZAoQ==}
 
+  ohash@2.0.12:
+    resolution: {integrity: sha512-65S/5gk9YSsaRjcyf7Nfa6h/d3E8/1gslpXfI4W7Dxn/oap8IKRuNT5VXkLQ1YFKIEg4apRY4Pj6aiwFzrDdmw==}
+
   oidc-client-ts@3.5.0:
     resolution: {integrity: sha512-l2q8l9CTCTOlbX+AnK4p3M+4CEpKpyQhle6blQkdFhm0IsBqsxm15bYaSa11G7pWdsYr6epdsRZxJpCyCRbT8A==}
     engines: {node: '>=18'}
@@ -11670,8 +11677,8 @@ packages:
     resolution: {integrity: sha512-AhNB2KgKeVJr16nK9LLZbJNWnYoT23ZrumNKFDebHBdkC8KHSqWo871JAUhoWC/RtjEVdqNMFpM6qrwRbaUqpw==}
     engines: {node: '>=18'}
 
-  readdirp@5.0.0:
-    resolution: {integrity: sha512-9u/XQ1pvrQtYyMpZe7DXKv2p5CNvyVwzUB6uhLAnQwHMSgKMBR62lc7AHljaeteeHXn11XTAaLLUVZYVZyuRBQ==}
+  readdirp@5.1.1:
+    resolution: {integrity: sha512-Kko+Y5XQ6fM+Ce3dq3m9YGxnacYZYl9cA1wZjaF3Vbry2L3i1qVg8+CAgNPsXRArPMUMCaOR7oa9Nqntc43JKA==}
     engines: {node: '>= 20.19.0'}
 
   redis-errors@1.2.0:
@@ -12527,8 +12534,8 @@ packages:
     resolution: {integrity: sha512-wXR/dYpcqKmfWpEdZjiKJOwCNFndD0DMnrW/cYjVGttEkBfVgcLFHoNrlj47mjOVic9yyNu65alsgF4NQyTa2g==}
     engines: {node: '>=12.0.0'}
 
-  tinymce@5.10.9:
-    resolution: {integrity: sha512-5bkrors87X9LhYX2xq8GgPHrIgJYHl87YNs+kBcjQ5I3CiUgzo/vFcGvT3MZQ9QHsEeYMhYO6a5CLGGffR8hMg==}
+  tinymce@8.8.2:
+    resolution: {integrity: sha512-wcUGaaAf4XFrQtbZtClbDN/QCqklXLlPt3+7UWliEoosuhnTOJUkXwf7Fzlq7agPnwkKKp1e4JGOhx3O1gWH3g==}
 
   tinypool@2.1.0:
     resolution: {integrity: sha512-Pugqs6M0m7Lv1I7FtxN4aoyToKg1C4tu+/381vH35y8oENM/Ai7f7C4StcoK4/+BSw9ebcS8jRiVrORFKCALLw==}
@@ -13005,8 +13012,8 @@ packages:
     peerDependencies:
       vue: ^3.5.40
 
-  vditor@3.11.2:
-    resolution: {integrity: sha512-8QguQQUPWbBFocnfQmWjz4jiykQnvsmCuhOomGIVVK7vc+dQq2h8w9qQQuEjUTZpnZT5fEdYbj4aLr1NGdAZaA==}
+  vditor@3.11.3:
+    resolution: {integrity: sha512-9SXqM81fFbQJoOiRIxYj7TJmIhh1nfNyZ4fpAlicL+zc4DvGKhfppIhlVN0rN/Ks3uthjy8VaQqh2Dw1HTXUCA==}
 
   verkit@0.1.2:
     resolution: {integrity: sha512-WqkT8n3hqizuCu71W3bUzf5fjBmkbXcudsehe/NbxA8PgqoKnSOY5K0Ba2ckg1qaRaSpSz7as/n9K1R9JXjQKg==}
@@ -15539,7 +15546,7 @@ snapshots:
       - encoding
       - supports-color
 
-  '@microsoft/signalr@10.0.0':
+  '@microsoft/signalr@10.0.11':
     dependencies:
       abort-controller: 3.0.0
       eventsource: 2.0.2
@@ -15637,14 +15644,14 @@ snapshots:
       consola: 3.4.2
       defu: 6.1.7
       destr: 2.0.5
-      errx: 0.1.0
+      errx: 0.1.2
       exsolve: 1.1.0
       ignore: 7.0.6
       jiti: 2.7.0
       klona: 2.0.6
       mlly: 1.8.2
       nostics: 1.2.0
-      ohash: 2.0.11
+      ohash: 2.0.12
       pathe: 2.0.3
       pkg-types: 2.3.1
       rc9: 3.0.1
@@ -15667,14 +15674,14 @@ snapshots:
       consola: 3.4.2
       defu: 6.1.7
       destr: 2.0.5
-      errx: 0.1.0
+      errx: 0.1.2
       exsolve: 1.1.0
       ignore: 7.0.6
       jiti: 2.7.0
       klona: 2.0.6
       mlly: 1.8.2
       nostics: 1.2.0
-      ohash: 2.0.11
+      ohash: 2.0.12
       pathe: 2.0.3
       pkg-types: 2.3.1
       rc9: 3.0.1
@@ -16807,7 +16814,7 @@ snapshots:
       '@types/deep-eql': 4.0.2
       assertion-error: 2.0.1
 
-  '@types/codemirror@5.60.17':
+  '@types/codemirror@5.60.18':
     dependencies:
       '@types/tern': 0.23.9
 
@@ -18240,7 +18247,7 @@ snapshots:
 
   chokidar@5.0.0:
     dependencies:
-      readdirp: 5.0.0
+      readdirp: 5.1.1
 
   chownr@3.0.0: {}
 
@@ -18874,7 +18881,10 @@ snapshots:
 
   error-stack-parser-es@1.0.5: {}
 
-  errx@0.1.0: {}
+  errx@0.1.0:
+    optional: true
+
+  errx@0.1.2: {}
 
   es-abstract-get@1.0.0:
     dependencies:
@@ -20914,6 +20924,8 @@ snapshots:
 
   ohash@2.0.11: {}
 
+  ohash@2.0.12: {}
+
   oidc-client-ts@3.5.0:
     dependencies:
       jwt-decode: 4.0.0
@@ -21521,7 +21533,7 @@ snapshots:
     dependencies:
       minimatch: 10.2.5
 
-  readdirp@5.0.0: {}
+  readdirp@5.1.1: {}
 
   redis-errors@1.2.0: {}
 
@@ -22511,7 +22523,7 @@ snapshots:
       fdir: 6.5.0(picomatch@4.0.5)
       picomatch: 4.0.5
 
-  tinymce@5.10.9: {}
+  tinymce@8.8.2: {}
 
   tinypool@2.1.0: {}
 
@@ -22959,7 +22971,7 @@ snapshots:
       evtd: 0.2.4
       vue: 3.5.40(typescript@6.0.3)
 
-  vditor@3.11.2:
+  vditor@3.11.3:
     dependencies:
       diff-match-patch: 1.0.5
 
